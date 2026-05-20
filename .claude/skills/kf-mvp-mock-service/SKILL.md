@@ -1,0 +1,419 @@
+---
+name: kf-mvp-mock-service
+description: >-
+  Load when user asks to create mock API, setup mock server, or generate mock
+  data for frontend development. Triggers: mock, 模拟服务, 接口模拟, mock server,
+  模拟数据, mock数据, 生成mock. NOT for: production API stubs, contract testing,
+  or backend service mocking.
+metadata:
+  pattern: generator
+  domain: mvp-stage2
+recommended_model: pro
+graph:
+  dependencies:
+    - target: kf-mvp-arch-expert
+      type: sequential
+    - target: all-in-mvp
+      type: semantic
+---
+
+# MVP Mock Service — Mock服务生成技能
+
+> **Core Belief**: Frontend should never wait for backend. Mock first, develop in parallel, swap when real API is ready.
+
+**Division of Labor**: This Skill focuses on **mock service generation** based on api-contract.yaml. It outputs a standalone mock server with realistic responses. Follows Generator pattern with strict templates.
+
+**Default Tech Stack Context**:
+- Mock server runs alongside Hono backend (same framework, same response format)
+- OR: Standalone mock using Hono for consistency
+- Response format MUST match real API: `{ success, data/error }`
+- Seed data in `backend/src/seed.ts` for shared use
+
+Load `references/mvp-tech-stack-default.md` for full specification.
+
+---
+
+# Core Philosophy
+
+1. **Mock is based on contract** — api-contract.yaml is the only source of truth
+2. **Realistic responses** — Mock data should look real (seed data, variations)
+3. **Same framework as backend** — Use Hono for mock server (not Express) to ensure behavior consistency
+4. **Failure simulation** — Can simulate error cases for frontend error handling
+5. **Shared seed data** — Mock and real backend use same seed data source
+
+---
+
+# Output Artifacts
+
+```
+mocks/
+├── server.ts              # Mock server entry
+├── routes/
+│   ├── auth.ts           # Auth mock routes
+│   ├── users.ts          # Users mock routes
+│   ├── products.ts       # Products mock routes
+│   └── ...
+├── data/
+│   ├── users.json       # Seed data
+│   ├── products.json     # Seed data
+│   └── ...
+└── utils/
+    └── delay.ts          # Simulate network latency
+```
+
+---
+
+# Stage 1: Read API Contract
+
+**Confirm inputs**:
+- [ ] api-contract.yaml is available
+- [ ] `<module>.md` files are available
+
+**Extract**:
+- All routes and methods
+- Request/Response DTOs
+- Error codes
+
+---
+
+# Stage 2: Server Setup
+
+## Express Mock Server Template
+
+```typescript
+// mocks/server.ts
+import express, { Request, Response } from 'express';
+import cors from 'cors';
+import { authRoutes } from './routes/auth';
+import { userRoutes } from './routes/users';
+import { productRoutes } from './routes/products';
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+// Simulate network latency (100-500ms)
+app.use((req, res, next) => {
+  const delay = Math.floor(Math.random() * 400) + 100;
+  setTimeout(next, delay);
+});
+
+// Auth middleware simulation
+app.use('/api', (req, res, next) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (token === 'mock-token') {
+    req.headers['x-user-id'] = '1';
+    req.headers['x-user-role'] = 'admin';
+  }
+  next();
+});
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/products', productRoutes);
+
+// Error handling
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  console.error('Mock server error:', err);
+  res.status(500).json({
+    success: false,
+    error: {
+      code: 'INTERNAL_ERROR',
+      message: 'Mock server error'
+    }
+  });
+});
+
+const PORT = 3001;
+app.listen(PORT, () => {
+  console.log(`Mock server running on http://localhost:${PORT}`);
+});
+```
+
+---
+
+# Stage 3: Route Implementation
+
+## Auth Mock Routes
+
+```typescript
+// mocks/routes/auth.ts
+import { Router } from 'express';
+
+export const authRoutes = Router();
+
+authRoutes.post('/login', (req, res) => {
+  const { email, password } = req.body;
+
+  // Valid mock credentials
+  if (email === 'admin@example.com' && password === 'password') {
+    return res.json({
+      success: true,
+      data: {
+        token: 'mock-token',
+        user: {
+          id: 1,
+          email: 'admin@example.com',
+          name: 'Admin User',
+          role: 'admin'
+        }
+      }
+    });
+  }
+
+  // Invalid credentials
+  return res.status(401).json({
+    success: false,
+    error: {
+      code: 'INVALID_CREDENTIALS',
+      message: 'Invalid email or password'
+    }
+  });
+});
+
+authRoutes.post('/register', (req, res) => {
+  const { email, password, name } = req.body;
+
+  // Check for duplicate
+  if (email === 'existing@example.com') {
+    return res.status(409).json({
+      success: false,
+      error: {
+        code: 'EMAIL_EXISTS',
+        message: 'Email already registered'
+      }
+    });
+  }
+
+  // Success
+  return res.status(201).json({
+    success: true,
+    data: {
+      token: 'mock-token-new',
+      user: {
+        id: Math.floor(Math.random() * 10000),
+        email,
+        name,
+        role: 'user'
+      }
+    }
+  });
+});
+```
+
+## CRUD Mock Routes Template
+
+```typescript
+// mocks/routes/{module}.ts
+import { Router } from 'express';
+import seedData from '../data/{module}.json';
+
+export const {module}Routes = Router();
+
+let {module}s = [...seedData];
+
+// GET list
+{module}Routes.get('/', (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+  const start = (Number(page) - 1) * Number(limit);
+  const end = start + Number(limit);
+
+  return res.json({
+    success: true,
+    data: {
+      list: {module}s.slice(start, end),
+      total: {module}s.length,
+      page: Number(page),
+      limit: Number(limit)
+    }
+  });
+});
+
+// GET by id
+{module}Routes.get('/:id', (req, res) => {
+  const { id } = req.params;
+  const item = {module}s.find(i => i.id === parseInt(id));
+
+  if (!item) {
+    return res.status(404).json({
+      success: false,
+      error: { code: 'NOT_FOUND', message: '{Module} not found' }
+    });
+  }
+
+  return res.json({ success: true, data: item });
+});
+
+// POST create
+{module}Routes.post('/', (req, res) => {
+  const body = req.body;
+
+  // Validation
+  if (!body.name) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'VALIDATION_ERROR', message: 'name is required' }
+    });
+  }
+
+  const newItem = {
+    id: Math.floor(Math.random() * 10000),
+    ...body,
+    createdAt: new Date().toISOString()
+  };
+
+  {module}s.push(newItem);
+
+  return res.status(201).json({ success: true, data: newItem });
+});
+
+// PUT update
+{module}Routes.put('/:id', (req, res) => {
+  const { id } = req.params;
+  const index = {module}s.findIndex(i => i.id === parseInt(id));
+
+  if (index === -1) {
+    return res.status(404).json({
+      success: false,
+      error: { code: 'NOT_FOUND', message: '{Module} not found' }
+    });
+  }
+
+  {module}s[index] = { ...{module}s[index], ...req.body };
+
+  return res.json({ success: true, data: {module}s[index] });
+});
+
+// DELETE (soft delete)
+{module}Routes.delete('/:id', (req, res) => {
+  const { id } = req.params;
+  const index = {module}s.findIndex(i => i.id === parseInt(id));
+
+  if (index === -1) {
+    return res.status(404).json({
+      success: false,
+      error: { code: 'NOT_FOUND', message: '{Module} not found' }
+    });
+  }
+
+  {module}s[index].deletedAt = new Date().toISOString();
+
+  return res.json({ success: true, data: { deleted: true } });
+});
+```
+
+---
+
+# Stage 4: Seed Data Generation
+
+```json
+// mocks/data/users.json
+[
+  {
+    "id": 1,
+    "email": "admin@example.com",
+    "name": "Admin User",
+    "role": "admin",
+    "organizationId": 1,
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z",
+    "deletedAt": null
+  },
+  {
+    "id": 2,
+    "email": "user@example.com",
+    "name": "Regular User",
+    "role": "user",
+    "organizationId": 1,
+    "createdAt": "2024-01-02T00:00:00Z",
+    "updatedAt": "2024-01-02T00:00:00Z",
+    "deletedAt": null
+  }
+]
+```
+
+---
+
+# Stage 5: Configuration
+
+## Package.json Dependencies
+
+```json
+{
+  "scripts": {
+    "mock": "tsx mocks/server.ts",
+    "mock:watch": "tsx watch mocks/server.ts"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17"
+  }
+}
+```
+
+## Startup Instructions
+
+```markdown
+## Mock Server 启动
+
+1. 安装依赖:
+   npm install
+
+2. 启动Mock服务器:
+   npm run mock
+
+3. 前端配置:
+   修改前端 `.env` 文件:
+   ```
+   VITE_API_BASE_URL=http://localhost:3001/api
+   ```
+
+4. 使用Mock用户登录:
+   - Email: admin@example.com
+   - Password: password
+```
+
+---
+
+# Mock Server Features
+
+| Feature | Implementation | Usage |
+|---------|---------------|-------|
+| Network latency | Random 100-500ms delay | Test loading states |
+| Error simulation | Configurable error responses | Test error handling |
+| Auth simulation | Bearer token middleware | Test protected routes |
+| Persistence | In-memory storage | Data survives restart |
+| Seed data | JSON files | Realistic test data |
+
+---
+
+# Constraints
+
+**MUST DO:**
+- Match api-contract.yaml exactly
+- Include realistic seed data
+- Simulate network latency
+- Handle all error cases
+
+**MUST NOT DO:**
+- Add non-contract endpoints
+- Return inconsistent data formats
+- Skip soft delete handling
+- Hardcode production URLs
+
+---
+
+# Gotchas
+
+- **Port conflict** — Default mock port 3001; change if conflicts
+- **CORS required** — Mock server must enable CORS for browser access
+- **Latency is intentional** — Don't remove delay; it helps frontend test loading states
+- **Data is ephemeral** — Mock data resets on server restart; use for dev only
+- **Token has no real validation** — Any "Bearer mock-token" works for protected routes

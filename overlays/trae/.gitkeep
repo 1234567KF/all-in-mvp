@@ -1,0 +1,9 @@
+# Trae 平台覆盖层
+#
+# 目录结构：
+#   overlays/trae/<skill-name>/SKILL.md  → 完全替换该技能的 SKILL.md
+#   overlays/trae/<skill-name>/references/ → 追加/替换 references 文件
+#
+# 使用方式：
+#   仅当某个技能在 Trae 下需要差异化内容时才创建对应文件。
+#   生成脚本会优先使用 overlay 文件，不存在则直接复制 .qoder 版本。

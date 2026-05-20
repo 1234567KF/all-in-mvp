@@ -1,0 +1,99 @@
+openapi: "3.0.0"
+info:
+  title: <Project Name> API
+  version: "0.1.0"
+servers:
+  - url: /api
+
+paths:
+  /<module>/<resource>:
+    get:
+      summary: <描述>
+      parameters:
+        - name: <param>
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 0
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/<Entity>"
+                  message:
+                    type: string
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+
+    post:
+      summary: <创建>
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/<CreateDTO>"
+      responses:
+        "201":
+          description: Created
+
+    /{id}:
+      get:
+        summary: <获取详情>
+        parameters:
+          - name: id
+            in: path
+            required: true
+            schema:
+              type: integer
+        responses:
+          "200":
+            description: Success
+      put:
+        summary: <更新>
+      delete:
+        summary: <删除>
+
+components:
+  schemas:
+    <Entity>:
+      type: object
+      properties:
+        id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    <CreateDTO>:
+      type: object
+      required:
+        - <field1>
+      properties:
+        <field1>:
+          type: string
+    <ErrorResponse>:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
