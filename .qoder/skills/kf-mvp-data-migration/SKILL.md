@@ -205,6 +205,141 @@ export async function down(db: Database) {
 
 ---
 
+# Migration Testing (MUST — 迭代9核心修复)
+
+**问题**：CRM系统的数据迁移（客户数据、订单历史）经常在迁移后发现数据丢失或格式错误，之前迁移测试只在人工抽查时进行，覆盖率不足。
+
+**解决方案**：MUST 编写 **迁移测试**，覆盖数据完整性、格式转换、回滚验证。
+
+## 迁移测试模板
+
+```typescript
+// tests/migration/001_add_customer_tags.test.ts
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { createTestDb, getTestDb } from '../helpers';
+
+describe('Migration 001 — Add Customer Tags (CRM)', () => {
+  let db: ReturnType<typeof getTestDb>;
+
+  beforeAll(async () => {
+    db = createTestDb({ schema: 'pre-migration' }); // 迁移前schema
+    // 插入测试数据
+    await db.insert(customers).values([
+      { id: 1, name: 'Alice', email: 'alice@example.com', category: 'VIP' },
+      { id: 2, name: 'Bob', email: 'bob@example.com', category: 'Regular' },
+      { id: 3, name: 'Charlie', email: 'charlie@example.com', category: null },
+    ]);
+  });
+
+  // 测试1：迁移前数据完整性
+  describe('Pre-Migration Data Integrity', () => {
+    it('should have all customer records before migration', async () => {
+      const count = await db.select({ count: sql`count(*)` }).from(customers);
+      expect(count[0].count).toBe(3);
+    });
+
+    it('should have expected data types', async () => {
+      const customer = await db.select().from(customers).where(eq(customers.id, 1)).limit(1);
+      expect(typeof customer[0].name).toBe('string');
+      expect(customer[0].category).toBeOneOf(['VIP', 'Regular', null]);
+    });
+  });
+
+  // 测试2：迁移执行
+  describe('Migration Execution', () => {
+    it('should apply migration without errors', async () => {
+      await expect(migrate(db, { migrationsFolder: './drizzle' }))
+        .resolves.not.toThrow();
+    });
+
+    it('should add new tags column', async () => {
+      const result = await db.select().from(customers).limit(1);
+      expect(result[0]).toHaveProperty('tags');
+    });
+
+    it('should preserve all existing data', async () => {
+      const allCustomers = await db.select().from(customers);
+      expect(allCustomers).toHaveLength(3);
+      expect(allCustomers.map(c => c.name)).toEqual(['Alice', 'Bob', 'Charlie']);
+    });
+  });
+
+  // 测试3：数据转换验证
+  describe('Data Transformation', () => {
+    it('should convert category to tags correctly', async () => {
+      const alice = await db.select().from(customers).where(eq(customers.id, 1)).limit(1);
+      expect(alice[0].tags).toContain('VIP'); // category:VIP → tags包含VIP
+    });
+
+    it('should handle null category gracefully', async () => {
+      const charlie = await db.select().from(customers).where(eq(customers.id, 3)).limit(1);
+      expect(charlie[0].tags).toEqual([]); // null → 空数组
+    });
+
+    it('should not create duplicate tags', async () => {
+      // 如果运行迁移两次
+      await migrate(db, { migrationsFolder: './drizzle' });
+      const alice = await db.select().from(customers).where(eq(customers.id, 1)).limit(1);
+      expect(new Set(alice[0].tags).size).toBe(alice[0].tags.length);
+    });
+  });
+
+  // 测试4：回滚验证
+  describe('Rollback Verification', () => {
+    it('should restore original schema on rollback', async () => {
+      // 执行回滚
+      await db.run(sql`ALTER TABLE customers DROP COLUMN tags`);
+      
+      const result = await db.select().from(customers).limit(1);
+      expect(result[0]).not.toHaveProperty('tags');
+    });
+
+    it('should preserve data after rollback', async () => {
+      const allCustomers = await db.select().from(customers);
+      expect(allCustomers.map(c => c.name)).toEqual(['Alice', 'Bob', 'Charlie']);
+    });
+  });
+
+  // 测试5：边界情况
+  describe('Edge Cases', () => {
+    it('should handle empty table migration', async () => {
+      const emptyDb = createTestDb({ schema: 'pre-migration' });
+      await expect(migrate(emptyDb, { migrationsFolder: './drizzle' }))
+        .resolves.not.toThrow();
+    });
+
+    it('should handle large dataset migration', async () => {
+      const largeDb = createTestDb({ schema: 'pre-migration' });
+      // 插入10000条记录
+      const batch = Array.from({ length: 10000 }, (_, i) => ({
+        name: `User${i}`,
+        email: `user${i}@example.com`,
+        category: i % 2 === 0 ? 'VIP' : 'Regular'
+      }));
+      await largeDb.insert(customers).values(batch);
+      
+      const start = Date.now();
+      await migrate(largeDb, { migrationsFolder: './drizzle' });
+      const duration = Date.now() - start;
+      
+      expect(duration).toBeLessThan(30000); // MUST: 30秒内完成
+    });
+  });
+});
+```
+
+## 迁移测试覆盖率要求
+
+| 测试类型 | 最低数量 | 说明 |
+|---------|---------|------|
+| 数据完整性 | 每个迁移 | 迁移前后记录数一致 |
+| 格式转换 | 每个转换逻辑 | 旧格式→新格式正确性 |
+| 回滚验证 | 每个迁移 | 回滚后schema和数据恢复 |
+| 幂等性 | 每个迁移 | 重复执行不产生副作用 |
+| 性能 | 大数据量迁移 | 大表迁移时间可接受 |
+| 边界 | 空表/大表 | 极端情况处理 |
+
 # Constraints
 
 **MUST DO:**

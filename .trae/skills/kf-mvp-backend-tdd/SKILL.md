@@ -149,7 +149,26 @@ src/
 **Unit tests**: `src/modules/<module>/<module>.test.ts`
 **Integration tests**: `integration-tests/modules/<module>.test.ts`
 
-## Test Structure (Vitest + Hono Test Adapter)
+## Test Coverage Requirements (MUST — 人工测试发现漏测的核心问题)
+
+每个模块的测试 MUST 覆盖以下 5 层：
+
+| 层级 | 类型 | 工具 | 覆盖目标 | 运行模式 |
+|------|------|------|---------|---------|
+| L1 | 单元测试 | Vitest | Service函数、纯函数、工具函数 | 无头 (headless) |
+| L2 | API集成测试 | Vitest + Hono app.request() | 每个路由的 happy + 所有 error path | 无头 (headless) |
+| L3 | 数据库集成测试 | Vitest + SQLite in-memory | Drizzle ORM 操作、事务、迁移 | 无头 (headless) |
+| L4 | 有头浏览器测试 | Playwright (headed) | 真实浏览器渲染、交互、CSS | 有头 (headed) |
+| L5 | 无头CI测试 | Playwright (headless) | CI流水线快速验证、截图对比 | 无头 (headless) |
+
+**关键修复**：之前人工测试发现错误，根本原因是只有 L1-L2，缺少 L3-L5。尤其是：
+- 数据库事务回滚未测试 → L3 强制要求
+- 前端交互在真实浏览器中失败 → L4 强制要求
+- CI中测试通过但人工测试失败 → L5 与 L4 必须同时存在
+
+## Test Structure (Vitest + Hono Test Adapter + Playwright)
+
+### L1-L3: 后端测试 (Vitest)
 
 ```typescript
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -157,7 +176,7 @@ import { Hono } from 'hono';
 import { moduleRoutes } from './routes';
 import { getTestDb, seedTestData } from '@/tests/helpers';
 
-describe('[Module] API', () => {
+describe('[Module] API — L2 Integration', () => {
   let app: Hono;
   let db: ReturnType<typeof getTestDb>;
 
@@ -184,6 +203,18 @@ describe('[Module] API', () => {
       expect(data.success).toBe(true);
       expect(Array.isArray(data.data)).toBe(true);
     });
+
+    // MUST: 边界条件测试（之前漏测的核心问题）
+    it('should handle empty list gracefully', async () => {
+      await db.delete(modules); // 清空数据
+      const token = await getTestToken();
+      const res = await app.request('/api/[module]', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.data).toEqual([]); // MUST 返回空数组，不是 null/undefined
+    });
   });
 
   describe('POST /api/[module]', () => {
@@ -194,6 +225,127 @@ describe('[Module] API', () => {
     it('should return 400 with invalid input', async () => {
       // Implementation
     });
+
+    // MUST: 所有 Zod 校验规则的 error path
+    it('should return 400 when required field missing', async () => {
+      const token = await getTestToken();
+      const res = await app.request('/api/[module]', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({}) // 空body测试
+      });
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toBeDefined();
+    });
+  });
+});
+
+// L3: 数据库事务测试
+describe('[Module] DB — L3 Transaction', () => {
+  it('should rollback on error', async () => {
+    const db = getTestDb();
+    const initialCount = await db.select({ count: count() }).from(modules);
+    
+    try {
+      await db.transaction(async (tx) => {
+        await tx.insert(modules).values({ name: 'test' });
+        throw new Error('Simulated error');
+      });
+    } catch (e) {
+      // expected
+    }
+    
+    const finalCount = await db.select({ count: count() }).from(modules);
+    expect(finalCount[0].count).toBe(initialCount[0].count); // MUST 回滚
+  });
+});
+```
+
+### L4-L5: Playwright 配置 (有头/无头)
+
+```typescript
+// playwright.config.ts — MUST 区分有头和无头配置
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './e2e',
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
+  reporter: 'html',
+  
+  // L5: CI 无头模式
+  projects: [
+    {
+      name: 'chromium-headless',
+      use: { 
+        ...devices['Desktop Chrome'],
+        headless: true, // CI 无头
+      },
+    },
+    // L4: 本地有头模式（人工验证）
+    {
+      name: 'chromium-headed',
+      use: { 
+        ...devices['Desktop Chrome'],
+        headless: false, // 本地有头，可见浏览器
+        launchOptions: { slowMo: 100 }, // 慢速便于观察
+      },
+      // 只在本地运行，CI 跳过
+      grepInvert: process.env.CI ? /.*/ : null,
+    },
+  ],
+  
+  // 本地开发服务器
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://localhost:5173',
+    reuseExistingServer: !process.env.CI,
+  },
+});
+```
+
+### L4: 有头浏览器测试示例
+
+```typescript
+// e2e/module.spec.ts
+import { test, expect } from '@playwright/test';
+
+test.describe('Module E2E — L4 Headed', () => {
+  test('should display list and handle empty state', async ({ page }) => {
+    await page.goto('/modules');
+    
+    // 等待加载完成（不是简单 timeout）
+    await page.waitForResponse(resp => resp.url().includes('/api/modules'));
+    
+    // 验证空状态 UI（之前漏测：空数据时前端崩溃）
+    const emptyState = page.locator('[data-testid="empty-state"]');
+    await expect(emptyState).toBeVisible();
+    
+    // 截图对比（有头模式下人工可查看）
+    await page.screenshot({ path: 'test-results/empty-state.png' });
+  });
+
+  test('should create item and show in list', async ({ page }) => {
+    await page.goto('/modules');
+    
+    // 点击新增按钮
+    await page.click('[data-testid="btn-create"]');
+    
+    // 填写表单
+    await page.fill('[data-testid="input-name"]', 'Test Item');
+    await page.click('[data-testid="btn-submit"]');
+    
+    // 等待请求完成
+    await page.waitForResponse(resp => 
+      resp.url().includes('/api/modules') && resp.request().method() === 'POST'
+    );
+    
+    // 验证列表中出现新项目（真实浏览器渲染）
+    const newItem = page.locator('text=Test Item');
+    await expect(newItem).toBeVisible();
   });
 });
 ```
@@ -230,6 +382,40 @@ describe('[Module] API', () => {
 2. **Do NOT optimize** (optimization comes in refactor phase)
 3. **Do NOT add features** not covered by tests
 4. **IF test still fails after reasonable effort → Trigger Code Review**
+
+## GREEN Phase 测试执行验证 (MUST — 防止"假绿")
+
+之前人工测试发现错误的核心原因：测试"看起来通过了"，但实际有 bug。**GREEN Phase 必须执行以下验证**：
+
+### 验证清单
+
+```markdown
+## GREEN Phase 验证
+
+### L1-L3 后端测试
+- [ ] 运行 `npx vitest run` → 全部通过
+- [ ] 运行 `npx vitest run --coverage` → 覆盖率 ≥ 80%
+- [ ] 检查 coverage 报告 → 每个 error path 都被覆盖
+- [ ] 故意注释掉一行实现代码 → 测试 MUST 失败（验证测试有效性）
+
+### L4 有头浏览器测试（本地人工验证）
+- [ ] 运行 `npx playwright test --project=chromium-headed`
+- [ ] 观察浏览器窗口 → 操作是否按预期执行
+- [ ] 检查 screenshots 目录 → 截图是否正确
+- [ ] 人工肉眼检查 UI → 有无明显错误
+
+### L5 无头CI测试
+- [ ] 运行 `npx playwright test --project=chromium-headless`
+- [ ] 对比 L4 和 L5 结果 → 必须一致
+- [ ] 如果 L4 通过但 L5 失败 → 检查 headless/headed 差异（常见：CSS 在 headless 下渲染不同）
+
+### 关键差异检查
+| 问题 | 原因 | 解决 |
+|------|------|------|
+| 有头通过，无头失败 | CSS 在 headless 下渲染不同 | 使用 `page.waitForSelector` 而非固定 timeout |
+| 无头通过，有头失败 | 真实浏览器有额外限制（CORS/CSP） | 检查浏览器 console 错误 |
+| 两者都通过，人工发现 bug | 测试断言不够严格 | 加强断言，检查具体值而非 just "not null" |
+```
 
 ## Routes Implementation (Hono + Zod Validation)
 
@@ -347,29 +533,582 @@ export const getModuleService = (db: Database): ModuleService => ({
 
 ---
 
-# Stage 5: REFACTOR Phase
+# Stage 4.5: 状态流转测试 (MUST — 迭代3核心修复)
 
-## Refactor Rules
+**问题**：工单/订单等系统有复杂状态机（待处理→处理中→已解决→已关闭），之前状态流转bug只在人工测试时发现。
 
-1. **Only refactor when ALL tests pass**
-2. **One small change at a time**
-3. **Run tests after each change**
-4. **If test fails → Rollback immediately**
+**解决方案**：有状态实体 MUST 编写 **状态机测试**，覆盖所有合法流转 + 非法流转阻断。
 
-## Common Refactors
+## 状态机测试模板
 
-- Extract method
-- Rename variables for clarity
-- Move inline code to helper
-- Simplify conditional logic
-- Add comments for complex logic
+```typescript
+// src/modules/ticket/ticket.state.test.ts
+import { describe, it, expect } from 'vitest';
+import { TicketStatus, TicketStatusMachine } from './state-machine';
 
-**Do NOT**:
-- Change behavior (tests must stay green)
-- Add new features
-- Change public API (unless approved)
+describe('Ticket State Machine', () => {
+  const machine = new TicketStatusMachine();
+
+  // 合法流转测试
+  describe('Valid Transitions', () => {
+    it('PENDING → IN_PROGRESS (admin assigns)', () => {
+      const result = machine.canTransition('PENDING', 'IN_PROGRESS', { role: 'admin' });
+      expect(result.allowed).toBe(true);
+    });
+
+    it('IN_PROGRESS → RESOLVED (agent resolves)', () => {
+      const result = machine.canTransition('IN_PROGRESS', 'RESOLVED', { role: 'agent' });
+      expect(result.allowed).toBe(true);
+    });
+
+    it('RESOLVED → CLOSED (user confirms or auto-close after 7 days)', () => {
+      const result = machine.canTransition('RESOLVED', 'CLOSED', { role: 'user' });
+      expect(result.allowed).toBe(true);
+    });
+
+    it('RESOLVED → REOPENED (user rejects)', () => {
+      const result = machine.canTransition('RESOLVED', 'REOPENED', { role: 'user' });
+      expect(result.allowed).toBe(true);
+    });
+
+    it('REOPENED → IN_PROGRESS (admin reassigns)', () => {
+      const result = machine.canTransition('REOPENED', 'IN_PROGRESS', { role: 'admin' });
+      expect(result.allowed).toBe(true);
+    });
+  });
+
+  // 非法流转测试 — MUST 阻断
+  describe('Invalid Transitions (MUST be blocked)', () => {
+    it('PENDING → CLOSED (cannot skip)', () => {
+      const result = machine.canTransition('PENDING', 'CLOSED', { role: 'admin' });
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toBe('Cannot skip from PENDING to CLOSED');
+    });
+
+    it('CLOSED → IN_PROGRESS (closed is final)', () => {
+      const result = machine.canTransition('CLOSED', 'IN_PROGRESS', { role: 'admin' });
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toBe('CLOSED is a terminal state');
+    });
+
+    it('PENDING → RESOLVED (user cannot resolve directly)', () => {
+      const result = machine.canTransition('PENDING', 'RESOLVED', { role: 'user' });
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toBe('User cannot transition from PENDING to RESOLVED');
+    });
+  });
+
+  // 权限测试
+  describe('Role-based Permissions', () => {
+    it('user cannot assign ticket', () => {
+      const result = machine.canTransition('PENDING', 'IN_PROGRESS', { role: 'user' });
+      expect(result.allowed).toBe(false);
+    });
+
+    it('agent cannot close without resolve', () => {
+      const result = machine.canTransition('IN_PROGRESS', 'CLOSED', { role: 'agent' });
+      expect(result.allowed).toBe(false);
+    });
+  });
+
+  // 副作用测试
+  describe('Transition Side Effects', () => {
+    it('should record timestamp on resolve', () => {
+      const ticket = { status: 'IN_PROGRESS', createdAt: new Date() };
+      const result = machine.transition(ticket, 'RESOLVED', { role: 'agent' });
+      expect(result.ticket.resolvedAt).toBeInstanceOf(Date);
+    });
+
+    it('should increment reopen count', () => {
+      const ticket = { status: 'RESOLVED', reopenCount: 0 };
+      const result = machine.transition(ticket, 'REOPENED', { role: 'user' });
+      expect(result.ticket.reopenCount).toBe(1);
+    });
+  });
+});
+```
+
+## 状态机实现模板
+
+```typescript
+// src/modules/ticket/state-machine.ts
+export type TicketStatus = 'PENDING' | 'IN_PROGRESS' | 'RESOLVED' | 'REOPENED' | 'CLOSED';
+
+interface TransitionContext {
+  role: 'admin' | 'agent' | 'user';
+}
+
+interface TransitionResult {
+  allowed: boolean;
+  reason?: string;
+  ticket?: any;
+}
+
+export class TicketStatusMachine {
+  // 定义合法流转图
+  private transitions: Record<TicketStatus, Array<{ to: TicketStatus; roles: string[]; validate?: (ctx: TransitionContext) => boolean }>> = {
+    PENDING: [
+      { to: 'IN_PROGRESS', roles: ['admin'] },
+    ],
+    IN_PROGRESS: [
+      { to: 'RESOLVED', roles: ['agent', 'admin'] },
+    ],
+    RESOLVED: [
+      { to: 'CLOSED', roles: ['user', 'admin'] },
+      { to: 'REOPENED', roles: ['user'] },
+    ],
+    REOPENED: [
+      { to: 'IN_PROGRESS', roles: ['admin'] },
+    ],
+    CLOSED: [], // 终态
+  };
+
+  canTransition(from: TicketStatus, to: TicketStatus, ctx: TransitionContext): TransitionResult {
+    const validTransitions = this.transitions[from];
+    
+    if (!validTransitions) {
+      return { allowed: false, reason: `Invalid from state: ${from}` };
+    }
+
+    const transition = validTransitions.find(t => t.to === to);
+    
+    if (!transition) {
+      return { allowed: false, reason: `Cannot transition from ${from} to ${to}` };
+    }
+
+    if (!transition.roles.includes(ctx.role)) {
+      return { allowed: false, reason: `Role ${ctx.role} cannot perform this transition` };
+    }
+
+    if (transition.validate && !transition.validate(ctx)) {
+      return { allowed: false, reason: 'Additional validation failed' };
+    }
+
+    return { allowed: true };
+  }
+
+  transition(ticket: any, to: TicketStatus, ctx: TransitionContext): TransitionResult {
+    const check = this.canTransition(ticket.status, to, ctx);
+    if (!check.allowed) return check;
+
+    const updated = { ...ticket, status: to };
+    
+    // 副作用
+    if (to === 'RESOLVED') updated.resolvedAt = new Date();
+    if (to === 'REOPENED') updated.reopenCount = (ticket.reopenCount || 0) + 1;
+    if (to === 'CLOSED') updated.closedAt = new Date();
+
+    return { allowed: true, ticket: updated };
+  }
+}
+```
+
+## 状态流转测试覆盖率要求
+
+| 测试类型 | 最低数量 | 说明 |
+|---------|---------|------|
+| 合法正向流转 | 所有边 | 状态图中每条边至少1个测试 |
+| 非法流转阻断 | 所有缺失边 | 状态图中不存在的边 MUST 测试阻断 |
+| 权限验证 | 每个流转 × 角色 | 不同角色对同一流转的结果可能不同 |
+| 副作用验证 | 每个有副作用的流转 | timestamp、计数器、通知等 |
+| 终态保护 | 每个终态 | 终态 MUST 不可再流转 |
 
 ---
+
+# Stage 4.6: 并发与边界测试 (MUST — 迭代6核心修复)
+
+**问题**：营销系统（优惠券、秒杀、抽奖）有大量并发场景，之前并发bug只在人工测试时发现（如：秒杀超卖、优惠券重复领取、库存负数）。
+
+**解决方案**：MUST 编写 **并发安全测试** 和 **边界条件测试**，覆盖竞态条件、资源耗尽、极限值。
+
+## 并发安全测试模板
+
+```typescript
+// src/modules/coupon/coupon.concurrency.test.ts
+import { describe, it, expect } from 'vitest';
+import { getTestDb } from '@/tests/helpers';
+import { getCouponService } from './service';
+
+describe('Coupon Concurrency — Marketing System', () => {
+  it('should NOT allow duplicate claim under concurrent requests', async () => {
+    const db = getTestDb();
+    const service = getCouponService(db);
+    
+    // 创建限量优惠券：只有1张
+    const coupon = await service.create({ 
+      code: 'FLASH50', 
+      totalQuantity: 1,
+      remaining: 1 
+    });
+    
+    // 模拟10个用户同时领取
+    const users = Array.from({ length: 10 }, (_, i) => ({ id: i + 1 }));
+    const results = await Promise.allSettled(
+      users.map(u => service.claim(coupon.id, u.id))
+    );
+    
+    // MUST：只有1个成功
+    const successes = results.filter(r => r.status === 'fulfilled');
+    expect(successes.length).toBe(1);
+    
+    // MUST：剩余数量为0
+    const updated = await service.findById(coupon.id);
+    expect(updated.remaining).toBe(0);
+  });
+
+  it('should handle flash sale stock correctly', async () => {
+    const db = getTestDb();
+    const service = getProductService(db);
+    
+    // 创建秒杀商品：库存5
+    const product = await service.create({ name: 'Flash Item', stock: 5 });
+    
+    // 20个用户同时下单
+    const orders = Array.from({ length: 20 }, (_, i) => ({
+      userId: i + 1,
+      productId: product.id,
+      quantity: 1
+    }));
+    
+    const results = await Promise.allSettled(
+      orders.map(o => service.purchase(o.productId, o.userId, o.quantity))
+    );
+    
+    // MUST：只有5个成功（库存限制）
+    const successes = results.filter(r => r.status === 'fulfilled' && r.value.success);
+    expect(successes.length).toBe(5);
+    
+    // MUST：库存为0
+    const updated = await service.findById(product.id);
+    expect(updated.stock).toBe(0);
+    
+    // MUST：其他15个返回库存不足
+    const failures = results.filter(r => 
+      r.status === 'rejected' || 
+      (r.status === 'fulfilled' && !r.value.success)
+    );
+    expect(failures.length).toBe(15);
+  });
+
+  it('should prevent race condition in balance deduction', async () => {
+    const db = getTestDb();
+    const service = getWalletService(db);
+    
+    // 用户余额100
+    const user = await service.createUser({ balance: 100 });
+    
+    // 同时发起3笔50元的扣款
+    const deductions = Array.from({ length: 3 }, () => 
+      service.deduct(user.id, 50)
+    );
+    
+    const results = await Promise.allSettled(deductions);
+    
+    // MUST：只有2个成功（100/50=2）
+    const successes = results.filter(r => r.status === 'fulfilled' && r.value.success);
+    expect(successes.length).toBe(2);
+    
+    // MUST：最终余额为0
+    const updated = await service.getBalance(user.id);
+    expect(updated).toBe(0);
+  });
+});
+```
+
+## 边界条件测试模板
+
+```typescript
+// src/modules/coupon/coupon.boundary.test.ts
+import { describe, it, expect } from 'vitest';
+
+describe('Boundary Conditions — MUST test extremes', () => {
+  // 数值边界
+  describe('Numeric Boundaries', () => {
+    it('should handle MAX_SAFE_INTEGER stock', async () => {
+      const product = await service.create({ stock: Number.MAX_SAFE_INTEGER });
+      const result = await service.purchase(product.id, 1, 1);
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject negative quantity', async () => {
+      const result = await service.purchase(1, 1, -1);
+      expect(result.success).toBe(false);
+      expect(result.error.code).toBe('INVALID_QUANTITY');
+    });
+
+    it('should handle zero quantity gracefully', async () => {
+      const result = await service.purchase(1, 1, 0);
+      expect(result.success).toBe(false);
+    });
+
+    it('should handle very large quantity exceeding stock', async () => {
+      const product = await service.create({ stock: 10 });
+      const result = await service.purchase(product.id, 1, 999999);
+      expect(result.success).toBe(false);
+      expect(result.error.code).toBe('INSUFFICIENT_STOCK');
+    });
+  });
+
+  // 字符串边界
+  describe('String Boundaries', () => {
+    it('should handle empty string coupon code', async () => {
+      const result = await service.validateCoupon('');
+      expect(result.valid).toBe(false);
+    });
+
+    it('should handle max length coupon code', async () => {
+      const longCode = 'A'.repeat(255);
+      const result = await service.create({ code: longCode });
+      expect(result.code).toBe(longCode);
+    });
+
+    it('should reject code exceeding max length', async () => {
+      const tooLong = 'A'.repeat(256);
+      await expect(service.create({ code: tooLong }))
+        .rejects.toThrow(/too long/);
+    });
+  });
+
+  // 时间边界
+  describe('Time Boundaries', () => {
+    it('should reject coupon used before start time', async () => {
+      const coupon = await service.create({
+        code: 'FUTURE',
+        startAt: new Date(Date.now() + 86400000), // 明天
+      });
+      const result = await service.use(coupon.code);
+      expect(result.success).toBe(false);
+      expect(result.error.code).toBe('NOT_STARTED');
+    });
+
+    it('should reject coupon used 1ms after expiry', async () => {
+      const coupon = await service.create({
+        code: 'EXPIRED',
+        endAt: new Date(Date.now() - 1), // 1ms前过期
+      });
+      const result = await service.use(coupon.code);
+      expect(result.success).toBe(false);
+      expect(result.error.code).toBe('EXPIRED');
+    });
+
+    it('should accept coupon at exact start time', async () => {
+      const now = new Date();
+      const coupon = await service.create({
+        code: 'NOW',
+        startAt: now,
+        endAt: new Date(now.getTime() + 86400000),
+      });
+      const result = await service.use(coupon.code);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  // 集合边界
+  describe('Collection Boundaries', () => {
+    it('should handle empty cart checkout', async () => {
+      const result = await service.checkout({ items: [] });
+      expect(result.success).toBe(false);
+      expect(result.error.code).toBe('EMPTY_CART');
+    });
+
+    it('should handle single item cart', async () => {
+      const result = await service.checkout({ items: [{ id: 1, qty: 1 }] });
+      expect(result.success).toBe(true);
+    });
+
+    it('should handle max items in cart', async () => {
+      const items = Array.from({ length: 100 }, (_, i) => ({ id: i, qty: 1 }));
+      const result = await service.checkout({ items });
+      expect(result.success).toBe(true);
+    });
+  });
+
+  // 分页边界
+  describe('Pagination Boundaries', () => {
+    it('should handle page 0 (treat as page 1)', async () => {
+      const result = await service.list({ page: 0, pageSize: 10 });
+      expect(result.page).toBe(1);
+    });
+
+    it('should handle page beyond total', async () => {
+      const result = await service.list({ page: 999, pageSize: 10 });
+      expect(result.items).toEqual([]);
+      expect(result.total).toBeDefined();
+    });
+
+    it('should handle pageSize = 0', async () => {
+      const result = await service.list({ page: 1, pageSize: 0 });
+      expect(result.items).toEqual([]);
+    });
+
+    it('should handle max pageSize', async () => {
+      const result = await service.list({ page: 1, pageSize: 1000 });
+      expect(result.items.length).toBeLessThanOrEqual(1000);
+    });
+  });
+});
+```
+
+## 并发与边界测试覆盖率要求
+
+| 测试类型 | 最低数量 | 说明 |
+|---------|---------|------|
+| 并发竞争 | 每个共享资源 | 同时修改同一资源的多个请求 |
+| 库存/数量边界 | 每个计数器 | 0、1、max、负数、超大值 |
+| 时间边界 | 每个时间字段 | 刚好开始、刚好过期、未来、过去 |
+| 字符串边界 | 每个文本字段 | 空、最大长度、超长、特殊字符 |
+| 集合边界 | 每个列表 | 空、单条、最大条数 |
+| 分页边界 | 每个分页接口 | page=0、超大page、pageSize=0、超大pageSize |
+
+---
+
+# Stage 4.7: 地理围栏与定位测试 (MUST — 迭代12核心修复)
+
+**问题**：O2O系统依赖地理位置（骑手配送范围、门店服务范围），之前地理计算bug只在人工测试时发现（如：坐标偏差导致配送范围判断错误）。
+
+**解决方案**：MUST 编写 **地理围栏测试**，覆盖坐标计算、距离算法、围栏判定。
+
+## 地理围栏测试模板
+
+```typescript
+// src/modules/delivery/delivery.geo.test.ts
+import { describe, it, expect } from 'vitest';
+import { GeoService } from './geo-service';
+
+describe('O2O Geo-Fencing — Location Testing', () => {
+  const geo = new GeoService();
+
+  // 测试1：距离计算精度
+  describe('Distance Calculation', () => {
+    it('should calculate distance between two points correctly', () => {
+      // 北京天安门 (116.397428, 39.90923)
+      // 北京故宫 (116.397026, 39.916345)
+      // 实际距离约 800米
+      const distance = geo.calculateDistance(
+        { lat: 39.90923, lng: 116.397428 },
+        { lat: 39.916345, lng: 116.397026 }
+      );
+      
+      expect(distance).toBeGreaterThan(700);
+      expect(distance).toBeLessThan(900);
+    });
+
+    it('should return 0 for same coordinates', () => {
+      const point = { lat: 39.90923, lng: 116.397428 };
+      const distance = geo.calculateDistance(point, point);
+      expect(distance).toBe(0);
+    });
+
+    it('should handle coordinates near equator', () => {
+      const distance = geo.calculateDistance(
+        { lat: 0, lng: 0 },
+        { lat: 0, lng: 1 }
+      );
+      // 经度1度在赤道约111km
+      expect(distance).toBeGreaterThan(110000);
+      expect(distance).toBeLessThan(112000);
+    });
+  });
+
+  // 测试2：配送范围判定
+  describe('Delivery Range Check', () => {
+    it('should accept order within delivery range', () => {
+      // 门店位置
+      const store = { lat: 39.90923, lng: 116.397428 };
+      // 用户位置（距离500米）
+      const customer = { lat: 39.912, lng: 116.397 };
+      // 配送范围3km
+      const inRange = geo.isWithinRange(store, customer, 3000);
+      
+      expect(inRange).toBe(true);
+    });
+
+    it('should reject order outside delivery range', () => {
+      const store = { lat: 39.90923, lng: 116.397428 };
+      // 用户位置（距离5km）
+      const customer = { lat: 39.95, lng: 116.397 };
+      
+      const inRange = geo.isWithinRange(store, customer, 3000);
+      expect(inRange).toBe(false);
+    });
+
+    it('should handle edge case: exactly at boundary', () => {
+      const store = { lat: 39.90923, lng: 116.397428 };
+      // 精确计算3km边界上的点
+      const boundaryPoint = geo.pointAtDistance(store, 3000, 90);
+      
+      const inRange = geo.isWithinRange(store, boundaryPoint, 3000);
+      expect(inRange).toBe(true); // 边界上算在范围内
+    });
+  });
+
+  // 测试3：多边形围栏
+  describe('Polygon Fence', () => {
+    it('should detect point inside polygon', () => {
+      // 定义一个三角形围栏
+      const fence = [
+        { lat: 0, lng: 0 },
+        { lat: 0, lng: 10 },
+        { lat: 10, lng: 5 },
+      ];
+      const point = { lat: 5, lng: 5 };
+      
+      expect(geo.isPointInPolygon(point, fence)).toBe(true);
+    });
+
+    it('should detect point outside polygon', () => {
+      const fence = [
+        { lat: 0, lng: 0 },
+        { lat: 0, lng: 10 },
+        { lat: 10, lng: 5 },
+      ];
+      const point = { lat: 20, lng: 20 };
+      
+      expect(geo.isPointInPolygon(point, fence)).toBe(false);
+    });
+
+    it('should handle point on polygon edge', () => {
+      const fence = [
+        { lat: 0, lng: 0 },
+        { lat: 0, lng: 10 },
+        { lat: 10, lng: 5 },
+      ];
+      const point = { lat: 0, lng: 5 }; // 在边上
+      
+      expect(geo.isPointInPolygon(point, fence)).toBe(true);
+    });
+  });
+
+  // 测试4：坐标格式验证
+  describe('Coordinate Validation', () => {
+    it('should reject invalid latitude', () => {
+      expect(geo.isValidCoordinate({ lat: 91, lng: 0 })).toBe(false);
+      expect(geo.isValidCoordinate({ lat: -91, lng: 0 })).toBe(false);
+    });
+
+    it('should reject invalid longitude', () => {
+      expect(geo.isValidCoordinate({ lat: 0, lng: 181 })).toBe(false);
+      expect(geo.isValidCoordinate({ lat: 0, lng: -181 })).toBe(false);
+    });
+
+    it('should accept valid coordinates', () => {
+      expect(geo.isValidCoordinate({ lat: 39.90923, lng: 116.397428 })).toBe(true);
+      expect(geo.isValidCoordinate({ lat: 0, lng: 0 })).toBe(true);
+      expect(geo.isValidCoordinate({ lat: -90, lng: 180 })).toBe(true);
+    });
+  });
+});
+```
+
+## 地理围栏测试覆盖率要求
+
+| 测试类型 | 最低数量 | 说明 |
+|---------|---------|------|
+| 距离计算 | 每个距离函数 | 短距离、长距离、同一点 |
+| 范围判定 | 每个配送/服务范围 | 范围内、范围外、边界上 |
+| 多边形 | 每个围栏区域 | 内部、外部、边上 |
+| 坐标验证 | 每个坐标输入 | 有效、无效、边界值 |
+| 坐标系转换 | 涉及多坐标系时 | GCJ-02、WGS-84、BD-09 |
 
 # Stage 6: Code Review
 

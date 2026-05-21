@@ -456,6 +456,238 @@ export const router = createRouter({
 
 ---
 
+# Stage 5: Component Interaction Testing (MUST — 迭代8核心修复)
+
+**问题**：电商系统的前端组件有大量交互逻辑（购物车、表单验证、弹窗确认），之前组件交互bug只在人工测试时发现（如：表单提交后未清空、弹窗未关闭、状态未同步）。
+
+**解决方案**：MUST 编写 **Vue组件交互测试**，覆盖组件渲染、用户交互、状态同步、生命周期。
+
+## Vue组件测试模板
+
+```typescript
+// src/components/cart/CartItem.spec.ts
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { mount, flushPromises } from '@vue/test-utils';
+import CartItem from './CartItem.vue';
+import { createPinia, setActivePinia } from 'pinia';
+import { useCartStore } from '@/stores/cart';
+
+describe('CartItem Component — E-commerce Frontend', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  // 渲染测试
+  describe('Rendering', () => {
+    it('should display item name, price, and quantity', () => {
+      const wrapper = mount(CartItem, {
+        props: { item: { id: 1, name: 'iPhone', price: 999, quantity: 2 } }
+      });
+      
+      expect(wrapper.text()).toContain('iPhone');
+      expect(wrapper.text()).toContain('$999');
+      expect(wrapper.find('[data-testid="quantity"]').text()).toBe('2');
+    });
+
+    it('should show out-of-stock badge when stock is 0', () => {
+      const wrapper = mount(CartItem, {
+        props: { item: { id: 1, name: 'iPhone', price: 999, quantity: 1, stock: 0 } }
+      });
+      
+      expect(wrapper.find('[data-testid="out-of-stock"]').exists()).toBe(true);
+    });
+
+    it('should render empty state when no items', () => {
+      const wrapper = mount(CartItem, {
+        props: { item: null }
+      });
+      
+      expect(wrapper.find('[data-testid="empty-cart"]').exists()).toBe(true);
+    });
+  });
+
+  // 用户交互测试
+  describe('User Interactions', () => {
+    it('should increment quantity when + button clicked', async () => {
+      const wrapper = mount(CartItem, {
+        props: { item: { id: 1, name: 'iPhone', price: 999, quantity: 1, stock: 5 } }
+      });
+      
+      await wrapper.find('[data-testid="btn-increase"]').trigger('click');
+      await flushPromises();
+      
+      expect(wrapper.emitted('update:quantity')).toBeTruthy();
+      expect(wrapper.emitted('update:quantity')[0]).toEqual([2]);
+    });
+
+    it('should NOT increment beyond stock limit', async () => {
+      const wrapper = mount(CartItem, {
+        props: { item: { id: 1, name: 'iPhone', price: 999, quantity: 5, stock: 5 } }
+      });
+      
+      await wrapper.find('[data-testid="btn-increase"]').trigger('click');
+      await flushPromises();
+      
+      // MUST: 不触发update事件
+      expect(wrapper.emitted('update:quantity')).toBeFalsy();
+      // MUST: 显示提示
+      expect(wrapper.find('[data-testid="stock-warning"]').exists()).toBe(true);
+    });
+
+    it('should remove item when delete clicked and confirmed', async () => {
+      const wrapper = mount(CartItem, {
+        props: { item: { id: 1, name: 'iPhone', price: 999, quantity: 1 } }
+      });
+      
+      // 模拟confirm返回true
+      window.confirm = vi.fn(() => true);
+      
+      await wrapper.find('[data-testid="btn-delete"]').trigger('click');
+      await flushPromises();
+      
+      expect(wrapper.emitted('remove')).toBeTruthy();
+      expect(wrapper.emitted('remove')[0]).toEqual([1]);
+    });
+
+    it('should NOT remove item when delete cancelled', async () => {
+      const wrapper = mount(CartItem, {
+        props: { item: { id: 1, name: 'iPhone', price: 999, quantity: 1 } }
+      });
+      
+      window.confirm = vi.fn(() => false);
+      
+      await wrapper.find('[data-testid="btn-delete"]').trigger('click');
+      await flushPromises();
+      
+      expect(wrapper.emitted('remove')).toBeFalsy();
+    });
+  });
+
+  // 状态同步测试
+  describe('State Synchronization', () => {
+    it('should sync with Pinia store', async () => {
+      const pinia = createPinia();
+      setActivePinia(pinia);
+      const cartStore = useCartStore();
+      cartStore.addItem({ id: 1, name: 'iPhone', price: 999 });
+      
+      const wrapper = mount(CartItem, {
+        global: { plugins: [pinia] },
+        props: { item: cartStore.items[0] }
+      });
+      
+      await wrapper.find('[data-testid="btn-increase"]').trigger('click');
+      await flushPromises();
+      
+      // MUST: store状态同步更新
+      expect(cartStore.items[0].quantity).toBe(2);
+    });
+
+    it('should recalculate total when quantity changes', async () => {
+      const wrapper = mount(CartItem, {
+        props: { item: { id: 1, name: 'iPhone', price: 100, quantity: 2 } }
+      });
+      
+      expect(wrapper.find('[data-testid="item-total"]').text()).toBe('$200');
+      
+      await wrapper.find('[data-testid="btn-increase"]').trigger('click');
+      await flushPromises();
+      
+      expect(wrapper.find('[data-testid="item-total"]').text()).toBe('$300');
+    });
+  });
+
+  // 表单验证测试
+  describe('Form Validation', () => {
+    it('should validate coupon code format', async () => {
+      const wrapper = mount(CouponInput, {
+        props: { modelValue: '' }
+      });
+      
+      const input = wrapper.find('input');
+      await input.setValue('INVALID@CODE');
+      await input.trigger('blur');
+      
+      expect(wrapper.find('[data-testid="error-msg"]').text()).toContain('Invalid format');
+      expect(wrapper.emitted('update:modelValue')).toBeFalsy();
+    });
+
+    it('should apply valid coupon and update total', async () => {
+      const wrapper = mount(CouponInput, {
+        props: { modelValue: '', total: 100 }
+      });
+      
+      const input = wrapper.find('input');
+      await input.setValue('SAVE20');
+      await wrapper.find('[data-testid="btn-apply"]').trigger('click');
+      await flushPromises();
+      
+      expect(wrapper.emitted('apply')).toBeTruthy();
+      expect(wrapper.emitted('apply')[0]).toEqual([{ code: 'SAVE20', discount: 20 }]);
+    });
+  });
+
+  // 生命周期测试
+  describe('Lifecycle', () => {
+    it('should fetch data on mount', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({ data: { stock: 10 } });
+      
+      const wrapper = mount(ProductDetail, {
+        props: { productId: 1 },
+        global: {
+          provide: { fetchStock: mockFetch }
+        }
+      });
+      
+      await flushPromises();
+      
+      expect(mockFetch).toHaveBeenCalledWith(1);
+      expect(wrapper.find('[data-testid="stock"]').text()).toBe('10');
+    });
+
+    it('should cleanup on unmount', async () => {
+      const clearTimer = vi.fn();
+      
+      const wrapper = mount(CountdownTimer, {
+        props: { endTime: Date.now() + 60000 }
+      });
+      
+      wrapper.unmount();
+      
+      // MUST: 清除定时器，防止内存泄漏
+      expect(clearTimer).toHaveBeenCalled();
+    });
+  });
+});
+```
+
+## 前端组件测试覆盖率要求
+
+| 测试类型 | 最低数量 | 说明 |
+|---------|---------|------|
+| 渲染测试 | 每个组件 | props变化、空状态、加载状态 |
+| 交互测试 | 每个可交互元素 | 点击、输入、选择、提交 |
+| 状态同步 | 每个store关联 | Pinia状态变更同步 |
+| 表单验证 | 每个表单 | 必填、格式、长度、异步校验 |
+| 生命周期 | 每个有副作用的组件 | mount、update、unmount |
+
+## 测试工具配置
+
+```typescript
+// vitest.config.ts
+import { defineConfig } from 'vitest/config';
+import vue from '@vitejs/plugin-vue';
+
+export default defineConfig({
+  plugins: [vue()],
+  test: {
+    environment: 'jsdom', // MUST: 模拟DOM环境
+    globals: true,
+    include: ['src/**/*.spec.ts'],
+  },
+});
+```
+
 # Quality Checklist
 
 - [ ] All API calls use composable
@@ -464,6 +696,7 @@ export const router = createRouter({
 - [ ] Form validation implemented
 - [ ] TypeScript types used throughout
 - [ ] Responsive design applied
+- [ ] Component tests written (render + interaction + state + lifecycle)
 
 ---
 

@@ -138,6 +138,75 @@ interface UserResponseDto {
 
 ---
 
+# Mock-后端一致性验证 (MUST — 迭代2核心修复)
+
+**问题**：之前前端用 Mock 开发，后端用真实 API，两者行为不一致导致联调时大量 bug。
+
+**解决方案**：API 契约设计完成后，MUST 生成 **一致性验证测试**，确保 Mock 和真实后端行为完全一致。
+
+## 一致性验证清单
+
+| 验证项 | Mock | 真实后端 | 验证方式 |
+|--------|------|---------|---------|
+| 响应格式 | `{success, data/error}` | `{success, data/error}` | 结构对比 |
+| HTTP状态码 | 200/201/400/401/404/409 | 相同 | 状态码对比 |
+| Error Code | `INVALID_CREDENTIALS` | `INVALID_CREDENTIALS` | 字符串完全匹配 |
+| 字段类型 | `id: number` | `id: number` | TypeScript类型检查 |
+| 分页参数 | `page=1&limit=10` | `page=1&limit=10` | 默认值对比 |
+| CORS头 | `Access-Control-Allow-Origin` | 相同 | 响应头对比 |
+| 延迟范围 | 100-500ms | 真实网络 | 可配置 |
+
+## 自动化验证脚本
+
+```typescript
+// tests/contract-consistency.test.ts
+import { describe, it, expect } from 'vitest';
+
+const MOCK_URL = 'http://localhost:3001';
+const REAL_URL = 'http://localhost:3000';
+
+describe('API Contract Consistency', () => {
+  const endpoints = [
+    { method: 'GET', path: '/api/users', auth: true },
+    { method: 'POST', path: '/api/users', auth: true, body: { name: 'test' } },
+    { method: 'GET', path: '/api/users/1', auth: true },
+  ];
+
+  endpoints.forEach(({ method, path, auth, body }) => {
+    it(`${method} ${path} should have consistent response format`, async () => {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (auth) headers['Authorization'] = 'Bearer mock-token';
+
+      const [mockRes, realRes] = await Promise.all([
+        fetch(`${MOCK_URL}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined }),
+        fetch(`${REAL_URL}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined }),
+      ]);
+
+      const mockJson = await mockRes.json();
+      const realJson = await realRes.json();
+
+      // 1. 响应结构必须一致
+      expect(mockJson).toHaveProperty('success');
+      expect(realJson).toHaveProperty('success');
+
+      // 2. Error 结构必须一致
+      if (!mockJson.success) {
+        expect(mockJson.error).toHaveProperty('code');
+        expect(mockJson.error).toHaveProperty('message');
+        expect(realJson.error).toHaveProperty('code');
+        expect(realJson.error).toHaveProperty('message');
+        expect(mockJson.error.code).toBe(realJson.error.code); // MUST 完全匹配
+      }
+
+      // 3. HTTP 状态码必须一致
+      expect(mockRes.status).toBe(realRes.status);
+    });
+  });
+});
+```
+
+---
+
 # OpenAPI Specification
 
 ```yaml

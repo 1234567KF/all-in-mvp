@@ -78,87 +78,58 @@ mocks/
 
 # Stage 2: Server Setup
 
-## Hono Mock Server Template (MUST — 与后端同框架保证一致性)
-
-**关键修复**：之前使用 Express 做 Mock，后端用 Hono，导致行为不一致（中间件顺序、错误处理、响应格式）。**Mock 服务器 MUST 使用 Hono**，与后端完全一致。
+## Express Mock Server Template
 
 ```typescript
 // mocks/server.ts
-import { Hono } from 'hono';
-import { cors } from 'hono/cors';
-import { logger } from 'hono/logger';
+import express, { Request, Response } from 'express';
+import cors from 'cors';
 import { authRoutes } from './routes/auth';
 import { userRoutes } from './routes/users';
 import { productRoutes } from './routes/products';
 
-const app = new Hono();
+const app = express();
 
-// CORS — 与后端完全相同的配置
-app.use('*', cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
-  allowHeaders: ['Authorization', 'Content-Type'],
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true,
-}));
+app.use(cors());
+app.use(express.json());
 
-// Logger
-app.use(logger());
-
-// Simulate network latency (100-500ms) — 与真实网络一致
-app.use('*', async (c, next) => {
+// Simulate network latency (100-500ms)
+app.use((req, res, next) => {
   const delay = Math.floor(Math.random() * 400) + 100;
-  await new Promise(resolve => setTimeout(resolve, delay));
-  await next();
+  setTimeout(next, delay);
 });
 
-// 统一响应格式 — MUST 与后端完全一致
-app.use('*', async (c, next) => {
-  await next();
-  // 如果响应已经是 JSON 且包含 success 字段，不处理
-  // 否则包装为标准格式
-});
-
-// Auth middleware simulation — Hono 风格
-app.use('/api/*', async (c, next) => {
-  const token = c.req.header('authorization')?.replace('Bearer ', '');
+// Auth middleware simulation
+app.use('/api', (req, res, next) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
   if (token === 'mock-token') {
-    c.set('userId', '1');
-    c.set('userRole', 'admin');
+    req.headers['x-user-id'] = '1';
+    req.headers['x-user-role'] = 'admin';
   }
-  await next();
+  next();
 });
 
-// Routes — Hono 风格
-app.route('/api/auth', authRoutes);
-app.route('/api/users', userRoutes);
-app.route('/api/products', productRoutes);
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/products', productRoutes);
 
-// Error handling — Hono 风格
-app.onError((err, c) => {
+// Error handling
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error('Mock server error:', err);
-  return c.json({
+  res.status(500).json({
     success: false,
     error: {
       code: 'INTERNAL_ERROR',
       message: 'Mock server error'
     }
-  }, 500);
-});
-
-// 404 handler
-app.notFound((c) => {
-  return c.json({
-    success: false,
-    error: {
-      code: 'NOT_FOUND',
-      message: 'Route not found'
-    }
-  }, 404);
+  });
 });
 
 const PORT = 3001;
-console.log(`Mock server running on http://localhost:${PORT}`);
-export default app;
+app.listen(PORT, () => {
+  console.log(`Mock server running on http://localhost:${PORT}`);
+});
 ```
 
 ---
@@ -169,17 +140,16 @@ export default app;
 
 ```typescript
 // mocks/routes/auth.ts
-import { Hono } from 'hono';
+import { Router } from 'express';
 
-export const authRoutes = new Hono();
+export const authRoutes = Router();
 
-authRoutes.post('/login', async (c) => {
-  const body = await c.req.json();
-  const { email, password } = body;
+authRoutes.post('/login', (req, res) => {
+  const { email, password } = req.body;
 
   // Valid mock credentials
   if (email === 'admin@example.com' && password === 'password') {
-    return c.json({
+    return res.json({
       success: true,
       data: {
         token: 'mock-token',
@@ -194,32 +164,31 @@ authRoutes.post('/login', async (c) => {
   }
 
   // Invalid credentials
-  return c.json({
+  return res.status(401).json({
     success: false,
     error: {
       code: 'INVALID_CREDENTIALS',
       message: 'Invalid email or password'
     }
-  }, 401);
+  });
 });
 
-authRoutes.post('/register', async (c) => {
-  const body = await c.req.json();
-  const { email, password, name } = body;
+authRoutes.post('/register', (req, res) => {
+  const { email, password, name } = req.body;
 
   // Check for duplicate
   if (email === 'existing@example.com') {
-    return c.json({
+    return res.status(409).json({
       success: false,
       error: {
         code: 'EMAIL_EXISTS',
         message: 'Email already registered'
       }
-    }, 409);
+    });
   }
 
   // Success
-  return c.json({
+  return res.status(201).json({
     success: true,
     data: {
       token: 'mock-token-new',
@@ -230,7 +199,7 @@ authRoutes.post('/register', async (c) => {
         role: 'user'
       }
     }
-  }, 201);
+  });
 });
 ```
 
@@ -238,56 +207,55 @@ authRoutes.post('/register', async (c) => {
 
 ```typescript
 // mocks/routes/{module}.ts
-import { Hono } from 'hono';
+import { Router } from 'express';
 import seedData from '../data/{module}.json';
 
-export const {module}Routes = new Hono();
+export const {module}Routes = Router();
 
 let {module}s = [...seedData];
 
 // GET list
-{module}Routes.get('/', (c) => {
-  const page = Number(c.req.query('page')) || 1;
-  const limit = Number(c.req.query('limit')) || 10;
-  const start = (page - 1) * limit;
-  const end = start + limit;
+{module}Routes.get('/', (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+  const start = (Number(page) - 1) * Number(limit);
+  const end = start + Number(limit);
 
-  return c.json({
+  return res.json({
     success: true,
     data: {
       list: {module}s.slice(start, end),
       total: {module}s.length,
-      page,
-      limit
+      page: Number(page),
+      limit: Number(limit)
     }
   });
 });
 
 // GET by id
-{module}Routes.get('/:id', (c) => {
-  const id = c.req.param('id');
+{module}Routes.get('/:id', (req, res) => {
+  const { id } = req.params;
   const item = {module}s.find(i => i.id === parseInt(id));
 
   if (!item) {
-    return c.json({
+    return res.status(404).json({
       success: false,
       error: { code: 'NOT_FOUND', message: '{Module} not found' }
-    }, 404);
+    });
   }
 
-  return c.json({ success: true, data: item });
+  return res.json({ success: true, data: item });
 });
 
 // POST create
-{module}Routes.post('/', async (c) => {
-  const body = await c.req.json();
+{module}Routes.post('/', (req, res) => {
+  const body = req.body;
 
   // Validation
   if (!body.name) {
-    return c.json({
+    return res.status(400).json({
       success: false,
       error: { code: 'VALIDATION_ERROR', message: 'name is required' }
-    }, 400);
+    });
   }
 
   const newItem = {
@@ -298,42 +266,41 @@ let {module}s = [...seedData];
 
   {module}s.push(newItem);
 
-  return c.json({ success: true, data: newItem }, 201);
+  return res.status(201).json({ success: true, data: newItem });
 });
 
 // PUT update
-{module}Routes.put('/:id', async (c) => {
-  const id = c.req.param('id');
-  const body = await c.req.json();
+{module}Routes.put('/:id', (req, res) => {
+  const { id } = req.params;
   const index = {module}s.findIndex(i => i.id === parseInt(id));
 
   if (index === -1) {
-    return c.json({
+    return res.status(404).json({
       success: false,
       error: { code: 'NOT_FOUND', message: '{Module} not found' }
-    }, 404);
+    });
   }
 
-  {module}s[index] = { ...{module}s[index], ...body };
+  {module}s[index] = { ...{module}s[index], ...req.body };
 
-  return c.json({ success: true, data: {module}s[index] });
+  return res.json({ success: true, data: {module}s[index] });
 });
 
 // DELETE (soft delete)
-{module}Routes.delete('/:id', (c) => {
-  const id = c.req.param('id');
+{module}Routes.delete('/:id', (req, res) => {
+  const { id } = req.params;
   const index = {module}s.findIndex(i => i.id === parseInt(id));
 
   if (index === -1) {
-    return c.json({
+    return res.status(404).json({
       success: false,
       error: { code: 'NOT_FOUND', message: '{Module} not found' }
-    }, 404);
+    });
   }
 
   {module}s[index].deletedAt = new Date().toISOString();
 
-  return c.json({ success: true, data: { deleted: true } });
+  return res.json({ success: true, data: { deleted: true } });
 });
 ```
 
@@ -450,3 +417,105 @@ let {module}s = [...seedData];
 - **Latency is intentional** — Don't remove delay; it helps frontend test loading states
 - **Data is ephemeral** — Mock data resets on server restart; use for dev only
 - **Token has no real validation** — Any "Bearer mock-token" works for protected routes
+
+---
+
+# Mock-API Contract Consistency Verification
+
+> Run periodically during Stage3/Stage4 to catch Mock drift before it causes frontend-backend mismatch.
+
+## Verification Script
+
+```typescript
+// scripts/verify-mock-contract.ts
+import yaml from 'js-yaml';
+import fs from 'fs';
+import path from 'path';
+
+interface ContractEndpoint {
+  method: string;
+  path: string;
+  response: {
+    status: number;
+    body: Record<string, string>;
+  };
+}
+
+interface VerificationResult {
+  endpoint: string;
+  contract: ContractEndpoint;
+  mockMatches: boolean;
+  issues: string[];
+}
+
+async function verifyMockContract(
+  contractPath: string,
+  mockBaseUrl: string
+): Promise<VerificationResult[]> {
+  const contract = yaml.load(
+    fs.readFileSync(contractPath, 'utf-8')
+  ) as { endpoints: ContractEndpoint[] };
+  
+  const results: VerificationResult[] = [];
+  
+  for (const endpoint of contract.endpoints) {
+    const mockUrl = `${mockBaseUrl}${endpoint.path}`;
+    const issues: string[] = [];
+    
+    // 1. Send request to mock
+    const response = await fetch(mockUrl, { method: endpoint.method });
+    
+    // 2. Check status code
+    if (response.status !== endpoint.response.status) {
+      issues.push(`Status mismatch: mock=${response.status} contract=${endpoint.response.status}`);
+    }
+    
+    // 3. Check response body structure
+    const body = await response.json();
+    const contractFields = Object.keys(endpoint.response.body);
+    const mockFields = Object.keys(body);
+    
+    const missingFields = contractFields.filter(f => !mockFields.includes(f));
+    if (missingFields.length > 0) {
+      issues.push(`Missing fields in mock: ${missingFields.join(', ')}`);
+    }
+    
+    // 4. Check happy path returns 2xx, error path returns 4xx/5xx
+    if (endpoint.path.includes('error')) {
+      if (response.status < 400) {
+        issues.push('Error path should return 4xx/5xx');
+      }
+    }
+    
+    results.push({
+      endpoint: `${endpoint.method} ${endpoint.path}`,
+      contract: endpoint,
+      mockMatches: issues.length === 0,
+      issues
+    });
+  }
+  
+  return results;
+}
+
+// Output: write mock-drift-issues.md if any mismatches found
+const results = await verifyMockContract(
+  'api-contract.yaml',
+  'http://localhost:3001/api'
+);
+
+const driftIssues = results.filter(r => !r.mockMatches);
+if (driftIssues.length > 0) {
+  const report = driftIssues.map(r => 
+    `- **${r.endpoint}**: ${r.issues.join('; ')}`
+  ).join('\n');
+  fs.writeFileSync('mock-drift-issues.md', 
+    `# Mock Drift Issues\n\n${report}`
+  );
+  console.log(`⚠️  ${driftIssues.length} endpoints have Mock drift`);
+} else {
+  console.log('✅ All mock endpoints match contract');
+}
+```
+
+**Execution**: Run before Stage4 frontend-backend integration. Automated via `npm run mock:verify`.

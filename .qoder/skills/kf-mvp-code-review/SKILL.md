@@ -127,6 +127,19 @@ Derived from MVP Whitepaper Section 3.1 — Code Review:
 
 ---
 
+## TDD 循环中的 Review 触发条件（白皮书 Section 6.3）
+
+| 场景 | 是否触发 Review | 说明 |
+|------|----------------|------|
+| 新功能 Red 阶段 | 否 | 测试失败是预期行为 |
+| Green 阶段测试仍失败 | **是** | 实现逻辑有问题，立即 Review |
+| Refactor 后测试失败 | **是** | 重构破坏了行为，Review + 回滚或修复 |
+| 新增异常路径测试 | 否 | 正常 TDD 流程 |
+| 模块间接口调用 | **是** | 需验证契约一致性，Review 接口 DTO |
+| 新增代码未覆盖异常路径 | **是** | 补充测试，Review 缺失覆盖点 |
+
+---
+
 # Review Workflow
 
 ## Phase Gate 0: Prepare Inputs

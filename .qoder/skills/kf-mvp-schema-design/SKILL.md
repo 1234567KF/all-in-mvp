@@ -219,6 +219,162 @@ CREATE INDEX idx_users_org_deleted ON users(organization_id, deleted_at);
 
 ---
 
+# Data Consistency Testing (MUST — 迭代14核心修复)
+
+**问题**：溯源系统的数据一致性（外键约束、级联删除、触发器）经常在操作后才发现问题（如：删除产品后溯源码 orphaned、关联数据不一致）。
+
+**解决方案**：MUST 编写 **数据一致性测试**，覆盖外键约束、级联操作、触发器、约束验证。
+
+## 数据一致性测试模板
+
+```typescript
+// tests/schema/consistency.test.ts
+import { describe, it, expect } from 'vitest';
+import { getTestDb } from './helpers';
+
+describe('Traceability Data Consistency', () => {
+  let db: ReturnType<typeof getTestDb>;
+
+  beforeEach(() => {
+    db = getTestDb();
+  });
+
+  // 测试1：外键约束
+  describe('Foreign Key Constraints', () => {
+    it('should prevent creating trace code without product', async () => {
+      await expect(
+        db.insert(traceCodes).values({
+          code: 'TRACE-001',
+          productId: 99999, // 不存在的产品
+        })
+      ).rejects.toThrow(); // MUST: 外键约束错误
+    });
+
+    it('should cascade delete trace codes when product deleted', async () => {
+      // 创建产品
+      const product = await db.insert(products).values({ name: 'Test' }).returning();
+      // 创建溯源码
+      await db.insert(traceCodes).values({ code: 'TRACE-001', productId: product[0].id });
+
+      // 删除产品
+      await db.delete(products).where(eq(products.id, product[0].id));
+
+      // MUST: 溯源码也被删除
+      const codes = await db.select().from(traceCodes)
+        .where(eq(traceCodes.productId, product[0].id));
+      expect(codes).toHaveLength(0);
+    });
+  });
+
+  // 测试2：唯一约束
+  describe('Unique Constraints', () => {
+    it('should prevent duplicate trace codes', async () => {
+      await db.insert(traceCodes).values({ code: 'UNIQUE-001', productId: 1 });
+
+      await expect(
+        db.insert(traceCodes).values({ code: 'UNIQUE-001', productId: 2 })
+      ).rejects.toThrow(); // MUST: 唯一约束错误
+    });
+
+    it('should prevent duplicate email in users', async () => {
+      await db.insert(users).values({ email: 'test@example.com', passwordHash: 'xxx' });
+
+      await expect(
+        db.insert(users).values({ email: 'test@example.com', passwordHash: 'yyy' })
+      ).rejects.toThrow();
+    });
+  });
+
+  // 测试3：CHECK约束
+  describe('CHECK Constraints', () => {
+    it('should reject negative price', async () => {
+      await expect(
+        db.insert(products).values({ name: 'Bad', price: -100 })
+      ).rejects.toThrow();
+    });
+
+    it('should reject quantity less than 0', async () => {
+      await expect(
+        db.insert(inventory).values({ productId: 1, warehouse: 'A', quantity: -5 })
+      ).rejects.toThrow();
+    });
+  });
+
+  // 测试4：触发器验证
+  describe('Trigger Validation', () => {
+    it('should auto-update updated_at on modify', async () => {
+      const product = await db.insert(products).values({ name: 'Test' }).returning();
+      const originalUpdatedAt = product[0].updatedAt;
+
+      // 等待1秒
+      await new Promise(r => setTimeout(r, 1000));
+
+      // 更新产品
+      await db.update(products)
+        .set({ name: 'Updated' })
+        .where(eq(products.id, product[0].id));
+
+      const updated = await db.select().from(products)
+        .where(eq(products.id, product[0].id)).limit(1);
+
+      // MUST: updated_at被自动更新
+      expect(new Date(updated[0].updatedAt).getTime())
+        .toBeGreaterThan(new Date(originalUpdatedAt).getTime());
+    });
+
+    it('should maintain inventory log on stock change', async () => {
+      const product = await db.insert(products).values({ name: 'Test' }).returning();
+      await db.insert(inventory).values({
+        productId: product[0].id,
+        warehouse: 'A',
+        quantity: 100
+      });
+
+      // 更新库存
+      await db.update(inventory)
+        .set({ quantity: 80 })
+        .where(eq(inventory.productId, product[0].id));
+
+      // MUST: 库存日志表有记录
+      const logs = await db.select().from(inventoryLogs)
+        .where(eq(inventoryLogs.productId, product[0].id));
+      expect(logs).toHaveLength(1);
+      expect(logs[0].oldQuantity).toBe(100);
+      expect(logs[0].newQuantity).toBe(80);
+    });
+  });
+
+  // 测试5：数据完整性（ orphans 检测）
+  describe('Orphan Detection', () => {
+    it('should not have trace codes without products', async () => {
+      const orphans = await db.select().from(traceCodes)
+        .leftJoin(products, eq(traceCodes.productId, products.id))
+        .where(isNull(products.id));
+
+      expect(orphans).toHaveLength(0);
+    });
+
+    it('should not have order items without orders', async () => {
+      const orphans = await db.select().from(orderItems)
+        .leftJoin(orders, eq(orderItems.orderId, orders.id))
+        .where(isNull(orders.id));
+
+      expect(orphans).toHaveLength(0);
+    });
+  });
+});
+```
+
+## 数据一致性测试覆盖率要求
+
+| 测试类型 | 最低数量 | 说明 |
+|---------|---------|------|
+| 外键约束 | 每个外键关系 | 插入违反、级联删除 |
+| 唯一约束 | 每个唯一索引 | 重复插入被拒绝 |
+| CHECK约束 | 每个CHECK | 边界值、无效值 |
+| 触发器 | 每个触发器 | 触发条件、副作用 |
+| Orphan检测 | 每个关联表 | 无主记录检测 |
+
 # Constraints
 
 **MUST DO:**

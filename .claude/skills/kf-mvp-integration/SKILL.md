@@ -195,6 +195,226 @@ npm run test:e2e
 npm run test:all
 ```
 
+## Async Flow Integration Testing (MUST — 迭代5核心修复)
+
+**问题**：O2O/电商等系统有大量异步流程（下单→派单→骑手接单→配送→完成），之前异步状态同步bug只在人工测试时发现（如：订单已配送但状态未更新）。
+
+**解决方案**：MUST 编写 **异步流程集成测试**，覆盖轮询、WebSocket、事件驱动三种模式。
+
+### 异步流程测试模板
+
+```typescript
+// integration-tests/async/order-delivery-flow.test.ts
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { TestFactory } from '../factories/TestFactory';
+
+describe('O2O Async Flow — Order to Delivery', () => {
+  const factory = new TestFactory();
+
+  beforeAll(async () => { await factory.setup(); });
+  afterAll(async () => { await factory.cleanup(); });
+
+  // 模式1：轮询模式测试
+  describe('Polling Mode', () => {
+    it('should update order status through polling', async () => {
+      // 1. 创建订单
+      const order = await factory.createOrder({ items: [{ productId: 1, qty: 2 }] });
+      expect(order.status).toBe('PENDING');
+
+      // 2. 模拟派单（后台任务）
+      await factory.simulateDispatch(order.id);
+
+      // 3. 轮询等待状态变更（MUST：不是固定sleep）
+      const finalStatus = await factory.pollForStatus(
+        order.id,
+        'DISPATCHED',
+        { interval: 500, timeout: 10000 } // 500ms轮询，最多10秒
+      );
+      expect(finalStatus).toBe('DISPATCHED');
+
+      // 4. 验证状态流转时间戳
+      const updated = await factory.getOrder(order.id);
+      expect(updated.dispatchedAt).toBeInstanceOf(Date);
+      expect(updated.dispatchedAt.getTime()).toBeGreaterThan(order.createdAt.getTime());
+    });
+
+    it('should timeout if status never changes', async () => {
+      const order = await factory.createOrder({ items: [{ productId: 1, qty: 2 }] });
+      
+      // 不触发派单，直接轮询
+      await expect(
+        factory.pollForStatus(order.id, 'DISPATCHED', { interval: 100, timeout: 1000 })
+      ).rejects.toThrow('Polling timeout');
+    });
+  });
+
+  // 模式2：WebSocket模式测试
+  describe('WebSocket Mode', () => {
+    it('should receive status update via WebSocket', async () => {
+      const order = await factory.createOrder({ items: [{ productId: 1, qty: 2 }] });
+      
+      // 建立WebSocket连接
+      const ws = await factory.connectWebSocket(`/ws/orders/${order.id}`);
+      const messages: any[] = [];
+      ws.onMessage((msg) => messages.push(msg));
+
+      // 触发派单
+      await factory.simulateDispatch(order.id);
+
+      // MUST：等待WebSocket消息（不是固定sleep）
+      await factory.waitForMessage(ws, (msg) => msg.type === 'STATUS_UPDATE', 5000);
+
+      expect(messages).toContainEqual(
+        expect.objectContaining({ type: 'STATUS_UPDATE', status: 'DISPATCHED' })
+      );
+
+      ws.close();
+    });
+
+    it('should handle WebSocket reconnection', async () => {
+      const order = await factory.createOrder({ items: [{ productId: 1, qty: 2 }] });
+      const ws = await factory.connectWebSocket(`/ws/orders/${order.id}`);
+      
+      // 模拟断线
+      ws.simulateDisconnect();
+      
+      // MUST：自动重连后仍能收到消息
+      await factory.waitForConnection(ws, 3000);
+      
+      await factory.simulateDispatch(order.id);
+      await factory.waitForMessage(ws, (msg) => msg.type === 'STATUS_UPDATE', 5000);
+      
+      ws.close();
+    });
+  });
+
+  // 模式3：事件驱动模式测试
+  describe('Event-Driven Mode', () => {
+    it('should process events in correct order', async () => {
+      const events: string[] = [];
+      
+      // 订阅事件
+      factory.onEvent('order.created', () => events.push('created'));
+      factory.onEvent('order.dispatched', () => events.push('dispatched'));
+      factory.onEvent('order.delivered', () => events.push('delivered'));
+
+      // 执行完整流程
+      const order = await factory.createOrder({ items: [{ productId: 1, qty: 2 }] });
+      await factory.simulateDispatch(order.id);
+      await factory.simulateDelivery(order.id);
+
+      // MUST：事件顺序正确
+      expect(events).toEqual(['created', 'dispatched', 'delivered']);
+    });
+
+    it('should handle event duplication (idempotency)', async () => {
+      let deliveryCount = 0;
+      factory.onEvent('order.delivered', () => { deliveryCount++; });
+
+      const order = await factory.createOrder({ items: [{ productId: 1, qty: 2 }] });
+      await factory.simulateDelivery(order.id);
+      await factory.simulateDelivery(order.id); // 重复发送
+
+      // MUST：幂等，只处理一次
+      expect(deliveryCount).toBe(1);
+    });
+  });
+
+  // 端到端完整流程测试
+  describe('Full E2E Flow', () => {
+    it('should complete order → dispatch → pickup → delivery flow', async () => {
+      // Step 1: 用户下单
+      const user = await factory.createUser({ role: 'consumer' });
+      const token = await factory.login(user);
+      const order = await factory.createOrder({
+        items: [{ productId: 1, qty: 2 }],
+        address: '123 Main St'
+      }, token);
+      expect(order.status).toBe('PENDING');
+
+      // Step 2: 系统派单（异步）
+      await factory.simulateDispatch(order.id);
+      const dispatched = await factory.pollForStatus(order.id, 'DISPATCHED', { timeout: 10000 });
+      expect(dispatched).toBe('DISPATCHED');
+
+      // Step 3: 骑手接单
+      const rider = await factory.createUser({ role: 'rider' });
+      const riderToken = await factory.login(rider);
+      await factory.riderAccept(order.id, riderToken);
+      const accepted = await factory.pollForStatus(order.id, 'PICKING_UP', { timeout: 5000 });
+      expect(accepted).toBe('PICKING_UP');
+
+      // Step 4: 骑手取货
+      await factory.riderPickup(order.id, riderToken);
+      const pickedUp = await factory.pollForStatus(order.id, 'IN_TRANSIT', { timeout: 5000 });
+      expect(pickedUp).toBe('IN_TRANSIT');
+
+      // Step 5: 送达
+      await factory.riderDeliver(order.id, riderToken);
+      const delivered = await factory.pollForStatus(order.id, 'DELIVERED', { timeout: 5000 });
+      expect(delivered).toBe('DELIVERED');
+
+      // Step 6: 验证最终状态
+      const finalOrder = await factory.getOrder(order.id);
+      expect(finalOrder.status).toBe('DELIVERED');
+      expect(finalOrder.riderId).toBe(rider.id);
+      expect(finalOrder.deliveredAt).toBeInstanceOf(Date);
+    });
+  });
+});
+```
+
+### 异步测试辅助函数
+
+```typescript
+// tests/helpers/async-helpers.ts
+
+export async function pollForCondition<T>(
+  fn: () => Promise<T>,
+  predicate: (result: T) => boolean,
+  options: { interval?: number; timeout?: number } = {}
+): Promise<T> {
+  const { interval = 500, timeout = 10000 } = options;
+  const start = Date.now();
+  
+  while (Date.now() - start < timeout) {
+    const result = await fn();
+    if (predicate(result)) return result;
+    await new Promise(r => setTimeout(r, interval));
+  }
+  
+  throw new Error(`Polling timeout after ${timeout}ms`);
+}
+
+export async function waitForMessage(
+  ws: WebSocket,
+  predicate: (msg: any) => boolean,
+  timeout: number
+): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Message timeout')), timeout);
+    const handler = (msg: any) => {
+      if (predicate(msg)) {
+        clearTimeout(timer);
+        ws.offMessage(handler);
+        resolve(msg);
+      }
+    };
+    ws.onMessage(handler);
+  });
+}
+```
+
+### 异步流程测试覆盖率要求
+
+| 测试类型 | 最低数量 | 说明 |
+|---------|---------|------|
+| 轮询模式 | 每个异步状态 | 状态变更轮询 + 超时测试 |
+| WebSocket模式 | 每个实时推送 | 消息接收 + 重连 + 断线 |
+| 事件驱动 | 每个事件类型 | 顺序 + 幂等 + 丢失恢复 |
+| 完整E2E | 每个主流程 | 从下单到完成的完整链路 |
+| 错误恢复 | 每个故障点 | 超时、断线、重复、死信 |
+
 ## Test Report Template
 
 ```markdown

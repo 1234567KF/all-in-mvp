@@ -249,6 +249,171 @@ element.textContent = userInput; // Safe!
 
 ---
 
+# Security Testing (MUST — 迭代13核心修复)
+
+**问题**：营销系统（优惠券、抽奖、红包）经常被恶意刷取，之前安全漏洞只在人工测试时发现（如：同一IP重复领取、伪造请求绕过限制）。
+
+**解决方案**：MUST 编写 **安全测试**，覆盖防刷、限流、输入净化、越权访问。
+
+## 防刷与限流测试模板
+
+```typescript
+// src/modules/coupon/coupon.security.test.ts
+import { describe, it, expect } from 'vitest';
+import { Hono } from 'hono';
+import { rateLimit } from '@/middleware/rate-limit';
+
+describe('Marketing Security — Anti-Fraud & Rate Limiting', () => {
+  // 测试1：IP限流
+  it('should block requests exceeding rate limit', async () => {
+    const app = new Hono();
+    app.use('/api/coupons/claim', rateLimit({ windowMs: 60000, max: 5 }));
+    app.post('/api/coupons/claim', async (c) => {
+      return c.json({ success: true });
+    });
+
+    // 同一IP快速请求6次
+    const promises = Array.from({ length: 6 }, () =>
+      app.request('/api/coupons/claim', {
+        method: 'POST',
+        headers: { 'X-Forwarded-For': '192.168.1.1' }
+      })
+    );
+
+    const results = await Promise.all(promises);
+    const successCount = results.filter(r => r.status === 200).length;
+    const blockedCount = results.filter(r => r.status === 429).length;
+
+    expect(successCount).toBe(5); // 只允许5次
+    expect(blockedCount).toBe(1); // 第6次被阻断
+  });
+
+  // 测试2：同一用户重复领取
+  it('should prevent duplicate claim from same user', async () => {
+    const app = buildApp();
+    const token = await getTestToken({ userId: 1 });
+
+    // 第一次领取
+    const first = await app.request('/api/coupons/claim', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ couponId: 1 })
+    });
+    expect(first.status).toBe(200);
+
+    // 第二次领取同一优惠券
+    const second = await app.request('/api/coupons/claim', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ couponId: 1 })
+    });
+    expect(second.status).toBe(409);
+    expect((await second.json()).error.code).toBe('ALREADY_CLAIMED');
+  });
+
+  // 测试3：SQL注入防护
+  it('should sanitize SQL injection attempts', async () => {
+    const app = buildApp();
+    const token = await getTestToken();
+
+    const maliciousInput = "'; DROP TABLE users; --";
+    const res = await app.request('/api/products/search', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keyword: maliciousInput })
+    });
+
+    // MUST：不报错（不是500），正常返回空结果或过滤后的结果
+    expect(res.status).not.toBe(500);
+    
+    // 验证users表仍然存在
+    const usersRes = await app.request('/api/users', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    expect(usersRes.status).toBe(200);
+  });
+
+  // 测试4：XSS防护
+  it('should sanitize XSS payload in output', async () => {
+    const app = buildApp();
+    const token = await getTestToken();
+
+    const xssPayload = '<script>alert("xss")</script>';
+    
+    // 创建包含XSS的数据
+    await app.request('/api/products', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: xssPayload, price: 100 })
+    });
+
+    // 获取数据
+    const res = await app.request('/api/products', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+
+    // MUST：XSS被转义，不包含原始script标签
+    const product = data.data.find((p: any) => p.name.includes('script'));
+    if (product) {
+      expect(product.name).not.toContain('<script>');
+      expect(product.name).toContain('&lt;script&gt;'); // 或被完全过滤
+    }
+  });
+
+  // 测试5：越权访问
+  it('should prevent horizontal privilege escalation', async () => {
+    const app = buildApp();
+    const userAToken = await getTestToken({ userId: 1, role: 'user' });
+    const userBToken = await getTestToken({ userId: 2, role: 'user' });
+
+    // 用户A创建订单
+    const order = await app.request('/api/orders', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${userAToken}` },
+      body: JSON.stringify({ items: [{ productId: 1, qty: 1 }] })
+    });
+    const orderData = await order.json();
+
+    // 用户B尝试访问用户A的订单
+    const res = await app.request(`/api/orders/${orderData.data.id}`, {
+      headers: { Authorization: `Bearer ${userBToken}` }
+    });
+
+    expect(res.status).toBe(403);
+  });
+
+  // 测试6：CSRF防护
+  it('should reject requests without CSRF token', async () => {
+    const app = buildApp();
+    
+    // 无CSRF token的请求
+    const res = await app.request('/api/orders', {
+      method: 'POST',
+      headers: { 
+        Authorization: 'Bearer test-token',
+        // 缺少 X-CSRF-Token
+      },
+      body: JSON.stringify({ items: [] })
+    });
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).error.code).toBe('CSRF_TOKEN_MISSING');
+  });
+});
+```
+
+## 安全测试覆盖率要求
+
+| 测试类型 | 最低数量 | 说明 |
+|---------|---------|------|
+| 限流 | 每个敏感端点 | IP/用户级别请求频率限制 |
+| 防重放 | 每个领取/抽奖操作 | 同一资源只能操作一次 |
+| SQL注入 | 每个查询接口 | 恶意输入不破坏数据 |
+| XSS | 每个文本输出 | 恶意脚本被转义/过滤 |
+| 越权 | 每个资源端点 | 不能访问其他用户数据 |
+| CSRF | 每个状态变更端点 | 必须携带有效CSRF token |
+
 # Constraints
 
 **MUST DO:**

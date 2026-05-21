@@ -315,6 +315,59 @@ If any CHECK found issues, generate structured issue report:
 
 ---
 
+## MVP 专用快速审查清单
+
+当审查 MVP 项目时，额外检查以下 8 项：
+
+### 技术栈一致性
+- [ ] spec.md 中技术栈与 MVP 默认栈（Hono + Drizzle + SQLite + Vue 3）一致
+- [ ] 未引入 MVP 豁免组件（Redis、消息队列、限流等）
+- [ ] 第三方服务全部 Mock（支付/短信/存储/推送）
+
+### Schema 设计质量
+- [ ] 所有表有 `created_at`、`updated_at` 审计字段
+- [ ] 软删表有 `deleted_at` 字段
+- [ ] 外键命名符合 `{table_singular}_id` 规范
+- [ ] 表名使用 `snake_case` 复数
+
+### API 契约完整性
+- [ ] 每个路由定义了 Request/Response DTO
+- [ ] 错误码使用 `ERR_XXX` 统一格式
+- [ ] 认证要求明确标注（JWT Bearer）
+- [ ] 所有接口标注了所属模块
+
+### 模块拆分质量
+- [ ] 每个模块的 `<module>.md` 包含 6 个强制章节（边界、依赖、领域、接口、表、验收）
+- [ ] 依赖关系无环
+- [ ] 每个模块归属于明确领域（认证/业务核心/工具配置）
+- [ ] 模块间无重叠职责
+
+### 测试设计完整性
+- [ ] 每个模块有对应的 `integration-tests/modules/<module>.test.ts`
+- [ ] 每条业务主流程有对应的 `integration-tests/scenarios/<scenario>.test.ts`
+- [ ] Happy Path 场景数 ≥ 业务线数
+- [ ] Exception Path 场景数 ≥ 5
+
+### 白皮书关键约束
+- [ ] Stage2 ③b-1 单模块测试内部并行 ≤ 2 Agent
+- [ ] Stage2 ③b-2 业务条线测试为单 Agent 串行
+- [ ] Stage3 后端 ≤ 3 Agent，前端 ≤ 3 Agent
+- [ ] 依赖图调度优先于专家匹配（策略一 > 策略二）
+
+### 文件路径规范
+- [ ] 产出物路径与白皮书一致（`docs/PRD.md`、`spec.md`、`schema.sql` 等）
+- [ ] 模块代码在 `src/modules/<module>/`
+- [ ] 测试文件在 `integration-tests/modules/` 和 `integration-tests/scenarios/`
+- [ ] Mock 在 `mocks/` 目录，按模块组织
+
+### 流程门禁
+- [ ] PRD 锁定后才能进入 Stage2
+- [ ] ↺ 循环通过后产出的才标记为【锁定版】
+- [ ] Stage2 全部锁定后才能进入 Stage3
+- [ ] 有变更评审流程记录（如有变更）
+
+---
+
 # Gotchas
 
 - **PRD is the boss** — If ① and ② disagree on interpretation, PRD decides

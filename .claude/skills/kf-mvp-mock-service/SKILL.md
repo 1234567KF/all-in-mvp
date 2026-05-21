@@ -417,3 +417,105 @@ let {module}s = [...seedData];
 - **Latency is intentional** — Don't remove delay; it helps frontend test loading states
 - **Data is ephemeral** — Mock data resets on server restart; use for dev only
 - **Token has no real validation** — Any "Bearer mock-token" works for protected routes
+
+---
+
+# Mock-API Contract Consistency Verification
+
+> Run periodically during Stage3/Stage4 to catch Mock drift before it causes frontend-backend mismatch.
+
+## Verification Script
+
+```typescript
+// scripts/verify-mock-contract.ts
+import yaml from 'js-yaml';
+import fs from 'fs';
+import path from 'path';
+
+interface ContractEndpoint {
+  method: string;
+  path: string;
+  response: {
+    status: number;
+    body: Record<string, string>;
+  };
+}
+
+interface VerificationResult {
+  endpoint: string;
+  contract: ContractEndpoint;
+  mockMatches: boolean;
+  issues: string[];
+}
+
+async function verifyMockContract(
+  contractPath: string,
+  mockBaseUrl: string
+): Promise<VerificationResult[]> {
+  const contract = yaml.load(
+    fs.readFileSync(contractPath, 'utf-8')
+  ) as { endpoints: ContractEndpoint[] };
+  
+  const results: VerificationResult[] = [];
+  
+  for (const endpoint of contract.endpoints) {
+    const mockUrl = `${mockBaseUrl}${endpoint.path}`;
+    const issues: string[] = [];
+    
+    // 1. Send request to mock
+    const response = await fetch(mockUrl, { method: endpoint.method });
+    
+    // 2. Check status code
+    if (response.status !== endpoint.response.status) {
+      issues.push(`Status mismatch: mock=${response.status} contract=${endpoint.response.status}`);
+    }
+    
+    // 3. Check response body structure
+    const body = await response.json();
+    const contractFields = Object.keys(endpoint.response.body);
+    const mockFields = Object.keys(body);
+    
+    const missingFields = contractFields.filter(f => !mockFields.includes(f));
+    if (missingFields.length > 0) {
+      issues.push(`Missing fields in mock: ${missingFields.join(', ')}`);
+    }
+    
+    // 4. Check happy path returns 2xx, error path returns 4xx/5xx
+    if (endpoint.path.includes('error')) {
+      if (response.status < 400) {
+        issues.push('Error path should return 4xx/5xx');
+      }
+    }
+    
+    results.push({
+      endpoint: `${endpoint.method} ${endpoint.path}`,
+      contract: endpoint,
+      mockMatches: issues.length === 0,
+      issues
+    });
+  }
+  
+  return results;
+}
+
+// Output: write mock-drift-issues.md if any mismatches found
+const results = await verifyMockContract(
+  'api-contract.yaml',
+  'http://localhost:3001/api'
+);
+
+const driftIssues = results.filter(r => !r.mockMatches);
+if (driftIssues.length > 0) {
+  const report = driftIssues.map(r => 
+    `- **${r.endpoint}**: ${r.issues.join('; ')}`
+  ).join('\n');
+  fs.writeFileSync('mock-drift-issues.md', 
+    `# Mock Drift Issues\n\n${report}`
+  );
+  console.log(`⚠️  ${driftIssues.length} endpoints have Mock drift`);
+} else {
+  console.log('✅ All mock endpoints match contract');
+}
+```
+
+**Execution**: Run before Stage4 frontend-backend integration. Automated via `npm run mock:verify`.

@@ -277,3 +277,139 @@ npm run ci
 - **Lint warnings** — Treat warnings as errors in CI
 - **Test isolation** — Tests must run independently
 - **Trend tracking** — Compare scores week over week
+
+---
+
+# Pipeline Quality Gate Checklist
+
+> Executable checklist for each pipeline stage gate. All items must pass before proceeding to next stage.
+
+## Stage1 → Stage2 Gate
+
+- [ ] PRD file exists and size > 1KB
+- [ ] All 9 required chapters present (项目背景, 术语定义, 风险与约束, 业务主流程, ER关系, 功能需求, 复杂/核心专题, 核心实体状态图, 验收标准)
+- [ ] 明确的"不做"清单 populated
+- [ ] Each functional requirement maps to at least 1 integration test scenario
+- [ ] ER relationship consistency: all table/field references match across chapters
+- [ ] Terminology self-consistent (same concept = same term throughout)
+- [ ] Each business flow has ≥1 Happy Path + ≥1 Exception Path acceptance criteria
+
+## Stage2 → Stage3 Gate
+
+- [ ] All Stage2 artifacts exist (spec.md, schema.sql, api-contract.yaml, task.md, all `<module>.md`)
+- [ ] MD5 hash of all artifacts matches the hash at ↺ lock moment
+- [ ] YAML/JSON files parse without errors
+- [ ] Grill review report shows all 4 dimensions passed
+- [ ] Mock service running and all endpoints responding
+- [ ] Integration test files exist for all modules (modules/) and scenarios (scenarios/)
+- [ ] ③c static review shows 0 ERROR-level issues
+
+## Stage3 → Stage4 Gate
+
+- [ ] All module directories exist with DONE markers (non .tmp)
+- [ ] schema.sql syntax valid (SQLite dry-run passes)
+- [ ] All unit tests pass across all modules
+- [ ] All integration test files are parseable (syntax check only, not execution)
+- [ ] No BLOCKED modules remaining (deferred DEFER modules OK)
+- [ ] Dependency graph shows no cycles
+
+## Stage4 → Delivery Gate
+
+- [ ] Integration test report non-empty
+- [ ] Happy Path tests 100% pass
+- [ ] Exception Path tests ≥80% pass
+- [ ] 0 P0 bugs, 0 P1 bugs
+- [ ] All regression tests in regression/ pass
+- [ ] Migration files generated and verified
+- [ ] Delivery directory structure matches spec (§4.5)
+- [ ] pipeline-state.json checkpoint saved
+
+---
+
+# Stage2 Gate Check Implementation
+
+```typescript
+// scripts/check-stage2-gate.ts
+// Automated Stage2→Stage3 gate validation
+import fs from 'fs';
+import path from 'path';
+import yaml from 'js-yaml';
+import crypto from 'crypto';
+
+interface GateResult {
+  item: string;
+  passed: boolean;
+  detail: string;
+}
+
+async function checkStage2Gate(workspaceRoot: string): Promise<GateResult[]> {
+  const results: GateResult[] = [];
+  
+  // 1. Verify all artifacts exist
+  const requiredFiles = [
+    'spec.locked.md',
+    'schema.sql',
+    'api-contract.yaml',
+    'task.md'
+  ];
+  
+  for (const file of requiredFiles) {
+    const exists = fs.existsSync(path.join(workspaceRoot, file));
+    results.push({
+      item: `Artifact: ${file}`,
+      passed: exists,
+      detail: exists ? 'Found' : 'MISSING'
+    });
+  }
+  
+  // 2. Verify YAML parseability
+  const contractPath = path.join(workspaceRoot, 'api-contract.yaml');
+  try {
+    yaml.load(fs.readFileSync(contractPath, 'utf-8'));
+    results.push({ item: 'YAML: api-contract.yaml', passed: true, detail: 'Valid' });
+  } catch (e) {
+    results.push({ item: 'YAML: api-contract.yaml', passed: false, detail: String(e) });
+  }
+  
+  // 3. Verify MD5 consistency with lock hash
+  const lockHashPath = path.join(workspaceRoot, '.stage2-lock-hash');
+  if (fs.existsSync(lockHashPath)) {
+    const storedHash = fs.readFileSync(lockHashPath, 'utf-8').trim();
+    const currentHash = computeArtifactsHash(workspaceRoot, requiredFiles);
+    const hashMatch = storedHash === currentHash;
+    results.push({
+      item: 'MD5: Artifact integrity',
+      passed: hashMatch,
+      detail: hashMatch ? 'Matches lock hash' : 'HASH MISMATCH - artifacts modified after lock'
+    });
+  }
+  
+  // 4. SQLite dry-run schema validation
+  // (requires sqlite3 CLI or better-sqlite3)
+  
+  return results;
+}
+
+function computeArtifactsHash(root: string, files: string[]): string {
+  const hash = crypto.createHash('md5');
+  for (const file of files.sort()) {
+    const content = fs.readFileSync(path.join(root, file));
+    hash.update(content);
+  }
+  return hash.digest('hex');
+}
+
+// Execute and report
+const results = await checkStage2Gate(process.cwd());
+const failed = results.filter(r => !r.passed);
+
+if (failed.length > 0) {
+  console.error(`❌ Stage2 Gate: ${failed.length} check(s) failed`);
+  for (const f of failed) {
+    console.error(`  - ${f.item}: ${f.detail}`);
+  }
+  process.exit(1);
+} else {
+  console.log('✅ Stage2 Gate: All checks passed');
+}
+```

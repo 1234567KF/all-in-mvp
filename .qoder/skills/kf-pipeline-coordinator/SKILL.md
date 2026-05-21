@@ -119,7 +119,60 @@ Each round:
 
 ---
 
-# Module States
+# Module State Scanning (Pseudocode)
+
+```typescript
+// Coordinator module state scanner - called each scheduling round
+interface ModuleState {
+  name: string;
+  status: 'UNALLOCATED' | 'ALLOCATED' | 'DONE' | 'BLOCKED' | 'DEFER';
+  dependencies: string[];
+  domain: string;
+  assignedAgent?: string;
+  blockedReason?: string;
+}
+
+async function scanModuleStates(
+  moduleNames: string[],
+  workspaceRoot: string
+): Promise<Map<string, ModuleState>> {
+  const states = new Map<string, ModuleState>();
+  
+  for (const moduleName of moduleNames) {
+    const moduleDir = path.join(workspaceRoot, 'src/modules', moduleName);
+    const doneMarker = path.join(moduleDir, 'DONE');
+    const blockedMarker = path.join(moduleDir, 'BLOCKED');
+    const deferMarker = path.join(moduleDir, 'DEFER');
+    
+    // Check markers in priority order (atomically-written files, not .tmp)
+    if (await fileExists(deferMarker)) {
+      const reason = await readFile(path.join(moduleDir, 'reason.md'));
+      states.set(moduleName, { status: 'DEFER', blockedReason: reason });
+    } else if (await fileExists(blockedMarker)) {
+      const reason = await readFile(blockedMarker);
+      states.set(moduleName, { status: 'BLOCKED', blockedReason: reason });
+    } else if (await fileExists(doneMarker)) {
+      states.set(moduleName, { status: 'DONE' });
+    } else if (await dirExists(moduleDir)) {
+      states.set(moduleName, { status: 'ALLOCATED' });
+    } else {
+      states.set(moduleName, { status: 'UNALLOCATED' });
+    }
+  }
+  
+  return states;
+}
+
+// Key: Only scan non-.tmp files (atomic rename guarantee)
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return !filePath.endsWith('.tmp');  // Ignore in-progress writes
+  } catch {
+    return false;
+  }
+}
+```
 
 | State | File Marker | Meaning | Coordinator Action |
 |-------|-------------|---------|-------------------|
@@ -127,6 +180,7 @@ Each round:
 | Allocated | Directory exists, no `DONE` | Assigned to agent, in progress | Wait for completion |
 | DONE | `DONE` marker file exists | Agent completed | Release dependent modules |
 | BLOCKED | `BLOCKED` marker + reason | Agent encountered blocker | Read reason, decide next step |
+| DEFER | `DEFER` marker + `reason.md` | Agent active deferral | Cascade DEFER to dependents, continue others |
 
 ---
 
@@ -263,7 +317,47 @@ Execute TDD loop:
 
 ---
 
-## Phase Gate 5: Exception Handling
+## Phase Gate 5: File Race Protection
+
+**Principle**: All marker files use atomic write-then-rename to prevent partial reads.
+
+**Write Protocol**:
+```typescript
+// NEVER write directly to the final filename
+// ALWAYS: write .tmp → atomic rename
+import { writeFile, rename } from 'fs/promises';
+
+async function atomicWriteMarker(
+  moduleDir: string,
+  markerName: 'DONE' | 'BLOCKED' | 'DEFER',
+  content: string
+): Promise<void> {
+  const tmpPath = path.join(moduleDir, `${markerName}.tmp`);
+  const finalPath = path.join(moduleDir, markerName);
+  
+  // Step 1: Write all content to temp file
+  await writeFile(tmpPath, content, 'utf-8');
+  
+  // Step 2: Atomic rename (filesystem guarantees atomicity on same volume)
+  await rename(tmpPath, finalPath);
+  
+  // Coordinator only scans non-.tmp files, never sees partial writes
+}
+
+// Reading side: ignore .tmp files
+async function scanMarkers(moduleDir: string): Promise<string[]> {
+  const entries = await readdir(moduleDir);
+  return entries.filter(f => !f.endsWith('.tmp'));
+}
+```
+
+**Race Condition Protection**:
+- `.tmp` suffix = file being written (ignore)
+- No `.tmp` suffix = complete file (read)
+- `rename()` is atomic on same filesystem = no partial reads possible
+- Coordinator crash during write: `.tmp` file orphaned, next scan ignores it
+
+---
 
 ### Situation: Module BLOCKED
 

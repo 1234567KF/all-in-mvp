@@ -158,6 +158,57 @@ Stage4: 集成验收（串行收敛）→ 合并 + 联调 + 集成测试 + 修�
 
 **后端 Agent 并行上限：3 | 前端 Agent 并行上限：3**
 
+### 文件状态标记（Agent 间通信协议）
+
+Agent 通过模块目录下的状态文件通信。Coordinator 扫描文件系统判断进度。
+
+#### DONE 标记
+
+文件路径：`src/modules/<module>/DONE`
+
+文件内容（YAML 格式）：
+```yaml
+module: <module_name>
+agent: <agent_name>
+completed_at: "YYYY-MM-DD HH:MM:SS"
+checks:
+  l1_unit_test: PASS
+  l2_api_test: PASS
+  l3_db_test: PASS
+  l4_headed_test: PASS
+  l5_headless_test: PASS
+  coverage: 85.2
+  code_review: PASS
+  flaky_test: false
+issues: []
+```
+
+#### BLOCKED 标记
+
+文件路径：`src/modules/<module>/BLOCKED`
+
+文件内容（YAML 格式）：
+```yaml
+module: <module_name>
+agent: <agent_name>
+blocked_at: "YYYY-MM-DD HH:MM:SS"
+blocked_by: <dependency_module_or_issue>
+reason: |
+  [多行描述阻塞原因]
+action_required: <what_needs_to_happen>
+suggested_fix: <optional_suggestion>
+```
+
+#### Coordinator 扫描规则
+
+| 模块目录状态 | 含义 | Coordinator 动作 |
+|------------|------|-----------------|
+| 目录不存在 | 未分配 | 下一轮扫描时分配 |
+| 目录存在，无 DONE/BLOCKED | 已分配，开发中 | 等待 |
+| DONE 存在 | 已完成 | 释放下游依赖模块 |
+| BLOCKED 存在 | 开发阻塞 | 读取原因，决定降级或等待 |
+| DONE 和 BLOCKED 同时存在 | 已完成但有遗留问题 | 标记为 DONE（遗留问题进 Stage4） |
+
 ### 3.1 后端团队：TDD 开发
 
 1. Coordinator 分配模块给后端 Agent（最多 3 个并行）
@@ -177,12 +228,41 @@ Stage4: 集成验收（串行收敛）→ 合并 + 联调 + 集成测试 + 修�
 - 在后端开发过程中持续补充复杂边界用例
 - 后端每完成一个新模块，补充该模块的边界测试
 
-### Stage 3 门禁
+### Stage 3 门禁 (MUST — 迭代18强化)
+
+**测试门禁强化**：每个模块必须通过完整的5层测试才能标记DONE。
 
 - [ ] 后端全部模块 DONE（模块目录下存在 DONE 标记）
 - [ ] 前端全部页面 DONE
-- [ ] 单元测试通过率 100%
+- [ ] **L1 单元测试**：所有Service函数、纯函数、工具函数测试通过
+- [ ] **L2 API集成测试**：每个路由的happy+error path测试通过
+- [ ] **L3 数据库集成测试**：事务、迁移、约束测试通过
+- [ ] **L4 有头浏览器测试**：真实浏览器渲染、交互测试通过（本地验证）
+- [ ] **L5 无头CI测试**：Playwright headless测试通过
+- [ ] **覆盖率 ≥ 80%**（statements + branches + functions）
+- [ ] **无 flaky tests**：同一测试运行10次全部通过
 - [ ] Code Review 无 P0 问题
+
+### Stage 3 测试执行流程
+
+```bash
+# 每个模块开发完成后必须执行：
+
+# 1. L1-L3 后端测试
+npx vitest run --coverage
+
+# 2. L4 有头浏览器测试（本地人工验证）
+npx playwright test --project=chromium-headed
+
+# 3. L5 无头CI测试
+npx playwright test --project=chromium-headless
+
+# 4. 覆盖率检查（必须 ≥ 80%）
+npx vitest run --coverage --reporter=json
+
+# 5. 稳定性检查（运行3次确保无flaky）
+for i in {1..3}; do npx vitest run; done
+```
 
 ---
 
@@ -202,6 +282,27 @@ Stage4: 集成验收（串行收敛）→ 合并 + 联调 + 集成测试 + 修�
 - 按模块逐个联调
 - 记录接口不匹配问题
 
+**联调问题记录模板**（每个不匹配问题一条记录，写入 `integration-issues.md`）：
+
+```markdown
+## 联调问题记录
+
+### #ISSUE-001: [问题简述]
+
+| 字段 | 值 |
+|------|-----|
+| **发现时间** | YYYY-MM-DD HH:MM |
+| **涉及模块** | <module_name> |
+| **涉及接口** | `METHOD /api/xxx` |
+| **预期行为** | [api-contract.yaml 中的定义] |
+| **实际行为** | [联调中观察到的偏差] |
+| **偏差类型** | 响应格式不一致 / 状态码不一致 / 字段缺失 / 字段类型不一致 / 路由不存在 |
+| **影响范围** | 前端哪些页面/组件受影响 |
+| **修复方式** | 修正后端 / 修正契约 / 修正前端 |
+| **修复状态** | 待修复 / 已修复 / 已确认无需修复 |
+| **修复人** | <agent_name> |
+```
+
 ### 4.3 集成测试执行
 
 - 运行 `integration-tests/modules/` + `integration-tests/scenarios/`
@@ -211,12 +312,56 @@ Stage4: 集成验收（串行收敛）→ 合并 + 联调 + 集成测试 + 修�
 
 用 `agents/debug-fixer.md` 创建 Debug Agent，按需执行修复循环。
 
-### Stage 4 门禁（终检）
+### Stage 4 门禁（终检）(MUST — 迭代20强化)
+
+**终检强化**：集成验收必须通过完整的质量审计清单。
 
 - [ ] 后端合并完成，路由一致性验证通过
 - [ ] 前后端联调全部模块通过
 - [ ] 集成测试通过率 100%
+- [ ] **5层测试全部通过**：L1-L5无失败
+- [ ] **有头/无头一致性**：L4和L5结果一致
+- [ ] **安全测试通过**：防刷、注入、XSS、越权全部通过
+- [ ] **性能测试通过**：p99 < 500ms，错误率 < 1%
+- [ ] **数据一致性验证**：无外键违反、无orphan记录
+- [ ] **Mock-后端一致性**：7个维度全部匹配
 - [ ] 无 P0/P1 Bug 遗留
+
+### 质量审计清单（迭代20最终版）
+
+```markdown
+# MVP质量审计报告
+
+## 测试覆盖审计
+- [ ] L1 单元测试：所有模块的Service/工具函数
+- [ ] L2 API集成测试：所有路由的happy+error path
+- [ ] L3 数据库集成测试：事务、迁移、约束
+- [ ] L4 有头浏览器测试：真实浏览器验证
+- [ ] L5 无头CI测试：CI环境验证
+- [ ] 状态机测试：所有状态流转（如有状态实体）
+- [ ] 数据权限测试：行级+列级权限（如有多角色）
+- [ ] 并发测试：共享资源的竞态条件
+- [ ] 边界测试：数值/时间/字符串/集合/分页
+- [ ] 安全测试：限流/防重放/SQL注入/XSS/越权/CSRF
+- [ ] 性能测试：负载/压力/内存泄漏
+- [ ] 错误恢复测试：事务回滚/重试/断路器
+- [ ] 地理围栏测试：距离/范围/多边形（如有地理位置）
+- [ ] 数据一致性测试：外键/唯一/CHECK/触发器
+- [ ] 迁移测试：数据完整性/格式转换/回滚
+- [ ] 前端组件测试：渲染/交互/状态/生命周期
+
+## 一致性审计
+- [ ] Mock与后端响应格式一致
+- [ ] 有头与无头测试结果一致
+- [ ] 数据库schema与Drizzle定义一致
+- [ ] API实现与api-contract.yaml一致
+- [ ] 前端调用与后端路由一致
+
+## 稳定性审计
+- [ ] 无flaky tests（连续运行10次全部通过）
+- [ ] 无内存泄漏（5分钟负载测试通过）
+- [ ] 无race condition（并发测试通过）
+```
 
 ---
 

@@ -321,16 +321,232 @@ graph LR
 
 ---
 
-# Quality Checklist
+# Stage 3: Complex Business Rule Validation (MUST — 迭代7核心修复)
 
-Before final output, verify:
+**问题**：溯源/供应链等系统有复杂的业务规则（链式验证、批次追踪、多层级关联），之前规则漏洞只在人工测试时发现（如：伪造溯源码通过验证、批次关联断裂）。
 
-- [ ] All PRD features are assigned to some module
-- [ ] No module has circular dependencies
-- [ ] All cross-module interactions are documented
-- [ ] Acceptance criteria are testable (not vague)
-- [ ] Domain classification is consistent
-- [ ] Module files are named correctly: `<module>.md`
+**解决方案**：MUST 在模块定义阶段就编写 **业务规则验证测试**，覆盖链式完整性、规则冲突、异常链路。
+
+## 业务规则测试模板（溯源系统示例）
+
+```typescript
+// src/modules/trace/trace.rules.test.ts
+import { describe, it, expect } from 'vitest';
+import { TraceValidator } from './validator';
+
+describe('Trace Business Rules — Complex Validation', () => {
+  const validator = new TraceValidator();
+
+  // 规则1：链式完整性验证
+  describe('Chain Integrity', () => {
+    it('should validate complete production chain', () => {
+      const chain = [
+        { stage: 'RAW', code: 'RAW-001', timestamp: '2024-01-01', prev: null },
+        { stage: 'PROCESS', code: 'PRO-001', timestamp: '2024-01-02', prev: 'RAW-001' },
+        { stage: 'PACKAGE', code: 'PKG-001', timestamp: '2024-01-03', prev: 'PRO-001' },
+        { stage: 'DISTRIBUTE', code: 'DIS-001', timestamp: '2024-01-04', prev: 'PKG-001' },
+      ];
+      
+      const result = validator.validateChain(chain);
+      expect(result.valid).toBe(true);
+      expect(result.breaks).toEqual([]);
+    });
+
+    it('should detect broken chain link', () => {
+      const chain = [
+        { stage: 'RAW', code: 'RAW-001', timestamp: '2024-01-01', prev: null },
+        { stage: 'PROCESS', code: 'PRO-001', timestamp: '2024-01-02', prev: 'RAW-001' },
+        // 缺失 PACKAGE 阶段
+        { stage: 'DISTRIBUTE', code: 'DIS-001', timestamp: '2024-01-04', prev: 'PKG-001' }, // 引用不存在的PKG-001
+      ];
+      
+      const result = validator.validateChain(chain);
+      expect(result.valid).toBe(false);
+      expect(result.breaks).toContainEqual(
+        expect.objectContaining({ 
+          code: 'DIS-001', 
+          reason: 'Previous code PKG-001 not found in chain' 
+        })
+      );
+    });
+
+    it('should detect timestamp inconsistency (future date)', () => {
+      const chain = [
+        { stage: 'RAW', code: 'RAW-001', timestamp: '2024-01-01', prev: null },
+        { stage: 'PROCESS', code: 'PRO-001', timestamp: '2023-12-31', prev: 'RAW-001' }, // 早于RAW
+      ];
+      
+      const result = validator.validateChain(chain);
+      expect(result.valid).toBe(false);
+      expect(result.breaks).toContainEqual(
+        expect.objectContaining({ 
+          reason: expect.stringContaining('timestamp') 
+        })
+      );
+    });
+
+    it('should detect circular reference', () => {
+      const chain = [
+        { stage: 'A', code: 'A-001', timestamp: '2024-01-01', prev: null },
+        { stage: 'B', code: 'B-001', timestamp: '2024-01-02', prev: 'A-001' },
+        { stage: 'C', code: 'C-001', timestamp: '2024-01-03', prev: 'B-001' },
+        { stage: 'D', code: 'D-001', timestamp: '2024-01-04', prev: 'C-001' },
+        { stage: 'E', code: 'E-001', timestamp: '2024-01-05', prev: 'D-001' },
+        // 循环引用：F指向B，形成循环
+        { stage: 'F', code: 'F-001', timestamp: '2024-01-06', prev: 'B-001' },
+      ];
+      
+      // 虽然链式上能连起来，但存在循环
+      const result = validator.validateChain(chain);
+      expect(result.hasCycle).toBe(true);
+    });
+  });
+
+  // 规则2：批次关联验证
+  describe('Batch Association', () => {
+    it('should validate batch quantity consistency', () => {
+      // 原料批次：100kg
+      const rawBatch = { code: 'RAW-B001', quantity: 100, unit: 'kg' };
+      // 产出批次：原料100kg → 产品A 80kg + 产品B 15kg = 95kg（允许5%损耗）
+      const productBatches = [
+        { code: 'PRO-A001', quantity: 80, unit: 'kg', sourceBatch: 'RAW-B001' },
+        { code: 'PRO-B001', quantity: 15, unit: 'kg', sourceBatch: 'RAW-B001' },
+      ];
+      
+      const result = validator.validateBatchQuantity(rawBatch, productBatches);
+      expect(result.valid).toBe(true);
+      expect(result.totalOutput).toBe(95);
+      expect(result.lossRate).toBe(0.05); // 5%损耗
+    });
+
+    it('should detect excessive loss rate', () => {
+      const rawBatch = { code: 'RAW-B001', quantity: 100, unit: 'kg' };
+      const productBatches = [
+        { code: 'PRO-A001', quantity: 50, unit: 'kg', sourceBatch: 'RAW-B001' }, // 只有50kg产出
+      ];
+      
+      const result = validator.validateBatchQuantity(rawBatch, productBatches);
+      expect(result.valid).toBe(false);
+      expect(result.lossRate).toBe(0.50); // 50%损耗，超过阈值
+      expect(result.error).toContain('Loss rate exceeds maximum allowed');
+    });
+
+    it('should validate multi-level batch tracing', () => {
+      // 3级溯源：原料 → 半成品 → 成品
+      const levels = [
+        { level: 0, code: 'RAW-001', children: ['SEMI-001', 'SEMI-002'] },
+        { level: 1, code: 'SEMI-001', children: ['FINAL-001'] },
+        { level: 1, code: 'SEMI-002', children: ['FINAL-001'] },
+        { level: 2, code: 'FINAL-001', children: [] },
+      ];
+      
+      const result = validator.validateBatchHierarchy(levels);
+      expect(result.valid).toBe(true);
+      expect(result.depth).toBe(3);
+    });
+  });
+
+  // 规则3：防伪验证
+  describe('Anti-Counterfeit', () => {
+    it('should reject reused trace code', () => {
+      const code = 'TRACE-001';
+      
+      // 第一次验证
+      const first = validator.verify(code, { consumerId: 1 });
+      expect(first.valid).toBe(true);
+      expect(first.firstScan).toBe(true);
+      
+      // 第二次验证（不同消费者）
+      const second = validator.verify(code, { consumerId: 2 });
+      expect(second.valid).toBe(true); // 码本身有效
+      expect(second.firstScan).toBe(false); // 但不是首次
+      expect(second.firstConsumerId).toBe(1); // 记录首次消费者
+    });
+
+    it('should reject invalid trace code format', () => {
+      const invalidCodes = [
+        '',           // 空
+        'ABC',        // 太短
+        'TRACE-001-EXTRA-LONG-CODE-THAT-EXCEEDS-LIMIT', // 太长
+        'TRACE@001',  // 非法字符
+        'TRACE-000',  // 序号不合法
+      ];
+      
+      for (const code of invalidCodes) {
+        const result = validator.verify(code, { consumerId: 1 });
+        expect(result.valid).toBe(false);
+        expect(result.error).toBeDefined();
+      }
+    });
+
+    it('should detect counterfeit by checksum', () => {
+      // 合法码：前缀 + 序号 + 校验位
+      const validCode = 'TRACE-001-7'; // 7是校验位
+      const invalidCode = 'TRACE-001-8'; // 校验位错误
+      
+      expect(validator.verify(validCode, { consumerId: 1 }).valid).toBe(true);
+      expect(validator.verify(invalidCode, { consumerId: 1 }).valid).toBe(false);
+    });
+  });
+
+  // 规则4：业务规则冲突检测
+  describe('Rule Conflict Detection', () => {
+    it('should detect expired product in active batch', () => {
+      const batch = {
+        code: 'BATCH-001',
+        status: 'ACTIVE',
+        products: [
+          { code: 'PRO-001', expiryDate: '2023-12-31' }, // 已过期
+          { code: 'PRO-002', expiryDate: '2025-12-31' }, // 未过期
+        ],
+      };
+      
+      const result = validator.validateBatchStatus(batch);
+      expect(result.valid).toBe(false);
+      expect(result.conflicts).toContainEqual(
+        expect.objectContaining({
+          type: 'EXPIRED_IN_ACTIVE_BATCH',
+          product: 'PRO-001',
+        })
+      );
+    });
+
+    it('should detect quantity mismatch across modules', () => {
+      // 库存模块记录100件
+      const inventory = { productId: 1, quantity: 100 };
+      // 溯源模块记录该批次只有80件
+      const trace = { batchCode: 'B001', productId: 1, quantity: 80 };
+      
+      const result = validator.crossModuleValidate(inventory, trace);
+      expect(result.consistent).toBe(false);
+      expect(result.difference).toBe(20);
+    });
+  });
+});
+```
+
+## 业务规则验证检查清单
+
+| 规则类型 | 检查项 | 测试方法 |
+|---------|--------|---------|
+| 链式完整性 | 每个节点的前驱必须存在 | 遍历验证 + 断链检测 |
+| 时间一致性 | 后节点时间 ≥ 前节点时间 | 时间戳比较 |
+| 循环检测 | 链中不能存在循环引用 | 图遍历算法 |
+| 数量守恒 | 产出总量 ≤ 原料总量 × (1 + 损耗阈值) | 数学计算 |
+| 层级深度 | 溯源层级不能超过最大限制 | 树深度计算 |
+| 防伪校验 | 码格式 + 校验位 + 重复扫描 | 正则 + 算法 + 数据库 |
+| 规则冲突 | 同一实体不能同时满足互斥状态 | 状态矩阵检查 |
+| 跨模块一致 | 不同模块对同一实体的记录必须一致 | 交叉验证 |
+
+## 复杂规则测试覆盖率要求
+
+| 测试类型 | 最低数量 | 说明 |
+|---------|---------|------|
+| 链式完整性 | 每个业务流程链 | 完整链 + 断链 + 循环链 |
+| 批次关联 | 每个批次转换 | 数量守恒 + 层级深度 + 多对多 |
+| 防伪验证 | 每种码类型 | 格式 + 校验 + 重复 + 伪造 |
+| 规则冲突 | 每对互斥规则 | 同时触发两个互斥规则 |
+| 跨模块一致 | 每个共享实体 | 库存vs溯源、订单vs财务等 |
 
 ---
 
