@@ -1,0 +1,1457 @@
+openapi: "3.0.3"
+info:
+  title: Qoder Monitor API
+  description: AI 执行追踪与性能监控平台 RESTful API 接口契约
+  version: "0.1.0"
+  contact:
+    name: KF
+servers:
+  - url: http://localhost:3456
+    description: 本地开发服务器
+
+paths:
+  # ============================================================
+  # Turns API (F-001, F-002, F-003)
+  # ============================================================
+  /api/turns:
+    post:
+      operationId: createTurn
+      summary: 记录一条 turn/a2a
+      description: 记录人机对话轮次（type=turn）或 A2A 消息（type=a2a）。支持多源数据采集。
+      tags: [Turns]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTurnRequest'
+      responses:
+        '200':
+          description: 记录创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateTurnResponse'
+        '400':
+          description: 参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      operationId: listTurns
+      summary: 查询轮次列表
+      description: 按 session_id、type、model、phase、keyword 筛选查询轮次列表，支持分页。返回最近 50 条记录（默认），按时间戳降序排列。
+      tags: [Turns]
+      parameters:
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: 按会话 ID 筛选
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [turn, a2a]
+          description: 按类型筛选
+        - name: model
+          in: query
+          schema:
+            type: string
+          description: 按模型名称筛选
+        - name: phase
+          in: query
+          schema:
+            type: string
+          description: 按阶段标识筛选
+        - name: keyword
+          in: query
+          schema:
+            type: string
+          description: 关键词模糊搜索
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+          description: 页码
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+          description: 每页条数
+      responses:
+        '200':
+          description: 返回轮次列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TurnListResponse'
+
+  /api/turns/stats:
+    get:
+      operationId: getTurnStats
+      summary: 获取统计数据
+      description: 获取总调用次数、总输入 Token、缓存命中率、总输出 Token、模型切换次数等核心指标。支持按 session_id 筛选（F-007）。
+      tags: [Turns]
+      parameters:
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: 按会话 ID 筛选
+      responses:
+        '200':
+          description: 统计汇总数据
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TurnStatsResponse'
+
+  /api/turns/cost:
+    get:
+      operationId: getTurnCost
+      summary: 获取成本估算
+      description: 按模型分组计算成本。输入成本 = (uncached/1M x input_price) + (cached/1M x cache_price)。输出成本 = output/1M x output_price。无定价模型显示"无定价"（F-008）。
+      tags: [Turns]
+      parameters:
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: 按会话 ID 筛选
+      responses:
+        '200':
+          description: 成本估算明细
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostResponse'
+
+  /api/turns/savings:
+    get:
+      operationId: getTurnSavings
+      summary: 获取优化节省汇总
+      description: 按优化机制分组汇总 Token 节省量。model_switch 单独展示不计入总节省（F-009）。
+      tags: [Turns]
+      parameters:
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: 按会话 ID 筛选
+      responses:
+        '200':
+          description: 优化节省汇总
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavingsResponse'
+
+  /api/turns/model-distribution:
+    get:
+      operationId: getModelDistribution
+      summary: 获取模型分布统计
+      description: 按模型分组统计调用次数，用于前端展示模型分布卡片。
+      tags: [Turns]
+      parameters:
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: 按会话 ID 筛选
+      responses:
+        '200':
+          description: 模型分布统计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelDistributionResponse'
+
+  /api/turns/{id}:
+    get:
+      operationId: getTurnById
+      summary: 查询单条轮次详情
+      description: 根据 ID 获取单条轮次的完整信息，包括关联的优化节省数据。
+      tags: [Turns]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 轮次 ID
+      responses:
+        '200':
+          description: 轮次详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TurnDetailResponse'
+        '404':
+          description: 轮次不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================
+  # Sessions API (F-006)
+  # ============================================================
+  /api/sessions:
+    get:
+      operationId: listSessions
+      summary: 获取会话列表
+      description: 获取所有会话的摘要信息，含 turn_count、a2a_count、created、last_activity。
+      tags: [Sessions]
+      responses:
+        '200':
+          description: 会话列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionListResponse'
+
+  /api/sessions/{id}:
+    get:
+      operationId: getSessionById
+      summary: 获取单个会话详情
+      description: 获取指定会话的完整信息，包括聚合统计。
+      tags: [Sessions]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 会话 ID
+      responses:
+        '200':
+          description: 会话详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDetailResponse'
+        '404':
+          description: 会话不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/sessions/{id}/stats:
+    get:
+      operationId: getSessionStats
+      summary: 获取指定会话的统计
+      description: 获取指定会话的 Token 统计、成本估算、优化节省等聚合数据。
+      tags: [Sessions]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 会话 ID
+      responses:
+        '200':
+          description: 会话统计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionStatsResponse'
+        '404':
+          description: 会话不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================
+  # Optimizations API (F-004, F-009)
+  # ============================================================
+  /api/optimizations:
+    post:
+      operationId: createOptimization
+      summary: 记录优化节省
+      description: 记录某一轮次中各优化机制的 Token 节省明细。支持多机制同时记录。
+      tags: [Optimizations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOptimizationRequest'
+      responses:
+        '200':
+          description: 优化记录创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateOptimizationResponse'
+        '400':
+          description: 参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      operationId: listOptimizations
+      summary: 获取优化记录列表
+      description: 获取所有优化记录列表，支持按 session_id 筛选。
+      tags: [Optimizations]
+      parameters:
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: 按会话 ID 筛选
+      responses:
+        '200':
+          description: 优化记录列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OptimizationListResponse'
+
+  /api/optimizations/summary:
+    get:
+      operationId: getOptimizationSummary
+      summary: 获取优化节省汇总
+      description: 汇总各优化机制的 Token 节省量。model_switch 单独展示不计入总节省。
+      tags: [Optimizations]
+      parameters:
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: 按会话 ID 筛选
+      responses:
+        '200':
+          description: 优化节省汇总
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OptimizationSummaryResponse'
+
+  # ============================================================
+  # Pricing API (F-008)
+  # ============================================================
+  /api/pricing:
+    get:
+      operationId: listPricing
+      summary: 获取所有模型定价
+      description: 获取所有模型的定价配置数据，用于成本估算计算。
+      tags: [Pricing]
+      responses:
+        '200':
+          description: 定价列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingListResponse'
+
+  /api/pricing/{modelId}:
+    get:
+      operationId: getPricingByModelId
+      summary: 获取单个模型定价
+      description: 获取指定模型的定价配置。
+      tags: [Pricing]
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 模型 ID
+      responses:
+        '200':
+          description: 模型定价
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingDetailResponse'
+        '404':
+          description: 模型定价不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================
+  # Timer API
+  # ============================================================
+  /api/timers:
+    post:
+      operationId: createTimer
+      summary: 记录工具调用耗时
+      description: 记录 AI IDE 工具调用的耗时数据。
+      tags: [Timers]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTimerRequest'
+      responses:
+        '200':
+          description: 耗时记录创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateTimerResponse'
+        '400':
+          description: 参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      operationId: listTimers
+      summary: 获取耗时记录列表
+      description: 获取工具调用耗时记录列表，支持按 session_id 筛选。
+      tags: [Timers]
+      parameters:
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: 按会话 ID 筛选
+      responses:
+        '200':
+          description: 耗时记录列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimerListResponse'
+
+  # ============================================================
+  # System API (F-012, F-013)
+  # ============================================================
+  /api/data:
+    delete:
+      operationId: clearAllData
+      summary: 清空所有数据
+      description: 清空 turns、optimizations、sessions 表中所有数据。同时删除 JSONL 备份文件。操作不可逆。
+      tags: [System]
+      responses:
+        '200':
+          description: 数据清空成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemActionResponse'
+        '500':
+          description: 清空失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/health:
+    get:
+      operationId: healthCheck
+      summary: 健康检查
+      description: 检查服务器和数据库连接是否正常。
+      tags: [System]
+      responses:
+        '200':
+          description: 服务健康
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '500':
+          description: 服务异常
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================
+  # Pricing 管理 (F-008 补充)
+  # ============================================================
+  /api/pricing/{modelId}:
+    put:
+      operationId: updatePricing
+      summary: 更新模型定价
+      description: 更新指定模型的定价配置。
+      tags: [Pricing]
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 模型 ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePricingRequest'
+      responses:
+        '200':
+          description: 定价更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingDetailResponse'
+        '400':
+          description: 参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 模型定价不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================
+  # Dashboard API (F-005)
+  # ============================================================
+  /api/dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      summary: 实时看板汇总数据
+      description: 整合所有统计数据的看板接口，一次返回汇总卡片、模型分布、优化节省明细和最近 50 条轮次列表。
+      tags: [Dashboard]
+      parameters:
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: 按会话 ID 筛选
+      responses:
+        '200':
+          description: 看板汇总数据
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummaryResponse'
+
+components:
+  schemas:
+    # ============================================================
+    # Turns 相关 DTO
+    # ============================================================
+    CreateTurnRequest:
+      type: object
+      required:
+        - session_id
+        - type
+        - timestamp
+      properties:
+        session_id:
+          type: string
+          description: 会话 ID
+          minLength: 5
+          maxLength: 100
+        type:
+          type: string
+          enum: [turn, a2a]
+          description: 记录类型
+        parent_turn_id:
+          type: string
+          nullable: true
+          description: 父轮次 ID
+        phase:
+          type: string
+          nullable: true
+          description: 阶段标识
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 时间戳
+        role:
+          type: string
+          enum: [human, ai]
+          nullable: true
+          description: 角色
+        from_agent:
+          type: string
+          nullable: true
+          maxLength: 100
+          description: 来源 Agent
+        to_agent:
+          type: string
+          nullable: true
+          maxLength: 100
+          description: 目标 Agent
+        skill:
+          type: string
+          nullable: true
+          description: 使用的 Skill
+        model_used:
+          type: string
+          nullable: true
+          maxLength: 100
+          description: 使用的模型
+        protocol:
+          type: string
+          enum: [native, lambda-lang, json]
+          nullable: true
+          description: A2A 通信协议
+        input_uncached:
+          type: integer
+          minimum: 0
+          maximum: 999999999
+          default: 0
+          description: 未命中缓存的输入 Token
+        input_cached:
+          type: integer
+          minimum: 0
+          maximum: 999999999
+          default: 0
+          description: 命中缓存的输入 Token
+        output_tokens:
+          type: integer
+          minimum: 0
+          maximum: 999999999
+          default: 0
+          description: 输出 Token
+        latency_ms:
+          type: integer
+          minimum: 0
+          default: 0
+          description: 延迟（毫秒）
+        message_size_bytes:
+          type: integer
+          minimum: 0
+          maximum: 10485760
+          default: 0
+          description: 消息大小（字节）
+        opt_id:
+          type: string
+          nullable: true
+          description: 关联的优化记录 ID
+        note:
+          type: string
+          nullable: true
+          description: 备注
+        data_source:
+          type: string
+          enum: [hook, env, stdin, file, no-data]
+          nullable: true
+          description: 数据来源
+
+    CreateTurnResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              description: 创建的轮次 ID
+            session_id:
+              type: string
+              description: 会话 ID
+
+    TurnObject:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 轮次 ID
+        session_id:
+          type: string
+          description: 会话 ID
+        type:
+          type: string
+          enum: [turn, a2a]
+        parent_turn_id:
+          type: string
+          nullable: true
+        phase:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+        role:
+          type: string
+          nullable: true
+        from_agent:
+          type: string
+          nullable: true
+        to_agent:
+          type: string
+          nullable: true
+        skill:
+          type: string
+          nullable: true
+        model_used:
+          type: string
+          nullable: true
+        protocol:
+          type: string
+          nullable: true
+        input_uncached:
+          type: integer
+        input_cached:
+          type: integer
+        output_tokens:
+          type: integer
+        latency_ms:
+          type: integer
+        message_size_bytes:
+          type: integer
+        opt_id:
+          type: string
+          nullable: true
+        note:
+          type: string
+          nullable: true
+        data_source:
+          type: string
+          nullable: true
+        estimated_cost:
+          type: number
+          format: float
+          nullable: true
+          description: 估算成本
+        savings:
+          type: object
+          nullable: true
+          description: 优化节省明细
+
+    TurnListResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/TurnObject'
+            total:
+              type: integer
+              description: 总记录数
+            page:
+              type: integer
+              description: 当前页码
+            page_size:
+              type: integer
+              description: 每页条数
+
+    TurnDetailResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          $ref: '#/components/schemas/TurnObject'
+
+    TurnStatsResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            total_calls:
+              type: integer
+              description: 总调用次数（turns + a2a）
+            total_input_tokens:
+              type: integer
+              description: 总输入 Token
+            total_input_uncached:
+              type: integer
+              description: 未命中输入 Token
+            total_input_cached:
+              type: integer
+              description: 缓存输入 Token
+            cache_hit_rate:
+              type: number
+              format: float
+              description: 缓存命中率（百分比 0-100）
+            total_output_tokens:
+              type: integer
+              description: 总输出 Token
+            model_switch_count:
+              type: integer
+              description: 模型切换次数
+            model_count:
+              type: integer
+              description: 使用模型种类数
+
+    CostResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  model:
+                    type: string
+                    description: 模型名称
+                  call_count:
+                    type: integer
+                    description: 调用次数
+                  input_uncached:
+                    type: integer
+                    description: 未命中输入 Token
+                  input_cached:
+                    type: integer
+                    description: 缓存输入 Token
+                  output_tokens:
+                    type: integer
+                    description: 输出 Token
+                  input_cost:
+                    type: number
+                    format: float
+                    description: 输入成本
+                  output_cost:
+                    type: number
+                    format: float
+                    description: 输出成本
+                  total_cost:
+                    type: number
+                    format: float
+                    description: 总成本
+                  currency:
+                    type: string
+                    description: 货币符号
+                  has_pricing:
+                    type: boolean
+                    description: 是否有定价数据
+            total_cost:
+              type: number
+              format: float
+              description: 累计总成本
+            currency:
+              type: string
+              description: 货币符号
+
+    SavingsResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            mechanisms:
+              type: object
+              properties:
+                lean_ctx:
+                  type: integer
+                l1_cache:
+                  type: integer
+                l2_warmup:
+                  type: integer
+                l3_skill_stub:
+                  type: integer
+                ccp_skip:
+                  type: integer
+                lambda_lang:
+                  type: integer
+            total_savings:
+              type: integer
+              description: 总节省 Token（不含 model_switch）
+            model_switch_savings:
+              type: integer
+              description: 模型切换节省（单独展示）
+            percentages:
+              type: object
+              description: 各机制节省占比
+
+    ModelDistributionResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  model:
+                    type: string
+                    description: 模型名称
+                  call_count:
+                    type: integer
+                    description: 调用次数
+                  percentage:
+                    type: number
+                    format: float
+                    description: 占比（百分比）
+
+    # ============================================================
+    # Sessions 相关 DTO
+    # ============================================================
+    SessionObject:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 会话 ID
+        created:
+          type: string
+          format: date-time
+          description: 创建时间
+        last_activity:
+          type: string
+          format: date-time
+          description: 最后活跃时间
+        turn_count:
+          type: integer
+          description: 人机对话轮次数
+        a2a_count:
+          type: integer
+          description: A2A 消息数
+        total_input_uncached:
+          type: integer
+          description: 总未命中输入 Token
+        total_input_cached:
+          type: integer
+          description: 总缓存输入 Token
+        total_output:
+          type: integer
+          description: 总输出 Token
+        estimated_cost:
+          type: number
+          format: float
+          description: 估算总成本
+
+    SessionListResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/SessionObject'
+
+    SessionDetailResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          $ref: '#/components/schemas/SessionObject'
+
+    SessionStatsResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            turn_stats:
+              $ref: '#/components/schemas/TurnStatsResponse/properties/data'
+            cost:
+              $ref: '#/components/schemas/CostResponse/properties/data'
+            savings:
+              $ref: '#/components/schemas/SavingsResponse/properties/data'
+            model_distribution:
+              $ref: '#/components/schemas/ModelDistributionResponse/properties/data'
+
+    # ============================================================
+    # Optimizations 相关 DTO
+    # ============================================================
+    CreateOptimizationRequest:
+      type: object
+      required:
+        - opt_id
+        - session_id
+        - timestamp
+      properties:
+        opt_id:
+          type: string
+          maxLength: 100
+          description: 优化记录 ID
+        session_id:
+          type: string
+          description: 会话 ID
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 时间戳
+        model_switched:
+          type: boolean
+          default: false
+          description: 是否发生模型切换
+        mechanisms:
+          type: object
+          description: 各机制节省明细
+          properties:
+            lean_ctx:
+              type: integer
+            l1_cache:
+              type: integer
+            l2_warmup:
+              type: integer
+            l3_skill_stub:
+              type: integer
+            ccp_skip:
+              type: integer
+            lambda_lang:
+              type: integer
+        turn_ids:
+          type: array
+          items:
+            type: string
+          description: 关联的轮次 ID 列表
+
+    CreateOptimizationResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            opt_id:
+              type: string
+              description: 优化记录 ID
+            saved_total:
+              type: integer
+              description: 总节省 Token
+
+    OptimizationListResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  opt_id:
+                    type: string
+                  session_id:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+                  model_switched:
+                    type: boolean
+                  mechanisms:
+                    type: object
+                  saved_total:
+                    type: integer
+
+    OptimizationSummaryResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            mechanisms:
+              type: object
+              properties:
+                lean_ctx:
+                  type: integer
+                l1_cache:
+                  type: integer
+                l2_warmup:
+                  type: integer
+                l3_skill_stub:
+                  type: integer
+                ccp_skip:
+                  type: integer
+                lambda_lang:
+                  type: integer
+            total_savings:
+              type: integer
+            model_switch_count:
+              type: integer
+            model_switch_savings:
+              type: integer
+            percentages:
+              type: object
+
+    # ============================================================
+    # Pricing 相关 DTO
+    # ============================================================
+    PricingObject:
+      type: object
+      properties:
+        model_id:
+          type: string
+          description: 模型 ID
+        short:
+          type: string
+          nullable: true
+          description: 模型简称
+        name:
+          type: string
+          nullable: true
+          description: 模型全名
+        input_per_mtok:
+          type: number
+          format: float
+          description: 输入价格（¥/M Token）
+        output_per_mtok:
+          type: number
+          format: float
+          description: 输出价格（¥/M Token）
+        cache_read_per_mtok:
+          type: number
+          format: float
+          description: 缓存读取价格（¥/M Token）
+        note:
+          type: string
+          nullable: true
+          description: 备注
+        currency:
+          type: string
+          description: 货币符号
+
+    UpdatePricingRequest:
+      type: object
+      properties:
+        input_per_mtok:
+          type: number
+          format: float
+          description: 输入价格（¥/M Token）
+        output_per_mtok:
+          type: number
+          format: float
+          description: 输出价格（¥/M Token）
+        cache_read_per_mtok:
+          type: number
+          format: float
+          description: 缓存读取价格（¥/M Token）
+        note:
+          type: string
+          nullable: true
+          description: 备注
+
+    PricingListResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/PricingObject'
+
+    PricingDetailResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          $ref: '#/components/schemas/PricingObject'
+
+    # ============================================================
+    # Timer 相关 DTO
+    # ============================================================
+    CreateTimerRequest:
+      type: object
+      required:
+        - tool_call_id
+        - tool_name
+        - start_time
+        - session_id
+        - latency_ms
+      properties:
+        tool_call_id:
+          type: string
+          description: 工具调用 ID
+        tool_name:
+          type: string
+          description: 工具名称
+        start_time:
+          type: integer
+          description: 开始时间戳（毫秒）
+        session_id:
+          type: string
+          description: 会话 ID
+        latency_ms:
+          type: integer
+          minimum: 0
+          description: 耗时（毫秒）
+
+    CreateTimerResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            tool_call_id:
+              type: string
+
+    TimerObject:
+      type: object
+      properties:
+        tool_call_id:
+          type: string
+        tool_name:
+          type: string
+        start_time:
+          type: integer
+        session_id:
+          type: string
+        latency_ms:
+          type: integer
+
+    TimerListResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/TimerObject'
+
+    # ============================================================
+    # System 相关 DTO
+    # ============================================================
+    SystemActionResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+              description: 操作结果描述
+            cleared_tables:
+              type: array
+              items:
+                type: string
+              description: 已清空的表名列表
+
+    HealthResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [healthy]
+            timestamp:
+              type: string
+              format: date-time
+            db_connected:
+              type: boolean
+              description: 数据库连接状态
+            db_size:
+              type: integer
+              description: 数据库文件大小（字节）
+            turn_count:
+              type: integer
+              description: 当前轮次总数
+
+    # ============================================================
+    # Dashboard 相关 DTO
+    # ============================================================
+    DashboardSummaryResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            summary_cards:
+              type: object
+              properties:
+                total_calls:
+                  type: integer
+                  description: 总调用次数
+                total_input_tokens:
+                  type: integer
+                  description: 总输入 Token
+                cache_hit_rate:
+                  type: number
+                  format: float
+                  description: 缓存命中率
+                total_output_tokens:
+                  type: integer
+                  description: 总输出 Token
+                model_switch_count:
+                  type: integer
+                  description: 模型切换次数
+                model_count:
+                  type: integer
+                  description: 使用模型种类数
+                estimated_cost:
+                  type: number
+                  format: float
+                  description: 估算总成本
+                total_savings:
+                  type: integer
+                  description: 优化节省 Token
+                currency:
+                  type: string
+                  description: 货币符号
+            model_distribution:
+              type: array
+              items:
+                type: object
+                properties:
+                  model:
+                    type: string
+                  call_count:
+                    type: integer
+                  percentage:
+                    type: number
+                    format: float
+            cost_breakdown:
+              type: array
+              items:
+                type: object
+                properties:
+                  model:
+                    type: string
+                  call_count:
+                    type: integer
+                  input_cost:
+                    type: number
+                    format: float
+                  output_cost:
+                    type: number
+                    format: float
+                  total_cost:
+                    type: number
+                    format: float
+            savings_breakdown:
+              type: object
+              properties:
+                mechanisms:
+                  type: object
+                total_savings:
+                  type: integer
+            recent_turns:
+              type: array
+              items:
+                $ref: '#/components/schemas/TurnObject'
+              description: 最近 50 条轮次列表
+            sessions:
+              type: array
+              items:
+                $ref: '#/components/schemas/SessionObject'
+              description: 会话列表
+
+    # ============================================================
+    # 通用错误 DTO
+    # ============================================================
+    ErrorResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [false]
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              description: 错误码
+              enum:
+                - BAD_REQUEST
+                - NOT_FOUND
+                - VALIDATION_ERROR
+                - CONFLICT
+                - INTERNAL_ERROR
+                - DB_ERROR
+                - RATE_LIMITED
+                - NO_PRICING
+            message:
+              type: string
+              description: 用户可读的错误描述
+            details:
+              type: object
+              nullable: true
+              description: 详细错误信息（开发模式）
+
+# 功能点覆盖清单
+# F-001: POST /api/turns (用户输入记录)
+# F-002: POST /api/turns (AI 回复记录)
+# F-003: POST /api/turns (A2A 消息记录, type=a2a)
+# F-004: POST /api/optimizations (优化节省记录)
+# F-005: GET /api/dashboard/summary (实时看板)
+# F-006: GET /api/sessions, GET /api/sessions/:id (会话管理)
+# F-007: GET /api/turns/stats (Token 统计)
+# F-008: GET /api/turns/cost, GET /api/pricing (成本估算)
+# F-009: GET /api/turns/savings, GET /api/optimizations/summary (优化节省)
+# F-010: 后端 Service 生成 (Markdown 报告)
+# F-011: 后端 Service 生成 (HTML 看板)
+# F-012: DELETE /api/data (数据重置)
+# F-013: GET /api/health (健康检查)
+
+**【锁定版】** 已通过 Grill 审查
