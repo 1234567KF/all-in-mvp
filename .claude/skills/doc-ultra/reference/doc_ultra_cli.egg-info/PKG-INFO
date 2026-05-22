@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: doc-ultra-cli
+Version: 0.1.0
+Summary: 文档超融合处理工具 CLI - 多视角并行优化 + 串行拷问检查流水线
+Requires-Python: >=3.10
+Requires-Dist: click>=8.0
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: openai>=1.0
+Requires-Dist: anthropic>=0.30
+Requires-Dist: rich>=13.0
+Provides-Extra: preview
+Requires-Dist: watchdog>=4.0; extra == "preview"
