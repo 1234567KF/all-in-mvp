@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>all-in-mvp · 多 Agent 并行开发流水线 v2.3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#070708;
+  --bg2:#0c0c0e;
+  --card:rgba(18,18,22,0.72);
+  --border:rgba(255,255,255,0.06);
+  --border-hover:rgba(255,255,255,0.12);
+  --text:#e8e8ec;
+  --text-dim:#8a8a92;
+  --text-muted:#5c5c66;
+  --blue:#4f46e5;
+  --purple:#7c3aed;
+  --cyan:#06b6d4;
+  --pink:#ec4899;
+  --green:#22c55e;
+  --font:'Inter','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+  --mono:'JetBrains Mono','SF Mono','Fira Code',monospace;
+  --radius:14px;
+}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--text);
+  -webkit-font-smoothing:antialiased;
+  line-height:1.6;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background:
+    linear-gradient(rgba(79,70,229,0.02) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(79,70,229,0.02) 1px,transparent 1px);
+  background-size:48px 48px;
+  z-index:0;pointer-events:none;
+}
+
+/* ---- Hero ---- */
+.hero{
+  min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:80px 24px 40px;position:relative;z-index:1;
+}
+.hero-badge{
+  display:inline-block;padding:6px 16px;border-radius:999px;
+  font-size:12px;font-weight:600;letter-spacing:1px;
+  background:linear-gradient(135deg,rgba(79,70,229,0.12),rgba(124,58,237,0.12));
+  border:1px solid rgba(124,58,237,0.2);
+  color:#a78bfa;margin-bottom:24px;
+}
+.hero h1{
+  font-size:clamp(48px,8vw,120px);font-weight:900;letter-spacing:-3px;
+  line-height:1;margin-bottom:20px;
+  background:linear-gradient(135deg,#fff 15%,#818cf8 50%,#67e8f9 85%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.hero p{
+  font-size:clamp(16px,1.3vw,22px);color:var(--text-dim);
+  max-width:560px;margin-bottom:40px;
+}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;padding:12px 28px;
+  border-radius:999px;font-size:15px;font-weight:600;text-decoration:none;
+  transition:all .25s;
+}
+.btn-primary{
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  color:#fff;border:none;
+}
+.btn-primary:hover{opacity:.85;transform:translateY(-2px)}
+.btn-outline{
+  background:transparent;color:var(--text-dim);
+  border:1px solid var(--border);
+}
+.btn-outline:hover{border-color:var(--border-hover);color:var(--text);transform:translateY(-2px)}
+.scroll-indicator{
+  position:absolute;bottom:24px;left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  color:var(--text-muted);font-size:12px;letter-spacing:2px;
+  animation:scrollBounce 2s ease-in-out infinite;
+}
+.scroll-indicator svg{width:18px;height:18px;stroke:var(--text-muted);fill:none}
+@keyframes scrollBounce{0%,100%{opacity:.3;transform:translateX(-50%) translateY(0)}50%{opacity:.6;transform:translateX(-50%) translateY(6px)}}
+
+/* ---- Sections ---- */
+.section{
+  position:relative;z-index:1;
+  max-width:1200px;margin:0 auto;padding:80px 24px;
+}
+.section-header{text-align:center;margin-bottom:48px}
+.section-tag{
+  display:inline-block;padding:4px 12px;border-radius:999px;
+  font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;
+  margin-bottom:12px;
+}
+.section-tag.blue{background:rgba(79,70,229,0.1);color:var(--blue);border:1px solid rgba(79,70,229,0.15)}
+.section-tag.purple{background:rgba(124,58,237,0.1);color:var(--purple);border:1px solid rgba(124,58,237,0.15)}
+.section-tag.cyan{background:rgba(6,182,212,0.1);color:var(--cyan);border:1px solid rgba(6,182,212,0.15)}
+.section-tag.pink{background:rgba(236,72,153,0.1);color:var(--pink);border:1px solid rgba(236,72,153,0.15)}
+.section h2{
+  font-size:clamp(28px,3.2vw,48px);font-weight:800;letter-spacing:-1px;
+  margin-bottom:12px;
+}
+.section h2 .gradient{background:linear-gradient(135deg,#fff,var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.section-desc{color:var(--text-dim);max-width:520px;margin:0 auto;font-size:15px}
+
+/* ---- Stats ---- */
+.stats-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:12px;
+}
+.stat-card{
+  text-align:center;padding:28px 16px;border-radius:var(--radius);
+  background:var(--card);border:1px solid var(--border);
+  backdrop-filter:blur(12px);transition:border-color .3s,transform .3s;
+}
+.stat-card:hover{border-color:var(--border-hover);transform:translateY(-3px)}
+.stat-value{
+  font-size:clamp(28px,2.6vw,42px);font-weight:800;
+  background:linear-gradient(135deg,#818cf8,#67e8f9);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-bottom:4px;
+}
+.stat-label{font-size:13px;color:var(--text-dim);letter-spacing:1px}
+
+/* ---- Stages ---- */
+.stages-flow{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px;
+}
+.stage-card{
+  padding:24px;border-radius:var(--radius);
+  background:var(--card);border:1px solid var(--border);
+  backdrop-filter:blur(12px);transition:all .3s;cursor:default;
+}
+.stage-card:hover{border-color:var(--border-hover);transform:translateY(-4px)}
+.stage-num{font-size:32px;font-weight:900;margin-bottom:4px}
+.stage-card.s1 .stage-num{background:linear-gradient(135deg,#4f46e5,#6366f1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.stage-card.s2 .stage-num{background:linear-gradient(135deg,#7c3aed,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.stage-card.s3 .stage-num{background:linear-gradient(135deg,#06b6d4,#22d3ee);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.stage-card.s4 .stage-num{background:linear-gradient(135deg,#ec4899,#f472b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.stage-name{font-size:18px;font-weight:700;margin-bottom:4px}
+.stage-mode{
+  display:inline-block;padding:2px 8px;border-radius:4px;
+  font-size:11px;font-weight:600;font-family:var(--mono);
+  margin-bottom:8px;
+}
+.stage-mode.serial{background:rgba(79,70,229,0.1);color:#818cf8;border:1px solid rgba(79,70,229,0.15)}
+.stage-mode.parallel{background:rgba(6,182,212,0.1);color:#22d3ee;border:1px solid rgba(6,182,212,0.15)}
+.stage-mode.mixed{background:rgba(124,58,237,0.1);color:#a78bfa;border:1px solid rgba(124,58,237,0.15)}
+.stage-desc{font-size:13px;color:var(--text-dim);line-height:1.5;margin-bottom:12px}
+.stage-outputs{display:flex;flex-wrap:wrap;gap:6px}
+.stage-output{
+  padding:3px 10px;border-radius:6px;font-size:11px;font-family:var(--mono);
+  background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--text-muted);
+}
+.stage-connector{
+  text-align:center;color:var(--text-muted);font-size:12px;padding:4px 0;letter-spacing:4px;
+}
+
+/* ---- Roles ---- */
+.roles-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;
+}
+.role-card{
+  padding:16px;border-radius:12px;
+  background:var(--card);border:1px solid var(--border);
+  transition:all .25s;cursor:default;
+}
+.role-card:hover{border-color:var(--border-hover);transform:translateY(-2px)}
+.role-card .role-stage{
+  font-size:11px;font-family:var(--mono);color:var(--text-muted);margin-bottom:4px;
+}
+.role-card .role-name{font-size:14px;font-weight:600;margin-bottom:2px}
+.role-card .role-output{font-size:12px;color:var(--text-dim);margin-bottom:6px}
+.role-para{
+  display:inline-block;padding:2px 8px;border-radius:4px;
+  font-size:10px;font-weight:600;font-family:var(--mono);
+}
+.role-para.serial{background:rgba(79,70,229,0.08);color:#818cf8;border:1px solid rgba(79,70,229,0.12)}
+.role-para.parallel{background:rgba(6,182,212,0.08);color:#22d3ee;border:1px solid rgba(6,182,212,0.12)}
+.role-para.mixed{background:rgba(124,58,237,0.08);color:#a78bfa;border:1px solid rgba(124,58,237,0.12)}
+
+/* ---- Principles ---- */
+.principles-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.principle-card{
+  padding:28px;border-radius:var(--radius);
+  background:var(--card);border:1px solid var(--border);
+  backdrop-filter:blur(12px);
+}
+.principle-header{
+  display:flex;align-items:center;gap:12px;margin-bottom:16px;
+}
+.principle-icon{
+  width:40px;height:40px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:700;
+}
+.principle-icon.serial{background:rgba(79,70,229,0.12);color:var(--blue)}
+.principle-icon.parallel{background:rgba(6,182,212,0.12);color:var(--cyan)}
+.principle-card h3{font-size:17px;font-weight:700}
+.principle-list{list-style:none;display:flex;flex-direction:column;gap:10px}
+.principle-list li{
+  display:flex;align-items:flex-start;gap:10px;
+  font-size:14px;color:var(--text-dim);line-height:1.4;
+}
+.principle-list li .dot{
+  width:6px;height:6px;border-radius:50%;margin-top:7px;flex-shrink:0;
+}
+.dot.blue{background:var(--blue)}
+.dot.cyan{background:var(--cyan)}
+
+/* ---- Quality ---- */
+.quality-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.quality-card{
+  padding:20px;border-radius:var(--radius);
+  background:var(--card);border:1px solid var(--border);
+  transition:border-color .3s;
+}
+.quality-card:hover{border-color:var(--border-hover)}
+.quality-card h4{
+  font-size:13px;font-weight:700;margin-bottom:12px;padding-bottom:10px;
+  border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;
+}
+.quality-card h4 .check{width:16px;height:16px;flex-shrink:0}
+.quality-card ul{list-style:none;display:flex;flex-direction:column;gap:8px}
+.quality-card li{
+  display:flex;align-items:flex-start;gap:8px;
+  font-size:13px;color:var(--text-dim);line-height:1.4;
+}
+.quality-card li .dot{width:5px;height:5px;border-radius:50%;margin-top:6px;flex-shrink:0;background:var(--cyan);opacity:.5}
+
+.metrics-row{
+  margin-top:48px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;
+}
+.metric-item{text-align:center;padding:20px;border-radius:var(--radius);background:var(--card);border:1px solid var(--border)}
+.metric-value{
+  font-size:clamp(24px,2vw,36px);font-weight:800;
+  background:linear-gradient(135deg,var(--purple),var(--cyan));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.metric-label{font-size:13px;color:var(--text-dim);margin-bottom:4px}
+.metric-target{font-size:12px;color:var(--text-muted);font-family:var(--mono)}
+
+/* ---- Footer ---- */
+.footer{
+  position:relative;z-index:1;border-top:1px solid var(--border);
+  text-align:center;padding:40px 24px;
+}
+.footer .logo{
+  font-size:20px;font-weight:800;margin-bottom:8px;
+  background:linear-gradient(135deg,#818cf8,#67e8f9);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.footer .version{font-size:12px;color:var(--text-muted);font-family:var(--mono)}
+.footer .credit{font-size:12px;color:var(--text-muted);margin-top:8px}
+
+/* ---- Responsive ---- */
+@media(max-width:900px){
+  .stages-flow,.quality-grid,.metrics-row{grid-template-columns:repeat(2,1fr)}
+  .principle-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  .stats-grid,.stages-flow,.quality-grid,.metrics-row,.roles-grid,.principles-grid{grid-template-columns:1fr}
+  .section{padding:48px 20px}
+}
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-badge">v2.3.0 最终融合版</div>
+  <h1>all-in-mvp</h1>
+  <p>多 Agent 并行开发流水线 — 从需求对齐到交付的完整并行工程流程</p>
+  <div class="hero-actions">
+    <a href="#stages" class="btn btn-primary">探索流程 ↓</a>
+    <a href="#roles" class="btn btn-outline">Agent 角色</a>
+  </div>
+  <div class="scroll-indicator">
+    <span>SCROLL</span>
+    <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+  </div>
+</section>
+
+<!-- Stats -->
+<section class="section">
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-value">16+</div><div class="stat-label">Agent 角色</div></div>
+    <div class="stat-card"><div class="stat-value">4</div><div class="stat-label">开发阶段</div></div>
+    <div class="stat-card"><div class="stat-value">5</div><div class="stat-label">测试层级</div></div>
+    <div class="stat-card"><div class="stat-value">3+3</div><div class="stat-label">并行上限</div></div>
+  </div>
+</section>
+
+<!-- Stages -->
+<section id="stages" class="section">
+  <div class="section-header">
+    <div class="section-tag purple">核心流程</div>
+    <h2>五阶段流水线</h2>
+    <p class="section-desc">每个阶段有明确的产出物和门禁标准，实现最大并行度与质量保障</p>
+  </div>
+  <div class="stages-flow">
+    <div class="stage-card s1">
+      <div class="stage-num">01</div>
+      <div class="stage-name">需求对齐</div>
+      <div class="stage-mode serial">串行</div>
+      <div class="stage-desc">产品经理 Agent 将原始需求转化为 MECE 完整的 PRD 文档，6 项质量门禁检查</div>
+      <div class="stage-outputs"><span class="stage-output">PRD.md</span><span class="stage-output">术语定义</span><span class="stage-output">验收标准</span></div>
+    </div>
+    <div class="stage-card s2">
+      <div class="stage-num">02</div>
+      <div class="stage-name">计划阶段</div>
+      <div class="stage-mode mixed">串行→并行</div>
+      <div class="stage-desc">架构专家 → 业务专家 → ↺ 拷问审查循环 → Mock + 测试并行编写</div>
+      <div class="stage-outputs"><span class="stage-output">spec.md</span><span class="stage-output">schema.sql</span><span class="stage-output">api-contract.yaml</span><span class="stage-output">mocks/</span></div>
+    </div>
+    <div class="stage-card s3">
+      <div class="stage-num">03</div>
+      <div class="stage-name">执行阶段</div>
+      <div class="stage-mode parallel">大规模并行</div>
+      <div class="stage-desc">Pipeline Coordinator 调度，后端 TDD + 前端 Mock 并行，最多 6 Agent</div>
+      <div class="stage-outputs"><span class="stage-output">模块代码</span><span class="stage-output">页面组件</span><span class="stage-output">单元测试</span></div>
+    </div>
+    <div class="stage-card s4">
+      <div class="stage-num">04</div>
+      <div class="stage-name">集成验收</div>
+      <div class="stage-mode serial">串行收敛</div>
+      <div class="stage-desc">后端合并 → 前后端联调 → 集成测试 → Debug 修复循环 → 交付归档</div>
+      <div class="stage-outputs"><span class="stage-output">测试报告</span><span class="stage-output">Bug修复</span><span class="stage-output">delivery/</span></div>
+    </div>
+  </div>
+  <div class="stage-card s1" style="border-color:var(--border)">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div class="stage-num" style="font-size:20px;background:linear-gradient(135deg,#06b6d4,#22d3ee);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">05</div>
+      <div class="stage-name" style="font-size:15px;margin:0">复盘沉淀</div>
+      <div class="stage-mode serial" style="margin:0">串行</div>
+      <div style="font-size:13px;color:var(--text-dim)">Stage5 流程复盘与经验沉淀，提取模式/反模式，更新经验知识库</div>
+      <div class="stage-outputs" style="margin-left:auto"><span class="stage-output">retrospective.md</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- Roles -->
+<section id="roles" class="section">
+  <div class="section-header">
+    <div class="section-tag cyan">角色矩阵</div>
+    <h2>16+ Agent 角色</h2>
+    <p class="section-desc">每个角色有明确的职责边界、产出物和并行策略</p>
+  </div>
+  <div class="roles-grid">
+    <div class="role-card"><div class="role-stage">Stage1</div><div class="role-name">产品经理</div><div class="role-output">PRD</div><span class="role-para serial">串行</span></div>
+    <div class="role-card"><div class="role-stage">Stage2①</div><div class="role-name">架构专家</div><div class="role-output">spec + schema + contract</div><span class="role-para serial">串行</span></div>
+    <div class="role-card"><div class="role-stage">Stage2②</div><div class="role-name">业务领域专家</div><div class="role-output">task.md + &lt;module&gt;.md</div><span class="role-para serial">串行</span></div>
+    <div class="role-card"><div class="role-stage">Stage2↺</div><div class="role-name">拷问审查</div><div class="role-output">审查报告</div><span class="role-para serial">串行循环</span></div>
+    <div class="role-card"><div class="role-stage">Stage2③a</div><div class="role-name">Mock 专家</div><div class="role-output">mocks/</div><span class="role-para parallel">并行</span></div>
+    <div class="role-card"><div class="role-stage">Stage2③b-1</div><div class="role-name">单模块测试</div><div class="role-output">modules/*.test.ts</div><span class="role-para mixed">内部2Agent</span></div>
+    <div class="role-card"><div class="role-stage">Stage2③b-2</div><div class="role-name">业务条线测试</div><div class="role-output">scenarios/*.test.ts</div><span class="role-para serial">串行</span></div>
+    <div class="role-card"><div class="role-stage">Stage2③c</div><div class="role-name">测试审查</div><div class="role-output">审查报告</div><span class="role-para serial">串行</span></div>
+    <div class="role-card"><div class="role-stage">Stage3</div><div class="role-name">Pipeline Coordinator</div><div class="role-output">调度指令</div><span class="role-para serial">中枢</span></div>
+    <div class="role-card"><div class="role-stage">Stage3</div><div class="role-name">后端开发</div><div class="role-output">模块代码 + 测试</div><span class="role-para parallel">最多3Agent</span></div>
+    <div class="role-card"><div class="role-stage">Stage3</div><div class="role-name">前端开发</div><div class="role-output">页面 + 组件</div><span class="role-para parallel">最多3Agent</span></div>
+    <div class="role-card"><div class="role-stage">Stage3</div><div class="role-name">测试补充</div><div class="role-output">边界用例</div><span class="role-para mixed">事件驱动</span></div>
+    <div class="role-card"><div class="role-stage">Stage3</div><div class="role-name">Code Review</div><div class="role-output">Review意见</div><span class="role-para mixed">按需触发</span></div>
+    <div class="role-card"><div class="role-stage">Stage4</div><div class="role-name">Stage4 Coordinator</div><div class="role-output">联调编排</div><span class="role-para serial">串行</span></div>
+    <div class="role-card"><div class="role-stage">Stage4</div><div class="role-name">Debug 修复</div><div class="role-output">Bug修复</div><span class="role-para mixed">按需触发</span></div>
+    <div class="role-card"><div class="role-stage">Stage5</div><div class="role-name">复盘 Agent</div><div class="role-output">retrospective.md</div><span class="role-para serial">串行</span></div>
+  </div>
+</section>
+
+<!-- Principles -->
+<section id="principles" class="section">
+  <div class="section-header">
+    <div class="section-tag blue">决策原则</div>
+    <h2>串行 <span style="color:var(--text-muted)">vs</span> <span style="background:linear-gradient(135deg,#06b6d4,#22d3ee);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">并行</span></h2>
+    <p class="section-desc">明确什么时候必须串行，什么时候可以并行，最大化流水线效率</p>
+  </div>
+  <div class="principles-grid">
+    <div class="principle-card">
+      <div class="principle-header">
+        <div class="principle-icon serial">⟳</div>
+        <h3>必须串行</h3>
+      </div>
+      <ul class="principle-list">
+        <li><div class="dot blue"></div>PRD 未锁定前：所有 Stage2 Agent 必须等待产品经理完成</li>
+        <li><div class="dot blue"></div>↺ 拷问审查循环未通过前：Mock、TDD 必须等待产出物锁定</li>
+        <li><div class="dot blue"></div>模块间强依赖：如订单依赖用户，用户模块必须先完成</li>
+        <li><div class="dot blue"></div>接口契约变更：依赖该接口的所有 Agent 必须同步</li>
+        <li><div class="dot blue"></div>集成测试阶段：必须等前后端都完成才能开始</li>
+      </ul>
+    </div>
+    <div class="principle-card">
+      <div class="principle-header">
+        <div class="principle-icon parallel">⇅</div>
+        <h3>可以并行</h3>
+      </div>
+      <ul class="principle-list">
+        <li><div class="dot cyan"></div>③a Mock、③b-1 测试、③b-2 场景测试：↺ 通过后三者同时启动</li>
+        <li><div class="dot cyan"></div>③b-1 内部：最多 2 Agent 按模块平分并行写单模块测试</li>
+        <li><div class="dot cyan"></div>无依赖模块后端开发：用户管理 vs 类目管理同时进行</li>
+        <li><div class="dot cyan"></div>前端 vs 后端：Mock 就绪后前端即可并行开发</li>
+        <li><div class="dot cyan"></div>Stage3 测试补充：事件驱动，与后端开发同步</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- Quality -->
+<section id="quality" class="section">
+  <div class="section-header">
+    <div class="section-tag pink">质量保障</div>
+    <h2>门禁与度量</h2>
+    <p class="section-desc">每个阶段都有硬约束门禁，确保产出物质量</p>
+  </div>
+  <div class="quality-grid">
+    <div class="quality-card">
+      <h4><svg class="check" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Stage1 → Stage2</h4>
+      <ul>
+        <li><div class="dot"></div>PRD 文件 > 1KB、9 个章节全存在</li>
+        <li><div class="dot"></div>MECE 完整性检查通过</li>
+        <li><div class="dot"></div>6 项质量门禁全部通过</li>
+      </ul>
+    </div>
+    <div class="quality-card">
+      <h4><svg class="check" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Stage2 → Stage3</h4>
+      <ul>
+        <li><div class="dot"></div>所有产出物存在且 MD5 与锁定一致</li>
+        <li><div class="dot"></div>YAML/JSON 语义可解析</li>
+        <li><div class="dot"></div>↺ 拷问审查全部通过</li>
+      </ul>
+    </div>
+    <div class="quality-card">
+      <h4><svg class="check" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Stage3 → Stage4</h4>
+      <ul>
+        <li><div class="dot"></div>所有模块目录存在 DONE 标记</li>
+        <li><div class="dot"></div>schema.sql 语法正确</li>
+        <li><div class="dot"></div>L1-L5 测试全部通过</li>
+      </ul>
+    </div>
+    <div class="quality-card">
+      <h4><svg class="check" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Stage4 → 交付</h4>
+      <ul>
+        <li><div class="dot"></div>集成测试报告非空</li>
+        <li><div class="dot"></div>0 个 P0/P1 Bug</li>
+        <li><div class="dot"></div>Mock-后端一致性验证通过</li>
+      </ul>
+    </div>
+  </div>
+  <div class="metrics-row">
+    <div class="metric-item"><div class="metric-value">≥75%</div><div class="metric-label">Grill 首次通过率</div><div class="metric-target">目标 ≥ 75%</div></div>
+    <div class="metric-item"><div class="metric-value">≥70%</div><div class="metric-label">首次 CR 通过率</div><div class="metric-target">目标 ≥ 70%</div></div>
+    <div class="metric-item"><div class="metric-value">≤20%</div><div class="metric-label">Bug 逃逸率</div><div class="metric-target">目标 ≤ 20%</div></div>
+    <div class="metric-item"><div class="metric-value">≥80%</div><div class="metric-label">并行度利用率</div><div class="metric-target">目标 ≥ 80%</div></div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="logo">all-in-mvp</div>
+  <div class="version">v2.3.0 · 最终融合版</div>
+  <div class="credit">基于 MVP白皮书最终融合版.md 构建</div>
+</footer>
+
+<script>
+// Simple intersection observer for fade-in
+document.addEventListener('DOMContentLoaded',()=>{
+  const observer=new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting){
+        entry.target.style.opacity='1';
+        entry.target.style.transform='translateY(0)';
+      }
+    })
+  },{threshold:.1});
+  document.querySelectorAll('.stat-card,.stage-card,.role-card,.principle-card,.quality-card,.metric-item').forEach(el=>{
+    el.style.opacity='0';
+    el.style.transform='translateY(20px)';
+    el.style.transition='opacity .5s ease,transform .5s ease';
+    observer.observe(el);
+  });
+});
+</script>
+</body>
+</html>

@@ -1060,3 +1060,182 @@ def render_overlay_diff_html(
         sections_html.append(html)
 
     return render_full_html(title, sections_html)
+
+
+# ─── Unified View CSS ───
+UNIFIED_CSS = """\
+/* ─── Unified Diff 样式 ─── */
+.unified-diff {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    background: #fafbfc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 1rem 0;
+}
+.unified-diff .section-card {
+    border: none;
+    border-radius: 0;
+    margin: 0;
+    box-shadow: none;
+}
+.unified-diff .card-header {
+    background: #f1f5f9;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0.5rem 1rem;
+}
+.unified-diff .card-body {
+    padding: 0;
+}
+.unified-line {
+    display: flex;
+    align-items: flex-start;
+    padding: 0.1rem 0;
+    border-bottom: 1px solid #f1f5f9;
+    min-height: 1.6em;
+}
+.unified-line:last-child {
+    border-bottom: none;
+}
+.unified-marker {
+    display: inline-block;
+    min-width: 1.6rem;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+    user-select: none;
+    padding: 0.1rem 0.2rem;
+}
+.unified-marker.added {
+    color: #16a34a;
+    background: rgba(34, 197, 94, 0.15);
+}
+.unified-marker.removed {
+    color: #dc2626;
+    background: rgba(239, 68, 68, 0.15);
+}
+.unified-marker.unchanged {
+    color: #94a3b8;
+}
+.unified-content {
+    flex: 1;
+    padding: 0 0.75rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.unified-line.added {
+    background: rgba(34, 197, 94, 0.08);
+}
+.unified-line.removed {
+    background: rgba(239, 68, 68, 0.08);
+    text-decoration: line-through;
+    text-decoration-color: rgba(239, 68, 68, 0.35);
+}
+.unified-line.added .unified-content {
+    color: #166534;
+}
+.unified-line.removed .unified-content {
+    color: #991b1b;
+}
+/* Changed lines: show old then new */
+.unified-hunk {
+    border-top: 2px solid #e2e8f0;
+    border-bottom: 2px solid #e2e8f0;
+    margin: 0.5rem 0;
+}
+.unified-hunk-header {
+    background: #e0e7ff;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    color: #4338ca;
+    font-weight: 600;
+    border-bottom: 1px solid #c7d2fe;
+}
+"""
+
+
+def render_unified_diff_html(
+    title: str,
+    text_a: str,
+    text_b: str,
+) -> str:
+    """渲染统一视图 (unified diff) 的 HTML。
+
+    类似 git diff --unified 风格：单列显示，每行前有 +/-/  标记。
+    修改的行显示为：先旧行(-)再新行(+)。
+    """
+    import difflib
+
+    lines_a = text_a.split("\n")
+    lines_b = text_b.split("\n")
+
+    matcher = difflib.SequenceMatcher(None, lines_a, lines_b)
+    unified_lines: list[str] = []
+
+    for op, i1, i2, j1, j2 in matcher.get_opcodes():
+        if op == "equal":
+            for line in lines_b[j1:j2]:
+                unified_lines.append(_unified_line("unchanged", line))
+        elif op == "insert":
+            for line in lines_b[j1:j2]:
+                unified_lines.append(_unified_line("added", line))
+        elif op == "delete":
+            for line in lines_a[i1:i2]:
+                unified_lines.append(_unified_line("removed", line))
+        elif op == "replace":
+            # 先显示旧行(removed)，再显示新行(added)
+            hunk_html = '<div class="unified-hunk">'
+            hunk_html += f'<div class="unified-hunk-header">@@ 修改: {i2 - i1} 行 → {j2 - j1} 行 @@</div>'
+            for line in lines_a[i1:i2]:
+                hunk_html += _unified_line("removed", line)
+            for line in lines_b[j1:j2]:
+                hunk_html += _unified_line("added", line)
+            hunk_html += '</div>'
+            unified_lines.append(hunk_html)
+
+    body_content = "\n".join(unified_lines) if unified_lines else '<div class="unified-line unchanged"><span class="unified-content">（无差异）</span></div>'
+
+    sections_body = f'<div class="unified-diff">{body_content}</div>'
+
+    return f"""\
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{_escape_html(title)} - Unified Diff</title>
+<style>
+{INLINE_CSS}
+{UNIFIED_CSS}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+(function() {{
+    if (typeof mermaid !== 'undefined') {{
+        mermaid.initialize({{ startOnLoad: true, theme: 'default', securityLevel: 'sandbox' }});
+    }}
+}})();
+</script>
+</head>
+<body>
+<div class="doc-container">
+<h1 class="doc-title">{_escape_html(title)}</h1>
+{sections_body}
+</div>
+</body>
+</html>"""
+
+
+def _unified_line(state: str, content: str) -> str:
+    """生成 unified 视图中的一行 HTML。"""
+    marker = "+" if state == "added" else "-" if state == "removed" else " "
+    escaped = _escape_html(content) if content else "&nbsp;"
+    return (
+        f'<div class="unified-line {state}">'
+        f'<span class="unified-marker {state}">{marker}</span>'
+        f'<span class="unified-content">{escaped}</span>'
+        f'</div>'
+    )

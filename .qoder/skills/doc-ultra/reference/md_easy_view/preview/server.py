@@ -35,6 +35,7 @@ from .watcher import FileWatcher, FileChangeEvent
 from .renderer import (
     render_md_to_html,
     render_overlay_diff_html,
+    render_unified_diff_html,
     compute_diff_lines,
     split_sections,
 )
@@ -190,7 +191,15 @@ class PreviewHandler(BaseHTTPRequestHandler):
                 from_content = sm.get_version_content(from_id)
                 if from_content is not None:
                     overlay_mode = query.get("mode", "overlay")
-                    if overlay_mode == "overlay":
+                    if overlay_mode == "unified":
+                        html = render_unified_diff_html(
+                            title=f"{from_id} → {vid}",
+                            text_a=from_content,
+                            text_b=content,
+                        )
+                        self._send_text(html)
+                        return
+                    elif overlay_mode == "overlay":
                         html = render_overlay_diff_html(
                             title=f"{from_id} → {vid}",
                             text_a=from_content,
@@ -815,6 +824,7 @@ body {{
     <div class="view-toggle">
         <button class="active" data-mode="overlay" onclick="switchView('overlay')">修订视图</button>
         <button data-mode="side-by-side" onclick="switchView('side-by-side')">并排视图</button>
+        <button data-mode="unified" onclick="switchView('unified')">统一视图</button>
         <button data-mode="single" onclick="switchView('single')">仅目标</button>
     </div>
     <div class="divider"></div>
@@ -958,6 +968,9 @@ function switchView(mode) {{
     if (mode === 'side-by-side') {{
         toggleBtn.style.display = 'none';
         document.getElementById('outline-sidebar').classList.remove('visible');
+    }} else if (mode === 'unified') {{
+        toggleBtn.style.display = 'none';
+        document.getElementById('outline-sidebar').classList.remove('visible');
     }} else {{
         toggleBtn.style.display = 'flex';
         // 自动加载大纲
@@ -1078,6 +1091,33 @@ function refreshPreview() {{
             }});
         // 等待 iframe 加载完成后绑定滚动联动
         setTimeout(initSideBySideSync, 800);
+    }} else if (currentMode === 'unified') {{
+        // 统一视图：git diff --unified 风格单列显示
+        if (toggleBtn) toggleBtn.style.display = 'none';
+        container.className = 'preview-container';
+        container.innerHTML = '<div class="loading">加载统一 diff 中...</div>';
+        statsBar.innerHTML = '<span style="color:#888;">统一视图 — git diff 风格单列显示</span>';
+
+        fetch('/api/diff?from=' + encodeURIComponent(currentFrom) + '&to=' + encodeURIComponent(currentTo) + '&_t=' + Date.now())
+            .then(function(r) {{ return r.json(); }})
+            .then(function(data) {{
+                statsBar.innerHTML =
+                    '<span style="color:#888;">Diff:</span>' +
+                    '<span class="stat-box"><span class="stat-label">+新增</span> <span class="stat-value added">' + data.added + '</span></span>' +
+                    '<span class="stat-box"><span class="stat-label">-删除</span> <span class="stat-value removed">' + data.removed + '</span></span>' +
+                    '<span class="stat-box"><span class="stat-label">~修改</span> <span class="stat-value changed">' + data.changed + '</span></span>' +
+                    '<span style="color:#888;margin-left:0.5rem;">| 单列: -旧行 +新行</span>';
+
+                container.innerHTML =
+                    '<div class="preview-frame">' +
+                    '    <div class="frame-header">' + currentFrom + ' → ' + currentTo + ' (统一视图)</div>' +
+                    '    <div class="frame-content"><iframe srcdoc="<div class=loading>加载中...</div>" id="frame-unified"></iframe></div>' +
+                    '</div>';
+                loadIframe('frame-unified', '/api/versions/' + currentTo + '?from=' + encodeURIComponent(currentFrom) + '&mode=unified');
+            }})
+            .catch(function(err) {{
+                container.innerHTML = '<div class="empty-state"><h3>加载失败</h3><p>' + err + '</p></div>';
+            }});
     }} else if (currentMode === 'single') {{
         // 仅目标：显示大纲按钮
         if (toggleBtn) toggleBtn.style.display = 'flex';

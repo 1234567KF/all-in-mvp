@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>all-in-mvp | 多 Agent 并行开发流程白皮书 v2.3</title>
+  <meta name="description" content="从需求对齐到交付的完整多 Agent 并行工程流程。5 个阶段、严格门禁、最大并行度。" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'ag-black': '#050505',
+            'ag-dark': '#0a0a0f',
+            'ag-card': '#111118',
+            'ag-border': '#1e1e2e',
+            'ag-blue': '#4f46e5',
+            'ag-purple': '#7c3aed',
+            'ag-cyan': '#06b6d4',
+            'ag-pink': '#ec4899',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          animation: {
+            'bounce-slow': 'bounce 2s infinite',
+            'float': 'float 6s ease-in-out infinite',
+          },
+          keyframes: {
+            float: {
+              '0%, 100%': { transform: 'translateY(0)' },
+              '50%': { transform: 'translateY(-20px)' },
+            },
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #050505;
+      color: #ffffff;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    #particle-canvas {
+      position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0; pointer-events: none;
+    }
+    main { position: relative; z-index: 1; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #050505; }
+    ::-webkit-scrollbar-thumb { background: #1e1e2e; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #2e2e3e; }
+    ::selection { background: rgba(79, 70, 229, 0.3); color: #ffffff; }
+    code { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.85em; }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-20px); }
+    }
+    .animate-float { animation: float 6s ease-in-out infinite; }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(40px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in-up {
+      opacity: 0;
+      animation: fadeInUp 0.8s ease-out forwards;
+    }
+    .fade-in-up-delay-1 { animation-delay: 0.1s; }
+    .fade-in-up-delay-2 { animation-delay: 0.2s; }
+    .fade-in-up-delay-3 { animation-delay: 0.3s; }
+    .fade-in-up-delay-4 { animation-delay: 0.4s; }
+    .fade-in-up-delay-5 { animation-delay: 0.5s; }
+
+    @keyframes countUp {
+      from { opacity: 0; transform: scale(0.5); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .count-up {
+      opacity: 0;
+      animation: countUp 0.6s ease-out forwards;
+    }
+
+    .stage-card, .role-card, .principle-card, .quality-gate, .metric-item {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+    }
+    .stage-card.visible, .role-card.visible, .principle-card.visible, .quality-gate.visible, .metric-item.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .metric-circle {
+      stroke-dashoffset: 226;
+      transition: stroke-dashoffset 1.5s ease-out;
+    }
+    .metric-circle.animate {
+      stroke-dashoffset: var(--target-offset);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="particle-canvas"></canvas>
+
+  <main class="relative">
+    <!-- Hero Section -->
+    <section id="hero" class="min-h-screen flex items-center justify-center">
+      <div class="relative z-10 flex flex-col items-center justify-center min-h-screen text-center px-4">
+        <div class="mb-6 fade-in-up">
+          <span class="inline-block px-4 py-1.5 rounded-full text-xs font-medium tracking-wider uppercase bg-ag-blue/10 text-ag-blue border border-ag-blue/20">
+            v2.3 最终融合版
+          </span>
+        </div>
+        <h1 class="text-6xl md:text-8xl lg:text-9xl font-bold tracking-tight mb-6 fade-in-up fade-in-up-delay-1">
+          <span class="bg-gradient-to-r from-ag-blue via-ag-purple to-ag-cyan bg-clip-text text-transparent">
+            all-in-mvp
+          </span>
+        </h1>
+        <p class="text-xl md:text-2xl text-gray-400 max-w-2xl mb-4 fade-in-up fade-in-up-delay-2">
+          多 Agent 并行开发流程白皮书
+        </p>
+        <p class="text-sm md:text-base text-gray-500 max-w-xl mb-12 fade-in-up fade-in-up-delay-3">
+          从需求对齐到交付的完整多 Agent 并行工程流程。5 个阶段、严格门禁、最大并行度。
+        </p>
+        <div class="flex gap-4 fade-in-up fade-in-up-delay-4">
+          <a href="#stages" class="px-8 py-3 rounded-full bg-gradient-to-r from-ag-blue to-ag-purple text-white font-medium hover:opacity-90 transition-opacity">
+            探索流程
+          </a>
+          <a href="#principles" class="px-8 py-3 rounded-full border border-gray-700 text-gray-300 font-medium hover:border-gray-500 transition-colors">
+            决策原则
+          </a>
+        </div>
+        <div class="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce-slow fade-in-up fade-in-up-delay-5">
+          <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section id="stats" class="py-20 px-4">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
+        <div class="text-center p-6 rounded-2xl bg-ag-card/50 border border-ag-border/50 backdrop-blur-sm count-up">
+          <div class="text-3xl md:text-4xl font-bold text-white mb-2">16+</div>
+          <div class="text-sm text-gray-400">Agent 角色</div>
+        </div>
+        <div class="text-center p-6 rounded-2xl bg-ag-card/50 border border-ag-border/50 backdrop-blur-sm count-up" style="animation-delay:0.1s">
+          <div class="text-3xl md:text-4xl font-bold text-white mb-2">5</div>
+          <div class="text-sm text-gray-400">开发阶段</div>
+        </div>
+        <div class="text-center p-6 rounded-2xl bg-ag-card/50 border border-ag-border/50 backdrop-blur-sm count-up" style="animation-delay:0.2s">
+          <div class="text-3xl md:text-4xl font-bold text-white mb-2">5</div>
+          <div class="text-sm text-gray-400">测试层级</div>
+        </div>
+        <div class="text-center p-6 rounded-2xl bg-ag-card/50 border border-ag-border/50 backdrop-blur-sm count-up" style="animation-delay:0.3s">
+          <div class="text-3xl md:text-4xl font-bold text-white mb-2">3+3</div>
+          <div class="text-sm text-gray-400">并行上限</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stages Section -->
+    <section id="stages" class="py-24 px-4">
+      <div class="max-w-7xl mx-auto">
+        <div class="section-title text-center mb-16">
+          <span class="inline-block px-3 py-1 rounded-full text-xs font-medium tracking-wider uppercase bg-ag-purple/10 text-ag-purple border border-ag-purple/20 mb-4">核心流程</span>
+          <h2 class="text-3xl md:text-5xl font-bold text-white mb-4">五阶段流水线</h2>
+          <p class="text-gray-400 max-w-2xl mx-auto">从需求到交付，每个阶段都有明确的产出物和门禁标准</p>
+        </div>
+        <div class="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <!-- Stage 0 -->
+          <div class="stage-card group relative p-5 rounded-2xl bg-ag-card/60 border border-ag-border/50 backdrop-blur-sm hover:border-ag-blue/50 transition-all duration-500 hover:scale-105">
+            <div class="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" style="background: radial-gradient(circle at 50% 0%, #4f46e515, transparent 70%)"></div>
+            <div class="relative z-10">
+              <div class="flex items-center justify-between mb-4">
+                <span class="text-2xl">🔄</span>
+                <span class="text-xs font-mono px-2 py-1 rounded bg-gray-800 text-gray-400">Stage 0</span>
+              </div>
+              <h3 class="text-lg font-bold text-white mb-2">迭代模型</h3>
+              <p class="text-sm text-gray-400 mb-4 leading-relaxed">全量模式 vs 增量模式，PRD 变更分级控制，产物复用规则</p>
+              <div class="space-y-2">
+                <div class="flex items-center gap-2 text-xs text-gray-500"><div class="w-1 h-1 rounded-full bg-ag-blue"></div><span>全量/增量裁剪规则</span></div>
+                <div class="flex items-center gap-2 text-xs text-gray-500"><div class="w-1 h-1 rounded-full bg-ag-blue"></div><span>回退协议</span></div>
+                <div class="flex items-center gap-2 text-xs text-gray-500"><div class="w-1 h-1 rounded-full bg-ag-blue"></div><span>版本标记机制</span></div>
+              </div>
+            </div>
+            <div class="hidden lg:block absolute -right-2 top-1/2 -translate-y-1/2 z-20">
+              <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </div>
+          </div>
+
+          <!-- Stage 1 -->
+          <div class="stage-card group relative p-5 rounded-2xl bg-ag-card/60 border border-ag-border/50 backdrop-blur-sm hover:border-ag-blue/50 transition-all duration-500 hover:scale-105">
+            <div class="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" style="background: radial-gradient(circle at 50% 0%, #4f46e515, transparent 70%)"></div>
+            <div class="relative z-10">
+              <div class="flex items-center justify-between mb-4">
+                <span class="text-2xl">📋</span>
+                <span class="text-xs font-mono px-2 py-1 rounded bg-gray-800 text-gray-400">Stage 1</span>
+              </div>
+              <h3 class="text-lg font-bold text-white mb-2">需求对齐</h3>
+              <p class="text-sm text-gray-400 mb-4 leading-relaxed">产品经理 Agent 将原始需求转化为 MECE 完整的 PRD 文档</p>
+              <div class="space-y-2">
+                <div class="flex items-center gap-2 text-xs text-gray-500"><div class="w-1 h-1 rounded-full bg-ag-blue"></div><code class="font-mono">PRD.md（9个强制章节）</code></div>
+                <div class="flex items-center gap-2 text-xs text-gray-500"><div class="w-1 h-1 rounded-full bg-ag-blue"></div><code class="font-mono">术语定义</code></div>
+                <div class="flex items-center gap-2 text-xs text-gray-500"><div class="w-1 h-1 rounded-full bg-ag-blue"></div><code class="font-mono">验收标准</code></div>
+                <div class="flex items-center gap-2 text-xs text-gray-500"><div class="w-1 h-1 rounded-full bg-ag-blue"></div><code class="font-mono">"不做"清单</code></div>
+              </div>
+            </div>
+            <div class="hidden lg:block absolute -right-2 top-1/2 -translate-y-1/2 z-20">
+              <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </div>
+          </div>
+
+          <!-- Stage 2 -->
+          <div class="stage-card group relative p-5 rounded-2xl bg-ag-card/60 border border-ag-border/50 backdrop-blur-sm hover:border-ag-purple/50 transition-all duration-500 hover:scale-105">
+            <div class="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" style="background: radial-gradient(circle at 50% 0%, #7c3aed15, transparent 70%)"></div>
+            <div class="relative z-10">
+              <div class="flex items-center justify-between mb-4">
+                <span class="text-2xl">🏗️</span>
+                <span class="text-xs font-mono px-2 py-1 rounded bg-gray-800 text-gray-400">Stage 2</span>
+              </div>
+              <h3 class="text-lg font-bold text-white mb-2">规划阶段</h3>
+              <p class="text-sm text-gray-400 mb-4 leading-relaxed">架构专家 → 业务专家 → ↺拷问审查循环 → Mock + 测试并行</p>
+              <div class="space-y-2">
+                <div class="flex items-center gap-2 text-xs text-gray-500"><div class="w-1 h-1 rounded-full bg-ag-purple"></div><code class="font-mono">spec.md / schema.sql</code></div>
+                <div class="flex items-center gap-2 text-xs text-gray-500"><div class="w-1 h-1 rounded-full bg-ag-purple"></div><code class="font-mono">api-contract.yaml</code></div>
+                <div class="flex items-center gap-2 text-xs text-gray-500"><div class="w-1 h-1 rounded-full bg-ag-purple"></div><code class="font-mono">task.md / &lt;module&gt;.md</code></div>
+                <div class="flex items-center gap-2 text-xs text-gray-500"><div class="w-1 h-1 rounded-full bg-ag-purple"></div><code class="font-mono">mocks/ / integration-tests/</code></div>
+              </div>
+            </div>
+            <div class="hidden lg:block absolute -right-2 top-1/2 -translate-y-1/2 z-20">
+              <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </div>
+          </div>
+
+          <!-- Stage 3 -->
+          <div class="stage-card group relative p-5 rounded-2xl bg-ag-card/60 border border-ag-border/50 backdrop-blur-sm hover:border-ag-cyan/50 transition-all duration-500 hover:scale-105">
+            <div class="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" style="background: radial-gradient(circle at 50% 0%, #06b6d415, transparent 70%)"></div>
+            <div class="relative z-10">
+              <div class="flex items-center justify-between mb-4">
+                <span class="text-2xl">⚡</span>
+                <span class="text-xs font-mono px-2 py-1 rounded bg-gray-800 text-gray-400">Stage 3</span>
+              </div>
+              <h3 class="text-lg font-bold text-white mb-2">执行阶段</h3>
+              <p class="text-sm text-gray-400 mb-4 leading-relaxed">Pipeline Coordinator 调度，后端 TDD + 前端 Mock 并行开发</p>
+              <div class="space-y-2">
+                <div class="flex items-center gap-2 text-xs text-gray-500"><div class="w-1 h-1 rounded-full bg-ag-cyan"></div><code class="font-mono">后端模块代码</code></div>
+                <div class="flex items-center gap-2 text-xs text-gray-500"><div class="w-1 h-1 rounded-full bg-ag-cyan"></div><code class="font-mono">前端页面组件</code></div>
+                <div class="flex items-center gap-2 text-xs text-gray-500"><div class="w-1 h-1 rounded-full bg-ag-cyan"></div><code class="font-mono">单元测试</code></div>
+                <div class="flex items-center gap-2 text-xs text-gray-500"><div class="w-1 h-1 rounded-full bg-ag-cyan"></div><code class="font-mono">边界用例补充</code></div>
+              </div>
+            </div>
+            <div class="hidden lg:block absolute -right-2 top-1/2 -translate-y-1/2 z-20">
+              <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </div>
+          </div>
+
+          <!-- Stage 4 -->
+          <div class="stage-card group relative p-5 rounded-2xl bg-ag-card/60 border border-ag-border/50 backdrop-blur-sm hover:border-ag-pink/50 transition-all duration-500 hover:scale-105">
+            <div class="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" style="background: radial-gradient(circle at 50% 0%, #ec489915, transparent 70%)"></div>
+            <div class="relative z-10">
+              <div class="flex items-center justify-between mb-4">
+                <span class="text-2xl">✅</span>
+                <span class="text-xs font-mono px-2 py-1 rounded bg-gray-800 text-gray-400">Stage 4</span>
+              </div>
+              <h3 class="text-lg font-bold text-white mb-2">集成验收</h3>
+              <p class="text-sm text-gray-400 mb-4 leading-relaxed">后端合并 → 前后端联调 → 集成测试 → Bug 修复循环</p>
+              <div class="space-y-2">
+                <div class="flex items-center gap-2 text-xs text-gray-500"><div class="w-1 h-1 rounded-full bg-ag-pink"></div><code class="font-mono">集成测试报告</code></div>
+                <div class="flex items-center gap-2 text-xs text-gray-500"><div class="w-1 h-1 rounded-full bg-ag-pink"></div><code class="font-mono">Bug 修复记录</code></div>
+                <div class="flex items-center gap-2 text-xs text-gray-500"><div class="w-1 h-1 rounded-full bg-ag-pink"></div><code class="font-mono">delivery/ 归档包</code></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stage 5 -->
+        <div class="mt-6 max-w-2xl mx-auto">
+          <div class="stage-card group relative p-5 rounded-2xl bg-ag-card/60 border border-ag-border/50 backdrop-blur-sm hover:border-amber-500/50 transition-all duration-500 hover:scale-105 text-center">
+            <div class="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" style="background: radial-gradient(circle at 50% 0%, #f59e0b15, transparent 70%)"></div>
+            <div class="relative z-10">
+              <div class="flex items-center justify-center gap-3 mb-3">
+                <span class="text-2xl">📊</span>
+                <span class="text-xs font-mono px-2 py-1 rounded bg-gray-800 text-gray-400">Stage 5</span>
+              </div>
+              <h3 class="text-lg font-bold text-white mb-2">流程复盘与经验沉淀</h3>
+              <p class="text-sm text-gray-400">流程健康度评分、异常模式识别、模式/反模式提取、白皮书修订提案</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Iteration Model Section -->
+    <section id="iteration" class="py-24 px-4">
+      <div class="max-w-6xl mx-auto">
+        <div class="section-title text-center mb-16">
+          <span class="inline-block px-3 py-1 rounded-full text-xs font-medium tracking-wider uppercase bg-ag-blue/10 text-ag-blue border border-ag-blue/20 mb-4">迭代模型</span>
+          <h2 class="text-3xl md:text-5xl font-bold text-white mb-4">两种运行模式</h2>
+          <p class="text-gray-400 max-w-2xl mx-auto">全量模式用于全新项目，增量模式用于迭代追加功能</p>
+        </div>
+        <div class="grid md:grid-cols-2 gap-8">
+          <div class="principle-card p-6 rounded-2xl bg-ag-card/40 border border-ag-border/30 hover:border-ag-blue/40 transition-all duration-300">
+            <div class="flex items-center gap-3 mb-6">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style="background-color: #4f46e520; color: #4f46e5">🆕</div>
+              <h3 class="text-lg font-bold text-white">全量模式</h3>
+              <span class="text-xs px-2 py-0.5 rounded-full bg-ag-blue/20 text-ag-blue">全新项目</span>
+            </div>
+            <p class="text-sm text-gray-400 mb-4">完整执行 Stage 1-4，全部模块一次到位。适用于第一次交付或重大重构。</p>
+            <ul class="space-y-2">
+              <li class="flex items-start gap-3 text-sm text-gray-400"><div class="w-1.5 h-1.5 rounded-full mt-2 bg-ag-blue"></div><span>PRD 从零编写，9 个强制章节全覆盖</span></li>
+              <li class="flex items-start gap-3 text-sm text-gray-400"><div class="w-1.5 h-1.5 rounded-full mt-2 bg-ag-blue"></div><span>架构专家输出完整 spec + schema + api-contract</span></li>
+              <li class="flex items-start gap-3 text-sm text-gray-400"><div class="w-1.5 h-1.5 rounded-full mt-2 bg-ag-blue"></div><span>所有模块按依赖图分批并行开发</span></li>
+            </ul>
+          </div>
+          <div class="principle-card p-6 rounded-2xl bg-ag-card/40 border border-ag-border/30 hover:border-ag-cyan/40 transition-all duration-300">
+            <div class="flex items-center gap-3 mb-6">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style="background-color: #06b6d420; color: #06b6d4">📈</div>
+              <h3 class="text-lg font-bold text-white">增量模式</h3>
+              <span class="text-xs px-2 py-0.5 rounded-full bg-ag-cyan/20 text-ag-cyan">迭代项目</span>
+            </div>
+            <p class="text-sm text-gray-400 mb-4">每次迭代只跑涉及的 Stage，已锁定模块跳过。支持三种裁剪场景。</p>
+            <ul class="space-y-2">
+              <li class="flex items-start gap-3 text-sm text-gray-400"><div class="w-1.5 h-1.5 rounded-full mt-2 bg-ag-cyan"></div><span>新增独立模块：仅新模块走完整 Stage 2 流程</span></li>
+              <li class="flex items-start gap-3 text-sm text-gray-400"><div class="w-1.5 h-1.5 rounded-full mt-2 bg-ag-cyan"></div><span>修改现有模块：重走受影响部分的 ①→②→↺</span></li>
+              <li class="flex items-start gap-3 text-sm text-gray-400"><div class="w-1.5 h-1.5 rounded-full mt-2 bg-ag-cyan"></div><span>Bug 修复：跳过 Stage 1-3，仅 Stage 4</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- PRD Change Levels -->
+        <div class="mt-8 p-6 rounded-2xl bg-ag-card/40 border border-ag-border/30">
+          <h3 class="text-lg font-bold text-white mb-4">PRD 变更分级控制</h3>
+          <div class="grid md:grid-cols-3 gap-4">
+            <div class="p-4 rounded-xl bg-gray-800/50 border border-gray-700/50">
+              <div class="text-xs font-mono text-ag-blue mb-2">微小变更</div>
+              <div class="text-sm text-gray-300 mb-2">文案、字段名</div>
+              <div class="text-xs text-gray-500">直接更新 PRD → 通知相关 Agent 刷新 → 进入 Stage 3 增量开发</div>
+            </div>
+            <div class="p-4 rounded-xl bg-gray-800/50 border border-gray-700/50">
+              <div class="text-xs font-mono text-ag-purple mb-2">中等变更</div>
+              <div class="text-sm text-gray-300 mb-2">新增字段、调整规则</div>
+              <div class="text-xs text-gray-500">重跑 Stage 2 ①② + ↺ 循环 → 受影响 module.md 更新 → Stage 3 增量</div>
+            </div>
+            <div class="p-4 rounded-xl bg-gray-800/50 border border-gray-700/50">
+              <div class="text-xs font-mono text-ag-pink mb-2">重大变更</div>
+              <div class="text-sm text-gray-300 mb-2">新增模块、调整架构</div>
+              <div class="text-xs text-gray-500">从 Stage 2 重新执行 → 已完成的受影响模块标记为 REBUILD</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Roles Section -->
+    <section id="roles" class="py-24 px-4">
+      <div class="max-w-7xl mx-auto">
+        <div class="section-title text-center mb-16">
+          <span class="inline-block px-3 py-1 rounded-full text-xs font-medium tracking-wider uppercase bg-ag-cyan/10 text-ag-cyan border border-ag-cyan/20 mb-4">角色矩阵</span>
+          <h2 class="text-3xl md:text-5xl font-bold text-white mb-4">16+ Agent 角色</h2>
+          <p class="text-gray-400 max-w-2xl mx-auto">每个角色有明确的职责边界、产出物和并行策略</p>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div class="role-card group p-4 rounded-xl bg-ag-card/40 border border-ag-border/30 hover:border-ag-blue/40 transition-all duration-300 hover:scale-105 cursor-default">
+            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-ag-blue"></div><span class="text-xs font-mono text-gray-500">Stage 1</span></div>
+            <h4 class="text-sm font-semibold text-white mb-1">产品经理</h4><p class="text-xs text-gray-500 mb-2">PRD（9个强制章节）</p><span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">串行</span>
+          </div>
+          <div class="role-card group p-4 rounded-xl bg-ag-card/40 border border-ag-border/30 hover:border-ag-purple/40 transition-all duration-300 hover:scale-105 cursor-default">
+            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-ag-purple"></div><span class="text-xs font-mono text-gray-500">Stage 2①</span></div>
+            <h4 class="text-sm font-semibold text-white mb-1">架构专家</h4><p class="text-xs text-gray-500 mb-2">spec + schema + api-contract</p><span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">串行</span>
+          </div>
+          <div class="role-card group p-4 rounded-xl bg-ag-card/40 border border-ag-border/30 hover:border-ag-purple/40 transition-all duration-300 hover:scale-105 cursor-default">
+            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-ag-purple"></div><span class="text-xs font-mono text-gray-500">Stage 2②</span></div>
+            <h4 class="text-sm font-semibold text-white mb-1">业务领域专家</h4><p class="text-xs text-gray-500 mb-2">task.md + &lt;module&gt;.md</p><span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">串行</span>
+          </div>
+          <div class="role-card group p-4 rounded-xl bg-ag-card/40 border border-ag-border/30 hover:border-ag-purple/40 transition-all duration-300 hover:scale-105 cursor-default">
+            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-ag-purple"></div><span class="text-xs font-mono text-gray-500">Stage 2↺</span></div>
+            <h4 class="text-sm font-semibold text-white mb-1">拷问审查</h4><p class="text-xs text-gray-500 mb-2">审查报告（grill-with-docs）</p><span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">串行循环</span>
+          </div>
+          <div class="role-card group p-4 rounded-xl bg-ag-card/40 border border-ag-border/30 hover:border-ag-purple/40 transition-all duration-300 hover:scale-105 cursor-default">
+            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-ag-purple"></div><span class="text-xs font-mono text-gray-500">Stage 2③a</span></div>
+            <h4 class="text-sm font-semibold text-white mb-1">Mock 专家</h4><p class="text-xs text-gray-500 mb-2">mocks/</p><span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">并行</span>
+          </div>
+          <div class="role-card group p-4 rounded-xl bg-ag-card/40 border border-ag-border/30 hover:border-ag-purple/40 transition-all duration-300 hover:scale-105 cursor-default">
+            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-ag-purple"></div><span class="text-xs font-mono text-gray-500">Stage 2③b-1</span></div>
+            <h4 class="text-sm font-semibold text-white mb-1">单模块测试</h4><p class="text-xs text-gray-500 mb-2">modules/*.test.ts</p><span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">内部2Agent</span>
+          </div>
+          <div class="role-card group p-4 rounded-xl bg-ag-card/40 border border-ag-border/30 hover:border-ag-purple/40 transition-all duration-300 hover:scale-105 cursor-default">
+            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-ag-purple"></div><span class="text-xs font-mono text-gray-500">Stage 2③b-2</span></div>
+            <h4 class="text-sm font-semibold text-white mb-1">业务条线测试</h4><p class="text-xs text-gray-500 mb-2">scenarios/*.test.ts</p><span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">串行</span>
+          </div>
+          <div class="role-card group p-4 rounded-xl bg-ag-card/40 border border-ag-border/30 hover:border-ag-purple/40 transition-all duration-300 hover:scale-105 cursor-default">
+            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-ag-purple"></div><span class="text-xs font-mono text-gray-500">Stage 2③c</span></div>
+            <h4 class="text-sm font-semibold text-white mb-1">测试审查</h4><p class="text-xs text-gray-500 mb-2">审查报告</p><span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">串行</span>
+          </div>
+          <div class="role-card group p-4 rounded-xl bg-ag-card/40 border border-ag-border/30 hover:border-ag-cyan/40 transition-all duration-300 hover:scale-105 cursor-default">
+            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-ag-cyan"></div><span class="text-xs font-mono text-gray-500">Stage 3</span></div>
+            <h4 class="text-sm font-semibold text-white mb-1">Pipeline Coordinator</h4><p class="text-xs text-gray-500 mb-2">调度指令（依赖图+专家匹配）</p><span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">中枢</span>
+          </div>
+          <div class="role-card group p-4 rounded-xl bg-ag-card/40 border border-ag-border/30 hover:border-ag-cyan/40 transition-all duration-300 hover:scale-105 cursor-default">
+            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-ag-cyan"></div><span class="text-xs font-mono text-gray-500">Stage 3</span></div>
+            <h4 class="text-sm font-semibold text-white mb-1">后端开发</h4><p class="text-xs text-gray-500 mb-2">模块代码 + 测试（TDD）</p><span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">最多3Agent</span>
+          </div>
+          <div class="role-card group p-4 rounded-xl bg-ag-card/40 border border-ag-border/30 hover:border-ag-cyan/40 transition-all duration-300 hover:scale-105 cursor-default">
+            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-ag-cyan"></div><span class="text-xs font-mono text-gray-500">Stage 3</span></div>
+            <h4 class="text-sm font-semibold text-white mb-1">前端开发</h4><p class="text-xs text-gray-500 mb-2">页面 + 组件（Mock驱动）</p><span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">最多3Agent</span>
+          </div>
+          <div class="role-card group p-4 rounded-xl bg-ag-card/40 border border-ag-border/30 hover:border-ag-cyan/40 transition-all duration-300 hover:scale-105 cursor-default">
+            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-ag-cyan"></div><span class="text-xs font-mono text-gray-500">Stage 3</span></div>
+            <h4 class="text-sm font-semibold text-white mb-1">测试补充</h4><p class="text-xs text-gray-500 mb-2">边界用例（事件驱动）</p><span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">事件驱动</span>
+          </div>
+          <div class="role-card group p-4 rounded-xl bg-ag-card/40 border border-ag-border/30 hover:border-ag-cyan/40 transition-all duration-300 hover:scale-105 cursor-default">
+            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-ag-cyan"></div><span class="text-xs font-mono text-gray-500">Stage 3</span></div>
+            <h4 class="text-sm font-semibold text-white mb-1">Code Review</h4><p class="text-xs text-gray-500 mb-2">Review意见（独立Agent）</p><span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">按需触发</span>
+          </div>
+          <div class="role-card group p-4 rounded-xl bg-ag-card/40 border border-ag-border/30 hover:border-ag-pink/40 transition-all duration-300 hover:scale-105 cursor-default">
+            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-ag-pink"></div><span class="text-xs font-mono text-gray-500">Stage 4</span></div>
+            <h4 class="text-sm font-semibold text-white mb-1">Stage4 Coordinator</h4><p class="text-xs text-gray-500 mb-2">联调编排 + Bug分发</p><span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">串行</span>
+          </div>
+          <div class="role-card group p-4 rounded-xl bg-ag-card/40 border border-ag-border/30 hover:border-ag-pink/40 transition-all duration-300 hover:scale-105 cursor-default">
+            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-ag-pink"></div><span class="text-xs font-mono text-gray-500">Stage 4</span></div>
+            <h4 class="text-sm font-semibold text-white mb-1">Debug 修复</h4><p class="text-xs text-gray-500 mb-2">Bug修复 + 回归测试</p><span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">按需触发</span>
+          </div>
+          <div class="role-card group p-4 rounded-xl bg-ag-card/40 border border-ag-border/30 hover:border-amber-500/40 transition-all duration-300 hover:scale-105 cursor-default">
+            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-amber-500"></div><span class="text-xs font-mono text-gray-500">Stage 5</span></div>
+            <h4 class="text-sm font-semibold text-white mb-1">复盘 Agent</h4><p class="text-xs text-gray-500 mb-2">retrospective.md</p><span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">串行</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Principles Section -->
+    <section id="principles" class="py-24 px-4">
+      <div class="max-w-6xl mx-auto">
+        <div class="section-title text-center mb-16">
+          <span class="inline-block px-3 py-1 rounded-full text-xs font-medium tracking-wider uppercase bg-ag-blue/10 text-ag-blue border border-ag-blue/20 mb-4">决策原则</span>
+          <h2 class="text-3xl md:text-5xl font-bold text-white mb-4">串行 vs 并行</h2>
+          <p class="text-gray-400 max-w-2xl mx-auto">明确什么时候必须串行，什么时候可以并行</p>
+        </div>
+        <div class="grid md:grid-cols-2 gap-8">
+          <div class="principle-card p-6 rounded-2xl bg-ag-card/40 border border-ag-border/30">
+            <div class="flex items-center gap-3 mb-6">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style="background-color: #4f46e520; color: #4f46e5">⟳</div>
+              <h3 class="text-lg font-bold text-white">什么时候必须串行？</h3>
+            </div>
+            <ul class="space-y-3">
+              <li class="flex items-start gap-3 text-sm text-gray-400"><div class="w-1.5 h-1.5 rounded-full mt-2 bg-ag-blue"></div><span>PRD 未锁定前：所有 Stage2 Agent 必须等待</span></li>
+              <li class="flex items-start gap-3 text-sm text-gray-400"><div class="w-1.5 h-1.5 rounded-full mt-2 bg-ag-blue"></div><span>↺ 拷问审查循环未通过前：Mock、TDD 必须等待</span></li>
+              <li class="flex items-start gap-3 text-sm text-gray-400"><div class="w-1.5 h-1.5 rounded-full mt-2 bg-ag-blue"></div><span>模块间强依赖：如订单依赖用户</span></li>
+              <li class="flex items-start gap-3 text-sm text-gray-400"><div class="w-1.5 h-1.5 rounded-full mt-2 bg-ag-blue"></div><span>接口契约变更：所有依赖 Agent 必须同步</span></li>
+              <li class="flex items-start gap-3 text-sm text-gray-400"><div class="w-1.5 h-1.5 rounded-full mt-2 bg-ag-blue"></div><span>集成测试阶段：必须等前后端都完成</span></li>
+            </ul>
+          </div>
+          <div class="principle-card p-6 rounded-2xl bg-ag-card/40 border border-ag-border/30">
+            <div class="flex items-center gap-3 mb-6">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style="background-color: #06b6d420; color: #06b6d4">⇅</div>
+              <h3 class="text-lg font-bold text-white">什么时候可以并行？</h3>
+            </div>
+            <ul class="space-y-3">
+              <li class="flex items-start gap-3 text-sm text-gray-400"><div class="w-1.5 h-1.5 rounded-full mt-2 bg-ag-cyan"></div><span>③a Mock、③b-1 单模块测试、③b-2 场景测试：↺通过后并行</span></li>
+              <li class="flex items-start gap-3 text-sm text-gray-400"><div class="w-1.5 h-1.5 rounded-full mt-2 bg-ag-cyan"></div><span>③b-1 内部：最多 2 Agent 按模块平分</span></li>
+              <li class="flex items-start gap-3 text-sm text-gray-400"><div class="w-1.5 h-1.5 rounded-full mt-2 bg-ag-cyan"></div><span>无依赖模块的后端开发：用户管理 vs 类目管理</span></li>
+              <li class="flex items-start gap-3 text-sm text-gray-400"><div class="w-1.5 h-1.5 rounded-full mt-2 bg-ag-cyan"></div><span>前端 vs 后端：Mock 就绪后前端即可并行</span></li>
+              <li class="flex items-start gap-3 text-sm text-gray-400"><div class="w-1.5 h-1.5 rounded-full mt-2 bg-ag-cyan"></div><span>Stage3 测试补充：事件驱动，与后端同步</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Human Decision Points -->
+        <div class="mt-8 p-6 rounded-2xl bg-ag-card/40 border border-ag-border/30">
+          <h3 class="text-lg font-bold text-white mb-4">人类决策点完整清单</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left text-gray-500 border-b border-ag-border/50">
+                  <th class="pb-3 pr-4">决策点</th>
+                  <th class="pb-3 pr-4">触发条件</th>
+                  <th class="pb-3 pr-4">决策时限</th>
+                  <th class="pb-3">离线自动策略</th>
+                </tr>
+              </thead>
+              <tbody class="text-gray-400">
+                <tr class="border-b border-ag-border/30">
+                  <td class="py-3 pr-4 text-white">PRD 评审</td>
+                  <td class="py-3 pr-4">Stage1 完成</td>
+                  <td class="py-3 pr-4">无时限</td>
+                  <td class="py-3"><span class="text-ag-pink">不自动通过</span>，挂起</td>
+                </tr>
+                <tr class="border-b border-ag-border/30">
+                  <td class="py-3 pr-4 text-white">↺循环未决</td>
+                  <td class="py-3 pr-4">3轮未通过</td>
+                  <td class="py-3 pr-4">24h</td>
+                  <td class="py-3">自动采纳 grill 推荐方案</td>
+                </tr>
+                <tr class="border-b border-ag-border/30">
+                  <td class="py-3 pr-4 text-white">单模块反复失败</td>
+                  <td class="py-3 pr-4">重试3次仍失败</td>
+                  <td class="py-3 pr-4">4h</td>
+                  <td class="py-3">跳过模块，标记 WARNING</td>
+                </tr>
+                <tr class="border-b border-ag-border/30">
+                  <td class="py-3 pr-4 text-white">Schema 变更</td>
+                  <td class="py-3 pr-4">锁定后需变更</td>
+                  <td class="py-3 pr-4">4h</td>
+                  <td class="py-3"><span class="text-ag-pink">永不自动批准</span></td>
+                </tr>
+                <tr>
+                  <td class="py-3 pr-4 text-white">BLOCKED 超时</td>
+                  <td class="py-3 pr-4">标记后2h无人处理</td>
+                  <td class="py-3 pr-4">2h</td>
+                  <td class="py-3">降级分配，跳过阻塞链</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Grill Cycle Section -->
+    <section id="grill" class="py-24 px-4">
+      <div class="max-w-6xl mx-auto">
+        <div class="section-title text-center mb-16">
+          <span class="inline-block px-3 py-1 rounded-full text-xs font-medium tracking-wider uppercase bg-ag-purple/10 text-ag-purple border border-ag-purple/20 mb-4">拷问审查</span>
+          <h2 class="text-3xl md:text-5xl font-bold text-white mb-4">↺ 循环分级矩阵</h2>
+          <p class="text-gray-400 max-w-2xl mx-auto">按严重度分流，避免低价值问题浪费循环轮次</p>
+        </div>
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="principle-card p-5 rounded-xl bg-ag-card/40 border border-ag-border/30 hover:border-green-500/40 transition-all">
+            <div class="text-xs font-mono text-green-400 mb-2">自愈级</div>
+            <div class="text-sm text-white font-semibold mb-2">0 轮</div>
+            <p class="text-xs text-gray-500 mb-3">字段命名风格、注释语言、缩进格式</p>
+            <div class="text-xs text-gray-600">①或②自行修正，不进 grill 循环</div>
+          </div>
+          <div class="principle-card p-5 rounded-xl bg-ag-card/40 border border-ag-border/30 hover:border-ag-blue/40 transition-all">
+            <div class="text-xs font-mono text-ag-blue mb-2">调试级</div>
+            <div class="text-sm text-white font-semibold mb-2">最多 2 轮</div>
+            <p class="text-xs text-gray-500 mb-3">字段类型选择、模块边界微调</p>
+            <div class="text-xs text-gray-600">①/②修正后 grill 单轮验证</div>
+          </div>
+          <div class="principle-card p-5 rounded-xl bg-ag-card/40 border border-ag-border/30 hover:border-ag-purple/40 transition-all">
+            <div class="text-xs font-mono text-ag-purple mb-2">协商级</div>
+            <div class="text-sm text-white font-semibold mb-2">最多 3 轮</div>
+            <p class="text-xs text-gray-500 mb-3">验收标准覆盖范围、API 响应字段增减</p>
+            <div class="text-xs text-gray-600">①与②协商后 grill 验证</div>
+          </div>
+          <div class="principle-card p-5 rounded-xl bg-ag-card/40 border border-ag-border/30 hover:border-ag-pink/40 transition-all">
+            <div class="text-xs font-mono text-ag-pink mb-2">上浮/终止级</div>
+            <div class="text-sm text-white font-semibold mb-2">首轮即上浮</div>
+            <p class="text-xs text-gray-500 mb-3">实体关系冲突、核心流程分歧、PRD 根本矛盾</p>
+            <div class="text-xs text-gray-600">立即输出未决清单，上浮人类</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quality Section -->
+    <section id="quality" class="py-24 px-4">
+      <div class="max-w-6xl mx-auto">
+        <div class="section-title text-center mb-16">
+          <span class="inline-block px-3 py-1 rounded-full text-xs font-medium tracking-wider uppercase bg-ag-pink/10 text-ag-pink border border-ag-pink/20 mb-4">质量保障</span>
+          <h2 class="text-3xl md:text-5xl font-bold text-white mb-4">门禁与度量</h2>
+          <p class="text-gray-400 max-w-2xl mx-auto">每个阶段都有硬约束门禁，确保产出物质量</p>
+        </div>
+        <div class="space-y-8">
+          <div class="grid md:grid-cols-2 gap-6">
+            <div class="quality-gate p-5 rounded-xl bg-ag-card/40 border border-ag-border/30">
+              <h4 class="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                <svg class="w-4 h-4 text-ag-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Stage 1 → Stage 2
+              </h4>
+              <ul class="space-y-2">
+                <li class="flex items-center gap-2 text-xs text-gray-400"><div class="w-1 h-1 rounded-full bg-ag-cyan"></div>PRD 文件 > 1KB</li>
+                <li class="flex items-center gap-2 text-xs text-gray-400"><div class="w-1 h-1 rounded-full bg-ag-cyan"></div>9 个章节标题全存在</li>
+                <li class="flex items-center gap-2 text-xs text-gray-400"><div class="w-1 h-1 rounded-full bg-ag-cyan"></div>MECE 检查通过</li>
+              </ul>
+            </div>
+            <div class="quality-gate p-5 rounded-xl bg-ag-card/40 border border-ag-border/30">
+              <h4 class="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                <svg class="w-4 h-4 text-ag-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Stage 2 → Stage 3
+              </h4>
+              <ul class="space-y-2">
+                <li class="flex items-center gap-2 text-xs text-gray-400"><div class="w-1 h-1 rounded-full bg-ag-cyan"></div>所有产出物存在</li>
+                <li class="flex items-center gap-2 text-xs text-gray-400"><div class="w-1 h-1 rounded-full bg-ag-cyan"></div>MD5 与锁定时刻一致</li>
+                <li class="flex items-center gap-2 text-xs text-gray-400"><div class="w-1 h-1 rounded-full bg-ag-cyan"></div>YAML/JSON 语义可解析</li>
+              </ul>
+            </div>
+            <div class="quality-gate p-5 rounded-xl bg-ag-card/40 border border-ag-border/30">
+              <h4 class="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                <svg class="w-4 h-4 text-ag-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Stage 3 → Stage 4
+              </h4>
+              <ul class="space-y-2">
+                <li class="flex items-center gap-2 text-xs text-gray-400"><div class="w-1 h-1 rounded-full bg-ag-cyan"></div>所有模块目录存在 DONE 标记</li>
+                <li class="flex items-center gap-2 text-xs text-gray-400"><div class="w-1 h-1 rounded-full bg-ag-cyan"></div>schema.sql 语法正确</li>
+                <li class="flex items-center gap-2 text-xs text-gray-400"><div class="w-1 h-1 rounded-full bg-ag-cyan"></div>L1-L5 测试全部通过</li>
+              </ul>
+            </div>
+            <div class="quality-gate p-5 rounded-xl bg-ag-card/40 border border-ag-border/30">
+              <h4 class="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                <svg class="w-4 h-4 text-ag-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Stage 4 → 交付
+              </h4>
+              <ul class="space-y-2">
+                <li class="flex items-center gap-2 text-xs text-gray-400"><div class="w-1 h-1 rounded-full bg-ag-cyan"></div>集成测试报告非空</li>
+                <li class="flex items-center gap-2 text-xs text-gray-400"><div class="w-1 h-1 rounded-full bg-ag-cyan"></div>0 个 P0/P1 Bug</li>
+                <li class="flex items-center gap-2 text-xs text-gray-400"><div class="w-1 h-1 rounded-full bg-ag-cyan"></div>Mock-后端一致性验证</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Metrics -->
+          <div class="p-6 rounded-2xl bg-ag-card/40 border border-ag-border/30">
+            <h3 class="text-lg font-bold text-white mb-6">核心质量指标</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div class="metric-item text-center">
+                <div class="relative w-20 h-20 mx-auto mb-3">
+                  <svg class="w-20 h-20 transform -rotate-90" viewBox="0 0 80 80">
+                    <circle cx="40" cy="40" r="36" fill="none" stroke="#1e1e2e" stroke-width="6"></circle>
+                    <circle cx="40" cy="40" r="36" fill="none" stroke="url(#gradient1)" stroke-width="6" stroke-dasharray="169.5 226" stroke-linecap="round" class="metric-circle" data-target="169.5"></circle>
+                    <defs><linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#4f46e5"></stop><stop offset="100%" style="stop-color:#7c3aed"></stop></linearGradient></defs>
+                  </svg>
+                  <div class="absolute inset-0 flex items-center justify-center"><span class="text-lg font-bold text-white">75%</span></div>
+                </div>
+                <div class="text-sm text-gray-400">Grill 首次通过率</div>
+                <div class="text-xs text-gray-600 mt-1">目标: ≥ 75%</div>
+              </div>
+              <div class="metric-item text-center">
+                <div class="relative w-20 h-20 mx-auto mb-3">
+                  <svg class="w-20 h-20 transform -rotate-90" viewBox="0 0 80 80">
+                    <circle cx="40" cy="40" r="36" fill="none" stroke="#1e1e2e" stroke-width="6"></circle>
+                    <circle cx="40" cy="40" r="36" fill="none" stroke="url(#gradient2)" stroke-width="6" stroke-dasharray="158 226" stroke-linecap="round" class="metric-circle" data-target="158"></circle>
+                    <defs><linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#4f46e5"></stop><stop offset="100%" style="stop-color:#7c3aed"></stop></linearGradient></defs>
+                  </svg>
+                  <div class="absolute inset-0 flex items-center justify-center"><span class="text-lg font-bold text-white">70%</span></div>
+                </div>
+                <div class="text-sm text-gray-400">首次 CR 通过率</div>
+                <div class="text-xs text-gray-600 mt-1">目标: ≥ 70%</div>
+              </div>
+              <div class="metric-item text-center">
+                <div class="relative w-20 h-20 mx-auto mb-3">
+                  <svg class="w-20 h-20 transform -rotate-90" viewBox="0 0 80 80">
+                    <circle cx="40" cy="40" r="36" fill="none" stroke="#1e1e2e" stroke-width="6"></circle>
+                    <circle cx="40" cy="40" r="36" fill="none" stroke="url(#gradient3)" stroke-width="6" stroke-dasharray="45 226" stroke-linecap="round" class="metric-circle" data-target="45"></circle>
+                    <defs><linearGradient id="gradient3" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#4f46e5"></stop><stop offset="100%" style="stop-color:#7c3aed"></stop></linearGradient></defs>
+                  </svg>
+                  <div class="absolute inset-0 flex items-center justify-center"><span class="text-lg font-bold text-white">20%</span></div>
+                </div>
+                <div class="text-sm text-gray-400">Bug 逃逸率</div>
+                <div class="text-xs text-gray-600 mt-1">目标: ≤ 20%</div>
+              </div>
+              <div class="metric-item text-center">
+                <div class="relative w-20 h-20 mx-auto mb-3">
+                  <svg class="w-20 h-20 transform -rotate-90" viewBox="0 0 80 80">
+                    <circle cx="40" cy="40" r="36" fill="none" stroke="#1e1e2e" stroke-width="6"></circle>
+                    <circle cx="40" cy="40" r="36" fill="none" stroke="url(#gradient4)" stroke-width="6" stroke-dasharray="180 226" stroke-linecap="round" class="metric-circle" data-target="180"></circle>
+                    <defs><linearGradient id="gradient4" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#4f46e5"></stop><stop offset="100%" style="stop-color:#7c3aed"></stop></linearGradient></defs>
+                  </svg>
+                  <div class="absolute inset-0 flex items-center justify-center"><span class="text-lg font-bold text-white">80%</span></div>
+                </div>
+                <div class="text-sm text-gray-400">并行度利用率</div>
+                <div class="text-xs text-gray-600 mt-1">目标: ≥ 80%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Communication Protocol Section -->
+    <section id="protocol" class="py-24 px-4">
+      <div class="max-w-6xl mx-auto">
+        <div class="section-title text-center mb-16">
+          <span class="inline-block px-3 py-1 rounded-full text-xs font-medium tracking-wider uppercase bg-ag-cyan/10 text-ag-cyan border border-ag-cyan/20 mb-4">通信协议</span>
+          <h2 class="text-3xl md:text-5xl font-bold text-white mb-4">Agent 间通信</h2>
+          <p class="text-gray-400 max-w-2xl mx-auto">文件驱动、单协调者模式，状态即文件</p>
+        </div>
+        <div class="grid md:grid-cols-2 gap-8">
+          <div class="principle-card p-6 rounded-2xl bg-ag-card/40 border border-ag-border/30">
+            <h3 class="text-lg font-bold text-white mb-4">通信原则</h3>
+            <ul class="space-y-3">
+              <li class="flex items-start gap-3 text-sm text-gray-400"><div class="w-1.5 h-1.5 rounded-full mt-2 bg-ag-cyan"></div><span><strong class="text-white">文件驱动</strong>：所有 Agent 通过读写约定目录下的文件协作</span></li>
+              <li class="flex items-start gap-3 text-sm text-gray-400"><div class="w-1.5 h-1.5 rounded-full mt-2 bg-ag-cyan"></div><span><strong class="text-white">单协调者</strong>：每个阶段协调角色唯一，工作 Agent 间不直接通信</span></li>
+              <li class="flex items-start gap-3 text-sm text-gray-400"><div class="w-1.5 h-1.5 rounded-full mt-2 bg-ag-cyan"></div><span><strong class="text-white">状态即文件</strong>：文件出现/更新 = 状态变更</span></li>
+              <li class="flex items-start gap-3 text-sm text-gray-400"><div class="w-1.5 h-1.5 rounded-full mt-2 bg-ag-cyan"></div><span><strong class="text-white">人类唯一入口</strong>：需人类决策的场景由协调者统一提交</span></li>
+            </ul>
+          </div>
+          <div class="principle-card p-6 rounded-2xl bg-ag-card/40 border border-ag-border/30">
+            <h3 class="text-lg font-bold text-white mb-4">文件状态约定</h3>
+            <div class="space-y-3">
+              <div class="flex items-center justify-between p-3 rounded-lg bg-gray-800/50">
+                <span class="text-sm text-gray-400">就绪待分配</span>
+                <span class="text-xs font-mono text-gray-500">模块目录不存在</span>
+              </div>
+              <div class="flex items-center justify-between p-3 rounded-lg bg-gray-800/50">
+                <span class="text-sm text-gray-400">已分配</span>
+                <span class="text-xs font-mono text-gray-500">目录存在，无 DONE 标记</span>
+              </div>
+              <div class="flex items-center justify-between p-3 rounded-lg bg-gray-800/50">
+                <span class="text-sm text-green-400">已完成</span>
+                <span class="text-xs font-mono text-gray-500">存在 DONE 标记文件</span>
+              </div>
+              <div class="flex items-center justify-between p-3 rounded-lg bg-gray-800/50">
+                <span class="text-sm text-ag-pink">异常/阻塞</span>
+                <span class="text-xs font-mono text-gray-500">存在 BLOCKED 标记 + 原因</span>
+              </div>
+              <div class="flex items-center justify-between p-3 rounded-lg bg-gray-800/50">
+                <span class="text-sm text-amber-400">推迟</span>
+                <span class="text-xs font-mono text-gray-500">存在 DEFER 标记 + reason.md</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Risk Section -->
+    <section id="risk" class="py-24 px-4">
+      <div class="max-w-6xl mx-auto">
+        <div class="section-title text-center mb-16">
+          <span class="inline-block px-3 py-1 rounded-full text-xs font-medium tracking-wider uppercase bg-ag-pink/10 text-ag-pink border border-ag-pink/20 mb-4">风险应对</span>
+          <h2 class="text-3xl md:text-5xl font-bold text-white mb-4">风险与应对</h2>
+          <p class="text-gray-400 max-w-2xl mx-auto">识别关键风险并制定应对策略</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-gray-500 border-b border-ag-border/50">
+                <th class="pb-3 pr-4">风险</th>
+                <th class="pb-3 pr-4">概率</th>
+                <th class="pb-3 pr-4">影响</th>
+                <th class="pb-3">应对</th>
+              </tr>
+            </thead>
+            <tbody class="text-gray-400">
+              <tr class="border-b border-ag-border/30">
+                <td class="py-3 pr-4 text-white">PRD 不完整或模糊</td>
+                <td class="py-3 pr-4"><span class="text-yellow-400">中</span></td>
+                <td class="py-3 pr-4">后续全返工</td>
+                <td class="py-3">Stage1 MECE 评审 + 质量门禁</td>
+              </tr>
+              <tr class="border-b border-ag-border/30">
+                <td class="py-3 pr-4 text-white">Schema 中途变更</td>
+                <td class="py-3 pr-4"><span class="text-yellow-400">中</span></td>
+                <td class="py-3 pr-4">受影响模块返工</td>
+                <td class="py-3">Stage2 严格锁定 + 变更评审</td>
+              </tr>
+              <tr class="border-b border-ag-border/30">
+                <td class="py-3 pr-4 text-white">↺ 循环超 3 轮</td>
+                <td class="py-3 pr-4"><span class="text-green-400">低</span></td>
+                <td class="py-3 pr-4">进入人类降级</td>
+                <td class="py-3">自动裁决作为兜底</td>
+              </tr>
+              <tr class="border-b border-ag-border/30">
+                <td class="py-3 pr-4 text-white">模块间接口不匹配</td>
+                <td class="py-3 pr-4"><span class="text-ag-pink">高</span></td>
+                <td class="py-3 pr-4">集成失败</td>
+                <td class="py-3">Code Review + Mock 前置验证</td>
+              </tr>
+              <tr class="border-b border-ag-border/30">
+                <td class="py-3 pr-4 text-white">上下文窗口溢出</td>
+                <td class="py-3 pr-4"><span class="text-yellow-400">中</span></td>
+                <td class="py-3 pr-4">Agent 质量下降</td>
+                <td class="py-3">单 Agent 单实例 + prompt ≤500 tokens</td>
+              </tr>
+              <tr>
+                <td class="py-3 pr-4 text-white">Bug 修复引入新问题</td>
+                <td class="py-3 pr-4"><span class="text-yellow-400">中</span></td>
+                <td class="py-3 pr-4">回归失败</td>
+                <td class="py-3">每次修复补充回归测试</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="footer" class="border-t border-ag-border/30 mt-24">
+      <div class="max-w-6xl mx-auto px-4 py-12">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <span class="text-xl font-bold bg-gradient-to-r from-ag-blue to-ag-purple bg-clip-text text-transparent">all-in-mvp</span>
+            <span class="text-xs text-gray-600">v2.3.0</span>
+          </div>
+          <div class="flex items-center gap-6 text-sm text-gray-500">
+            <span>多 Agent 并行开发流程白皮书</span>
+          </div>
+          <div class="text-xs text-gray-700">基于 MVP白皮书最终融合版.md 构建</div>
+        </div>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    // ===== Particle System (Canvas 2D, no external deps) =====
+    (function() {
+      const canvas = document.getElementById('particle-canvas');
+      const ctx = canvas.getContext('2d');
+      let width, height;
+      let particles = [];
+      let mouse = { x: -1000, y: -1000 };
+      let targetMouse = { x: -1000, y: -1000 };
+      let animationId;
+
+      const COLORS = ['#4f46e5', '#7c3aed', '#2563eb', '#06b6d4', '#ec4899'];
+      const PARTICLE_COUNT = window.innerWidth < 768 ? 200 : window.innerWidth < 1440 ? 600 : 1200;
+
+      function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+      }
+
+      class Particle {
+        constructor() {
+          this.reset();
+        }
+        reset() {
+          this.x = Math.random() * width;
+          this.y = Math.random() * height;
+          this.vx = (Math.random() - 0.5) * 0.3;
+          this.vy = (Math.random() - 0.5) * 0.3;
+          this.size = Math.random() * 2 + 0.5;
+          this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+          this.alpha = Math.random() * 0.5 + 0.2;
+          this.pulse = Math.random() * Math.PI * 2;
+        }
+        update(time) {
+          this.x += this.vx;
+          this.y += this.vy;
+
+          // Mouse repulsion
+          const dx = this.x - mouse.x;
+          const dy = this.y - mouse.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 150 && dist > 0) {
+            const force = (150 - dist) / 150 * 0.8;
+            this.vx += (dx / dist) * force;
+            this.vy += (dy / dist) * force;
+          }
+
+          // Damping
+          this.vx *= 0.99;
+          this.vy *= 0.99;
+
+          // Gentle floating
+          this.x += Math.sin(time * 0.001 + this.pulse) * 0.05;
+          this.y += Math.cos(time * 0.001 + this.pulse) * 0.05;
+
+          // Wrap around
+          if (this.x < -10) this.x = width + 10;
+          if (this.x > width + 10) this.x = -10;
+          if (this.y < -10) this.y = height + 10;
+          if (this.y > height + 10) this.y = -10;
+        }
+        draw(ctx, time) {
+          const pulseAlpha = this.alpha * (0.7 + 0.3 * Math.sin(time * 0.002 + this.pulse));
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          ctx.fillStyle = this.color;
+          ctx.globalAlpha = pulseAlpha;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+
+      function init() {
+        resize();
+        particles = [];
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+          particles.push(new Particle());
+        }
+      }
+
+      function drawConnections() {
+        const maxDist = 100;
+        for (let i = 0; i < particles.length; i++) {
+          let connections = 0;
+          for (let j = i + 1; j < particles.length && connections < 3; j++) {
+            const dx = particles[i].x - particles[j].x;
+            const dy = particles[i].y - particles[j].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < maxDist) {
+              const alpha = (1 - dist / maxDist) * 0.1;
+              ctx.beginPath();
+              ctx.moveTo(particles[i].x, particles[i].y);
+              ctx.lineTo(particles[j].x, particles[j].y);
+              ctx.strokeStyle = particles[i].color;
+              ctx.globalAlpha = alpha;
+              ctx.lineWidth = 0.5;
+              ctx.stroke();
+              ctx.globalAlpha = 1;
+              connections++;
+            }
+          }
+        }
+      }
+
+      function animate(time) {
+        animationId = requestAnimationFrame(animate);
+        ctx.clearRect(0, 0, width, height);
+
+        // Smooth mouse
+        mouse.x += (targetMouse.x - mouse.x) * 0.05;
+        mouse.y += (targetMouse.y - mouse.y) * 0.05;
+
+        drawConnections();
+
+        particles.forEach(p => {
+          p.update(time);
+          p.draw(ctx, time);
+        });
+      }
+
+      const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+      if (!isTouchDevice) {
+        document.addEventListener('mousemove', (e) => {
+          targetMouse.x = e.clientX;
+          targetMouse.y = e.clientY;
+        });
+      }
+
+      window.addEventListener('resize', () => {
+        resize();
+        init();
+      });
+
+      init();
+      animate(0);
+    })();
+
+    // ===== Scroll Animations (IntersectionObserver) =====
+    (function() {
+      const observerOptions = {
+        root: null,
+        rootMargin: '0px 0px -10% 0px',
+        threshold: 0.1
+      };
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            // Animate metric circles
+            const circles = entry.target.querySelectorAll('.metric-circle');
+            circles.forEach(circle => {
+              const target = parseFloat(circle.getAttribute('data-target'));
+              circle.style.setProperty('--target-offset', 226 - target);
+              setTimeout(() => circle.classList.add('animate'), 200);
+            });
+          }
+        });
+      }, observerOptions);
+
+      document.querySelectorAll('.stage-card, .role-card, .principle-card, .quality-gate, .metric-item').forEach(el => {
+        observer.observe(el);
+      });
+
+      // Stagger delays for cards
+      document.querySelectorAll('.stage-card').forEach((card, i) => {
+        card.style.transitionDelay = `${i * 0.1}s`;
+      });
+      document.querySelectorAll('.role-card').forEach((card, i) => {
+        card.style.transitionDelay = `${i * 0.05}s`;
+      });
+      document.querySelectorAll('.quality-gate').forEach((card, i) => {
+        card.style.transitionDelay = `${i * 0.1}s`;
+      });
+      document.querySelectorAll('.metric-item').forEach((card, i) => {
+        card.style.transitionDelay = `${i * 0.15}s`;
+      });
+    })();
+
+    // ===== Smooth Scroll =====
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function(e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    });
+  </script>
+</body>
+</html>
