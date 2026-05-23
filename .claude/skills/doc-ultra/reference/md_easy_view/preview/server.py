@@ -723,6 +723,137 @@ body {{
 }}
 .sync-scroll-btn:hover {{ background: #f1f5f9; border-color: #3b82f6; color: #3b82f6; }}
 .sync-scroll-btn.locked {{ background: #3b82f6; color: #fff; border-color: #3b82f6; }}
+
+/* ─── 并排视图浮动 Diff 面板 ─── */
+#side-diff-panel {{
+    position: fixed;
+    bottom: 1.2rem;
+    right: 1.2rem;
+    width: 320px;
+    max-width: 42vw;
+    max-height: 55vh;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+    z-index: 1000;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    transition: opacity 0.2s, transform 0.2s;
+}}
+#side-diff-panel.visible {{
+    display: flex;
+    animation: diff-panel-in 0.2s ease-out;
+}}
+@keyframes diff-panel-in {{
+    from {{ opacity: 0; transform: translateY(12px) scale(0.95); }}
+    to {{ opacity: 1; transform: translateY(0) scale(1); }}
+}}
+.side-diff-header {{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0.85rem;
+    background: #f8f9fc;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #333;
+    flex-shrink: 0;
+}}
+.side-diff-header-close {{
+    background: none;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    color: #888;
+    padding: 2px 6px;
+    border-radius: 4px;
+    line-height: 1;
+}}
+.side-diff-header-close:hover {{ background: #e2e8f0; color: #333; }}
+.side-diff-stats {{
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.35rem 0.85rem;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.72rem;
+    color: #666;
+    flex-shrink: 0;
+}}
+.side-diff-stats .ss {{ font-weight: 600; }}
+.side-diff-stats .ss.a {{ color: #16a34a; }}
+.side-diff-stats .ss.r {{ color: #dc2626; }}
+.side-diff-stats .ss.c {{ color: #ca8a04; }}
+.side-diff-body {{
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}}
+.side-diff-body::-webkit-scrollbar {{ width: 5px; }}
+.side-diff-body::-webkit-scrollbar-thumb {{ background: #cbd5e1; border-radius: 3px; }}
+.diff-mini-item {{
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    padding: 0.25rem 0.8rem;
+    border-bottom: 1px solid #f8fafc;
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    line-height: 1.4;
+    transition: background 0.1s;
+}}
+.diff-mini-item:hover {{ background: #f1f5f9; }}
+.diff-mini-item.added {{ border-left: 3px solid #22c55e; }}
+.diff-mini-item.removed {{ border-left: 3px solid #ef4444; }}
+.diff-mini-item.changed {{ border-left: 3px solid #eab308; }}
+.diff-mini-marker {{
+    flex-shrink: 0;
+    width: 14px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.68rem;
+    margin-top: 1px;
+}}
+.diff-mini-marker.added {{ color: #16a34a; }}
+.diff-mini-marker.removed {{ color: #dc2626; }}
+.diff-mini-marker.changed {{ color: #ca8a04; }}
+.diff-mini-ln {{
+    flex-shrink: 0;
+    color: #94a3b8;
+    min-width: 28px;
+    text-align: right;
+    user-select: none;
+}}
+.diff-mini-text {{
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #333;
+}}
+.diff-mini-text.old {{
+    color: #999;
+    text-decoration: line-through;
+    text-decoration-color: rgba(0,0,0,0.2);
+}}
+#side-diff-toggle-btn {{
+    padding: 0.2rem 0.55rem;
+    border: 1px solid #d0d5dd;
+    border-radius: 4px;
+    background: #fff;
+    font-size: 0.72rem;
+    color: #555;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}}
+#side-diff-toggle-btn:hover {{ background: #f1f5f9; border-color: #f59e0b; color: #d97706; }}
+#side-diff-toggle-btn.active {{ background: #fef3c7; color: #92400e; border-color: #f59e0b; }}
 @media (prefers-color-scheme: dark) {{
     .preview-frame .frame-header {{ background: #1e1e24; border-color: #2e2e38; color: #888; }}
 }}
@@ -1068,9 +1199,21 @@ function refreshPreview() {{
             '    <div class="frame-header">' +
             '        <span class="frame-badge frame-badge-right">修订</span>' +
             '        <span>' + currentTo + ' - ' + getVersionName(currentTo) + '</span>' +
+            '        <button id="side-diff-toggle-btn" onclick="toggleSideDiffPanel()" title="显示/隐藏变更清单">📋 变更</button>' +
             '        <button id="sync-scroll-btn" onclick="toggleSyncScroll()" class="sync-scroll-btn" title="锁定/解锁同步滚动">🔗 同步</button>' +
             '    </div>' +
             '    <div class="frame-content"><iframe srcdoc="<div class=loading>加载中...</div>" id="frame-to"></iframe></div>' +
+            '</div>' +
+            // 浮动 Diff 面板
+            '<div id="side-diff-panel">' +
+            '    <div class="side-diff-header">' +
+            '        <span>📋 变更清单</span>' +
+            '        <button class="side-diff-header-close" onclick="toggleSideDiffPanel()">✕</button>' +
+            '    </div>' +
+            '    <div class="side-diff-stats" id="side-diff-stats"></div>' +
+            '    <div class="side-diff-body" id="side-diff-body">' +
+            '        <div style="padding:1rem;text-align:center;color:#94a3b8;font-size:0.8rem;">加载中...</div>' +
+            '    </div>' +
             '</div>';
         // 左侧加载原始版本，右侧加载修订模式（带 diff 颜色标记）
         loadIframe('frame-from', '/api/versions/' + currentFrom);
@@ -1085,6 +1228,8 @@ function refreshPreview() {{
                     '<span class="stat-box"><span class="stat-label">-删除</span> <span class="stat-value removed">' + data.removed + '</span></span>' +
                     '<span class="stat-box"><span class="stat-label">~修改</span> <span class="stat-value changed">' + data.changed + '</span></span>' +
                     '<span style="color:#888;margin-left:0.5rem;">| 并排视图：左侧基准/右侧修订</span>';
+                // 构建浮动变更清单
+                buildSideDiffPanel(data);
             }})
             .catch(function() {{
                 statsBar.innerHTML = '<span style="color:#888;">并排视图 — 左侧基准 / 右侧目标</span>';
@@ -1236,6 +1381,120 @@ function initSideBySideSync() {{
     }}
 
     trySetup();
+}}
+
+// ─── 浮动 Diff 面板 ───
+var _sideDiffPanelBuilt = false;
+var _sideDiffPanelVisible = false;
+var _sideDiffData = null;
+
+function toggleSideDiffPanel() {{
+    var panel = document.getElementById('side-diff-panel');
+    var btn = document.getElementById('side-diff-toggle-btn');
+    if (!panel) return;
+    _sideDiffPanelVisible = !_sideDiffPanelVisible;
+    if (_sideDiffPanelVisible) {{
+        panel.classList.add('visible');
+        if (btn) btn.classList.add('active');
+    }} else {{
+        panel.classList.remove('visible');
+        if (btn) btn.classList.remove('active');
+    }}
+}}
+
+function buildSideDiffPanel(data) {{
+    var statsEl = document.getElementById('side-diff-stats');
+    var bodyEl = document.getElementById('side-diff-body');
+    if (!statsEl || !bodyEl) return;
+
+    // 统计行
+    statsEl.innerHTML =
+        '<span>+<span class="ss a">' + data.added + '</span></span>' +
+        '<span>-<span class="ss r">' + data.removed + '</span></span>' +
+        '<span>~<span class="ss c">' + data.changed + '</span></span>' +
+        '<span style="margin-left:auto;">共 ' + data.totalLines + ' 行</span>';
+
+    // 只显示有变更的行
+    var changedLines = (data.lines || []).filter(function(l) {{
+        return l.state !== 'unchanged';
+    }});
+
+    if (changedLines.length === 0) {{
+        bodyEl.innerHTML = '<div style="padding:0.8rem;text-align:center;color:#94a3b8;font-size:0.78rem;">无变更</div>';
+        return;
+    }}
+
+    var html = '';
+    changedLines.forEach(function(l) {{
+        var marker = l.state === 'added' ? '+' : l.state === 'removed' ? '-' : '~';
+        var text = l.text || '';
+        // 截断过长文本
+        if (text.length > 60) text = text.substring(0, 60) + '...';
+        var textEscaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+        html += '<div class="diff-mini-item ' + l.state + '" ' +
+            'onclick="scrollToDiffLine(' + l.line + ')" ' +
+            'title="行 ' + (l.line + 1) + ': ' + textEscaped + '">' +
+            '<span class="diff-mini-marker ' + l.state + '">' + marker + '</span>' +
+            '<span class="diff-mini-ln">' + (l.line + 1) + '</span>' +
+            '<span class="diff-mini-text">' + textEscaped + '</span>' +
+            '</div>';
+
+        // 如果有旧文本，追加一行显示
+        if (l.old && l.state === 'changed') {{
+            var oldText = l.old;
+            if (oldText.length > 60) oldText = oldText.substring(0, 60) + '...';
+            var oldEscaped = oldText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            html += '<div class="diff-mini-item removed" style="opacity:0.65;" onclick="scrollToDiffLine(' + l.line + ')">' +
+                '<span class="diff-mini-marker removed">-</span>' +
+                '<span class="diff-mini-ln">---</span>' +
+                '<span class="diff-mini-text old">' + oldEscaped + '</span>' +
+                '</div>';
+        }}
+    }});
+
+    bodyEl.innerHTML = html;
+    _sideDiffData = data;
+    _sideDiffPanelBuilt = true;
+
+    // 自动显示面板
+    if (!_sideDiffPanelVisible) {{
+        toggleSideDiffPanel();
+    }}
+}}
+
+function scrollToDiffLine(lineNumber) {{
+    var leftIframe = document.getElementById('frame-from');
+    var rightIframe = document.getElementById('frame-to');
+
+    function scrollIframe(iframe) {{
+        if (!iframe || !iframe.contentDocument) return;
+        // 查找 data-line-id 匹配的元素
+        var target = iframe.contentDocument.querySelector('[data-line-id="' + lineNumber + '"]');
+        if (target) {{
+            target.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+            // 高亮闪烁
+            target.style.boxShadow = '0 0 0 3px #f59e0b';
+            setTimeout(function() {{ target.style.boxShadow = ''; }}, 1800);
+        }}
+    }}
+
+    scrollIframe(rightIframe);
+    scrollIframe(leftIframe);
+
+    // 高亮对应的 diff-mini-item
+    var body = document.getElementById('side-diff-body');
+    if (body) {{
+        var items = body.querySelectorAll('.diff-mini-item');
+        items.forEach(function(item) {{
+            item.style.background = '';
+        }});
+        var activeItem = body.querySelector('.diff-mini-item[onclick*="scrollToDiffLine(' + lineNumber + ')"]');
+        if (activeItem) {{
+            activeItem.style.background = '#fef3c7';
+            activeItem.scrollIntoView({{ behavior: 'smooth', block: 'nearest' }});
+        }}
+    }}
 }}
 
 // ─── SSE 连接 ───
