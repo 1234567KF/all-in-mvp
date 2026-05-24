@@ -4,14 +4,16 @@
 
 ## 概述
 
-基于 MVP白皮书.md 定义的 11 种 Agent 角色和 4 个 Stage 的完整流程，设计了以下技能体系：
+基于 MVP白皮书 v2.4.0 定义的 13 种 Agent 角色和 5 个 Stage 的完整流程，设计了以下技能体系：
 
 | Stage | 技能 | 用途 |
 |-------|------|------|
+| **Stage0** | kf-mvp-product-manager | 需求精炼（轻量模式入口） |
 | **Stage1** | kf-mvp-product-manager, kf-mvp-prd-generator | 需求对齐 |
-| **Stage2** | kf-mvp-arch-expert, kf-mvp-spec-generator, kf-mvp-biz-expert, kf-mvp-task-splitter, kf-pipeline-coordinator, grill-with-docs, kf-mvp-mock-service, kf-mvp-test-single, kf-mvp-test-e2e, kf-mvp-testing-strategy | 计划 |
+| **Stage2** | kf-mvp-arch-expert, kf-mvp-spec-generator, kf-mvp-biz-expert, kf-mvp-task-splitter, kf-pipeline-coordinator, grill-with-docs, kf-mvp-mock-service, kf-mvp-test-single, kf-mvp-test-e2e, kf-mvp-test-review, kf-mvp-testing-strategy | 计划 |
 | **Stage3** | kf-mvp-backend-tdd, kf-mvp-frontend-dev, kf-mvp-code-review, kf-mvp-debug, kf-mvp-tdd-helper, kf-mvp-error-handling, kf-mvp-vue-components, kf-mvp-auth-implementation | 执行 |
-| **Stage4** | kf-mvp-integration, kf-mvp-devops, kf-mvp-security, kf-mvp-health-check, kf-mvp-data-migration, kf-mvp-monitoring, kf-mvp-performance, kf-mvp-refactoring, kf-mvp-onboarding, kf-mvp-api-doc, kf-mvp-caching, kf-mvp-cli | 集成与验收 |
+| **Stage4** | kf-mvp-stage4-coordinator, kf-mvp-integration, kf-mvp-devops, kf-mvp-security, kf-mvp-health-check, kf-mvp-data-migration, kf-mvp-monitoring, kf-mvp-performance, kf-mvp-refactoring, kf-mvp-onboarding, kf-mvp-api-doc, kf-mvp-caching, kf-mvp-cli | 集成与验收 |
+| **Stage5** | kf-mvp-retrospective | 复盘与经验沉淀 |
 
 ---
 
@@ -43,8 +45,9 @@
 | 技能 | 模式 | 描述 |
 |------|------|------|
 | [kf-mvp-mock-service](kf-mvp-mock-service/SKILL.md) | Generator | Mock 服务生成技能 |
-| [kf-mvp-test-single](kf-mvp-test-single/SKILL.md) | Generator + Reviewer | 单模块测试编写技能 |
-| [kf-mvp-test-e2e](kf-mvp-test-e2e/SKILL.md) | Generator | 业务条线端到端测试技能 |
+| [kf-mvp-test-single](kf-mvp-test-single/SKILL.md) | Generator + Reviewer | 单模块测试编写技能（③b-1） |
+| [kf-mvp-test-e2e](kf-mvp-test-e2e/SKILL.md) | Generator | 业务条线端到端测试技能（③b-2） |
+| [kf-mvp-test-review](kf-mvp-test-review/SKILL.md) | Reviewer | 测试用例静态审查技能（③c） |
 | [kf-mvp-testing-strategy](kf-mvp-testing-strategy/SKILL.md) | Tool Wrapper | 测试策略设计技能 |
 
 ### Stage3: 执行阶段
@@ -66,6 +69,7 @@
 
 | 技能 | 模式 | 描述 |
 |------|------|------|
+| [kf-mvp-stage4-coordinator](kf-mvp-stage4-coordinator/SKILL.md) | Pipeline | Stage4 协调器，模块合并、迁移、回滚的总调度 |
 | [kf-mvp-integration](kf-mvp-integration/SKILL.md) | Pipeline | 集成验证技能 |
 | [kf-mvp-devops](kf-mvp-devops/SKILL.md) | Tool Wrapper | DevOps 技能，Docker + CI/CD |
 | [kf-mvp-security](kf-mvp-security/SKILL.md) | Reviewer + Tool Wrapper | 安全审查技能 |
@@ -118,11 +122,13 @@
 
 ## 技能统计
 
-- **总技能数**: 39
+- **总技能数**: 42
+- **Stage0 技能**: 1（需求精炼，轻量模式共用）
 - **Stage1 技能**: 2
-- **Stage2 技能**: 13
+- **Stage2 技能**: 14（含 ③c 测试审查）
 - **Stage3 技能**: 13
-- **Stage4 技能**: 11
+- **Stage4 技能**: 12（含 Stage4 Coordinator）
+- **Stage5 技能**: 1（复盘 Agent）
 
 ---
 
@@ -170,5 +176,13 @@ bash tools/generate.sh
 
 ---
 
-*最后更新: 2026-05-20*
-*基于 MVP白皮书.md v1.0*
+### Stage5: 复盘与持续改进
+
+| 技能 | 模式 | 描述 |
+|------|------|------|
+| [kf-mvp-retrospective](kf-mvp-retrospective/SKILL.md) | Pipeline + Investigator | Stage5 复盘 Agent，6 项产出 + 4 项异常检测 |
+
+---
+
+*最后更新: 2026-05-24*
+*基于 MVP白皮书最终融合版.md v2.4.0*

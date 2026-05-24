@@ -336,6 +336,42 @@ When submitting for review:
 
 ---
 
+# 根因分类（Root Cause Classification）
+
+> 每个 Bug 修复后必须在 Bug Report 中标注根因类别，用于 Stage5 复盘分析。
+
+| 根因类别 | 含义 | 示例 |
+|---------|------|------|
+| `CAUSE:PRD_AMBIGUITY` | PRD 定义模糊导致实现偏差 | "VIP用户"未定义，导致权限实现不同 |
+| `CAUSE:PRD_CONFLICT` | PRD 内部存在矛盾 | 功能需求 A 和 B 的验收标准互斥 |
+| `CAUSE:DESIGN_FLAW` | 架构/Schema 设计缺陷 | 外键关系错误、表结构不支持业务规则 |
+| `CAUSE:DESIGN_MISSING` | 架构遗漏 | Schema 缺少必要字段、API 缺少必要端点 |
+| `CAUSE:IMPL_ERROR` | 代码实现错误 | 空指针、逻辑错误、类型错误 |
+| `CAUSE:IMPL_CONTRACT` | 实现与契约不一致 | 返回的字段名/状态码与 api-contract.yaml 不符 |
+| `CAUSE:TEST_GAP` | 测试覆盖不足 | 已有测试通过但未覆盖该场景 |
+| `CAUSE:ENV_MISMATCH` | 环境差异导致 | 开发环境正常但联调环境出错 |
+
+**回归测试位置**：
+```
+regression/
+├── bug-001-login-token-expiry.test.ts
+├── bug-002-product-delete-foreign-key.test.ts
+└── bug-003-trace-chain-integrity.test.ts
+```
+
+---
+
+# 终止条件
+
+| 终止类型 | 条件 | 后续动作 |
+|---------|------|---------|
+| **正常终止** | 所有 P0/P1 Bug 已修复并验证 | 更新 Bug Report，执行回归测试 |
+| **时间终止** | 超过预设时间（4 小时） | 未修复的 Bug 进入后续迭代 |
+| **回归终止** | 修复过程中引入新的 P0 级 Bug | 回退修复，重新评估方案 |
+| **人工终止** | 人类明确决定停止修复 | 记录未解决问题，移入 Backlog |
+
+---
+
 # Constraints
 
 **MUST DO:**
@@ -359,3 +395,6 @@ When submitting for review:
 - **Race conditions** — Intermittent bugs are often race conditions, not code logic errors
 - **Caching** — "Works now but broke after refresh" suggests cache invalidation issue
 - **Foreign key order** — "Cannot delete" might be FK constraint, not soft delete
+- **根因分类** — 修复后在 Bug Report 中标注根因类型：`CAUSE:PRD_AMBIGUITY` / `CAUSE:DESIGN_FLAW` / `CAUSE:IMPL_ERROR`
+- **回归测试目录** — 修复后的回归测试放入 `regression/bug-<编号>-<简述>.test.ts`
+- **终止条件** — 正常终止（P0/P1 已修复）/ 时间终止（超 4h 入后续迭代）/ 回归终止（修复引入新 P0）/ 人工终止（人类决策停止）

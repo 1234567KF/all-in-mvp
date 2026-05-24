@@ -103,9 +103,15 @@ API contract defining:
 
 ```sql
 -- [Project Name] Database Schema
+-- @version: 1.0
+-- @last_modified: [ISO datetime]
+-- @modified_by: architect-agent
+-- @change: 初始Schema生成
+-- @grill_round: 0
 -- Generated from PRD
 -- DO NOT modify directly; changes require review
 
+-- @atomic_group: auth
 -- Users Table
 CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -121,6 +127,7 @@ CREATE TABLE users (
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_org ON users(organization_id);
 
+-- @atomic_group: core
 -- Products Table
 CREATE TABLE products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -134,6 +141,8 @@ CREATE TABLE products (
 
 -- ... additional tables
 ```
+
+> **原子表组**：`-- @atomic_group: <name>` 标注可独立锁定的表组，Coordinator 据此决定哪些模块可并行开发和锁定。同一 atomic_group 内的表在模块拆分时应分配给同一业务模块。
 
 ## Drizzle Schema Alternative
 
@@ -192,6 +201,11 @@ export const users = sqliteTable('users', {
 ## API Contract YAML Template
 
 ```yaml
+# @version: 1.0
+# @last_modified: [ISO datetime]
+# @modified_by: architect-agent
+# @change: 初始API契约
+# @grill_round: 0
 # API Contract for [Project Name]
 # Generated from PRD
 # DO NOT modify directly; changes require review
@@ -306,6 +320,14 @@ components:
 > **Based on PRD**: [PRD file path]  
 > **Status**: DRAFT → LOCKED
 
+<!--
+# @version: 1.0
+# @last_modified: [ISO datetime]
+# @modified_by: architect-agent
+# @change: 初始技术规格
+# @grill_round: 0
+-->
+
 ---
 
 ## 1. 技术栈
@@ -387,6 +409,41 @@ src/
 
 ---
 
+# DRAFT → LOCKED 过渡流程
+
+产出物状态分为两个阶段：
+
+| 状态 | 文件名 | 含义 | 谁可以使用 |
+|------|--------|------|-----------|
+| **DRAFT（初版）** | `spec.md` / `schema.sql` / `api-contract.yaml` | 产出完成，未经 ↺ 循环校验 | 仅 grill-with-docs 审查 Agent |
+| **LOCKED（锁定版）** | `spec.locked.md` / `schema.locked.sql` / `api-contract.locked.yaml` | ↺ 循环通过，后续 Agent 以此为唯一基准 | Stage2 ③ 所有并行 Agent |
+
+**过渡流程**：
+
+```
+本 Agent 产出（DRAFT）
+  ↓
+grill-with-docs 审查（↺ 循环 1-3 轮）
+  ↓ 通过
+重命名为 .locked 版本 + 文件头写入 <!-- STATUS: LOCKED -->
+  ↓
+Coordinator 识别 LOCKED 状态 → 调度 Stage2 ③ 并行任务
+```
+
+**锁定后修改**（需人类授权）：
+```
+人类授权 → 重命名为 .draft.md → 修改 → 重新走 ↺ 循环 → 恢复 .locked.md
+```
+
+**文件头锁定声明**：
+```markdown
+<!-- STATUS: LOCKED -->
+<!-- LOCKED_AT: 2026-05-24T10:00:00Z -->
+<!-- LOCKED_BY: grill-with-docs -->
+```
+
+---
+
 # Quality Checklist
 
 Before final output, verify:
@@ -398,6 +455,9 @@ Before final output, verify:
 - [ ] Audit fields (created_at, updated_at) added
 - [ ] Error codes documented
 - [ ] Authentication requirements specified
+- [ ] Atomic groups (`-- @atomic_group:`) annotated in schema
+- [ ] Version metadata headers added to all 3 artifacts
+- [ ] DRAFT status clearly marked (not LOCKED yet)
 
 ---
 
@@ -409,6 +469,9 @@ Before final output, verify:
 - Define all foreign key relationships
 - Document soft delete convention
 - Mark output as DRAFT until reviewed
+- Annotate atomic groups in schema (`-- @atomic_group: <name>`)
+- Include version metadata (`# @version`, `# @last_modified`, `# @grill_round`) in all output headers
+- Output in DRAFT state — LOCKED is grill-with-docs's responsibility
 
 **MUST NOT DO:**
 - Add performance optimizations (future iteration)

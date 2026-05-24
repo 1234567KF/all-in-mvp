@@ -76,12 +76,38 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Code Review Triggers
 
-| Situation | Review Trigger | Action |
-|-----------|----------------|--------|
-| Green phase test still fails | YES | Analyze failure, fix implementation |
-| Refactor causes test failure | YES | Rollback or fix |
-| New exception path needed | YES | Review exception handling |
-| Cross-module interface change | YES | Verify contract consistency |
+## CR 触发条件（按 TDD 阶段）
+
+| TDD 阶段 | 触发条件 | CR 行为 |
+|---------|---------|--------|
+| RED | 测试无法编写（契约不清晰） | 审查模块定义和 API 契约 |
+| GREEN | 3 次尝试后测试仍失败 | 强制触发 CR；审查实现逻辑 |
+| REFACTOR | 重构导致已通过的测试失败 | 审查重构变更范围 |
+| DONE 前 | 所有测试通过后、写 DONE 标记前 | **终审**：强制触发 CR |
+
+## 打回上限
+
+| 阶段 | 最大轮次 | 超限处理 |
+|------|---------|---------|
+| TDD 循环（RED→GREEN→REFACTOR） | 5 轮 | 标记 BLOCKED → 人类介入 |
+| Code Review | 3 轮打回 | 标记 BLOCKED → 人类介入 |
+
+> **5 轮 TDD 仍无法通过** → 可能模块定义有缺陷，回退到 Stage2 重新审查 `<module>.md`
+> **3 轮 CR 打回仍不通过** → 可能技术方案不匹配，人类决策
+
+## 开发失败处理
+
+```
+TDD 5轮未通过
+  ↓
+写入 BLOCKED 标记 + reason.md
+  ↓
+Coordinator 检测到 BLOCKED
+  ↓
+评估是否需要回退到 Stage2 修正模块定义
+  ↓
+人类决策：继续 / 回退 / 重分配
+```
 
 ---
 
@@ -1195,3 +1221,6 @@ describe('O2O Geo-Fencing — Location Testing', () => {
 - **One assertion at a time** — Multiple assertions in one test = hard to debug failure
 - **Soft delete everywhere** — Unless specified, use soft delete (add `WHERE deleted_at IS NULL`)
 - **Transaction for multi-table** — If operation touches multiple tables, use transaction
+- **CR is mandatory before DONE** — 所有测试通过后必须触发终审 CR，通过后方可写入 DONE 标记
+- **TDD 5轮上限** — 超过 5 轮仍 FAIL → BLOCKED，不要无限循环
+- **Regression test directory** — Bug 修复后回归测试放入 `regression/bug-<编号>-<简述>.test.ts`

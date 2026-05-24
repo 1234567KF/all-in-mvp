@@ -131,7 +131,7 @@ QuickStep3: 轻量验收
 
 ---
 
-## Stage 2: 规划阶段（①→②→↺→③a∥③b-1∥③b-2）
+## Stage 2: 规划阶段（①→②→↺→③a∥③b-1∥③b-2→③c）
 
 **前置条件**：`PRD.md` 已存在并锁定。
 
@@ -193,6 +193,15 @@ QuickStep3: 轻量验收
    - 准备场景级共享测试数据
    - **此阶段只写用例，不执行**
 
+### 2.7 ③c 测试用例静态审查（串行收尾，1 Agent）
+
+1. 用 `agents/test-review.md` 创建审查 Agent
+2. 输入：`integration-tests/modules/` + `integration-tests/scenarios/` + `<module>.md` + `PRD.md`
+3. 产出：测试用例审查报告
+4. 4项检查：文件存在性、API路由有效性、场景覆盖完整性、fixture类型一致性
+5. **此阶段只审查用例结构，不执行测试（执行在 Stage4）**
+6. 通过标准：无 ERROR 级别问题。WARNING 可记录但通过。
+
 ### Stage 2 门禁
 
 **全部通过后才能进入 Stage 3：**
@@ -204,6 +213,7 @@ QuickStep3: 轻量验收
 - [ ] `mocks/` 已搭建并可运行
 - [ ] `integration-tests/modules/` 已产出
 - [ ] `integration-tests/scenarios/` 已产出
+- [ ] ③c 测试用例静态审查通过（无 ERROR）
 
 ---
 
@@ -275,6 +285,7 @@ suggested_fix: <optional_suggestion>
 | 目录存在，无 DONE/BLOCKED | 已分配，开发中 | 等待 |
 | DONE 存在 | 已完成 | 释放下游依赖模块 |
 | BLOCKED 存在 | 开发阻塞 | 读取原因，决定降级或等待 |
+| DEFER 存在 | 主动推迟 | 级联DEFER下游依赖模块，其余模块继续执行 |
 | DONE 和 BLOCKED 同时存在 | 已完成但有遗留问题 | 标记为 DONE（遗留问题进 Stage4） |
 
 ### 3.1 后端团队：TDD 开发
@@ -338,7 +349,15 @@ for i in {1..3}; do npx vitest run; done
 
 **前置条件**：Stage 3 门禁全部通过。
 
-### 4.1 后端模块合并
+### 4.0 Stage4 Coordinator（集成协调者）
+
+1. 用 `agents/stage4-coordinator.md` 创建 Stage4 Coordinator Agent
+2. 编排 4.1-4.5 子阶段执行顺序
+3. 接收联调问题 → 分类（契约/实现/理解偏差）→ 分发（后端/前端/Mock）
+4. 跟踪Bug修复状态，执行最终门禁检查
+5. 可复用 Stage3 Pipeline Coordinator 实例（已有全局上下文）
+
+### 4.1 后端模块合并（四步子流程）
 
 - 合并各模块路由到统一入口
 - 验证全局 Schema 一致性
@@ -433,6 +452,18 @@ for i in {1..3}; do npx vitest run; done
 
 ---
 
+## 增量模式：Stage 裁剪规则
+
+全量/增量模式通用。增量模式下按以下规则裁剪：
+
+| 迭代场景 | Stage1 | Stage2 | Stage3 | Stage4 |
+|---------|--------|--------|--------|--------|
+| 新增独立模块 | 更新PRD | 仅新模块走①→②→↺→③ | 仅新模块 | 集成新模块 |
+| 修改现有模块 | 更新PRD变更记录 | 重走①→②→↺（仅受影响部分）| 重新开发变更模块 | 重新集成 |
+| Bug修复 | 跳过 | 跳过 | 跳过 | 仅Stage4 |
+
+---
+
 ## 并发模型速查
 
 | 阶段 | 并行度 | 说明 |
@@ -442,9 +473,11 @@ for i in {1..3}; do npx vitest run; done
 | Stage2 ↺ | 串行循环 | grill 审查 → 修正 → 再审 |
 | Stage2 ③a/③b-1/③b-2 | 并行 | Mock + 两类测试 同时启动 |
 | Stage2 ③b-1 内部 | 最多 2 | 按模块平分 |
+| Stage2 ③c | 串行 | ③a/③b全部完成后方可启动 |
 | Stage3 后端 | 最多 3 | Coordinator 按依赖图调度 |
 | Stage3 前端 | 最多 3 | 基于 Mock，无需等后端 |
-| Stage4 | 串行 | 合并 → 联调 → 测试 → 修复 |
+| Stage4 | 串行 | Stage4 Coordinator 编排 → 合并 → 联调 → 测试 → 修复 |
+| Stage5 | 串行 | 1 个复盘 Agent |
 
 ---
 
@@ -460,6 +493,32 @@ for i in {1..3}; do npx vitest run; done
 - **文件驱动通信**：Agent 之间不直接发消息。Coordinator 通过扫描文件系统中的 DONE/BLOCKED 标记了解进度。产出物文件即状态信号。
 - **Agent 数量上限**：后端 3 个、前端 3 个、测试 2 个。超过上限的模块按批次排队，不新增 Agent。
 - **确定性分配**：同输入必须产生相同的模块拆分和分配结果。`task.md` 中模块的枚举顺序作为稳定排序依据。
+- **DEFER vs BLOCKED**：DEFER 是主动推迟（不可/不值得本轮完成），BLOCKED 是被动等待（等待依赖/修复）。两者互斥——一个模块不能同时为两者。DEFER 会级联标记下游依赖模块。
+- **增量模式跳过规则**：Bug修复 → 跳过 Stage1-3，直接 Stage4。新增独立模块 → Stage2 仅处理新模块。修改现有模块 → 仅重走受影响部分。
+
+---
+
+## Stage 5: 流程复盘与经验沉淀（串行，1 Agent）
+
+**前置条件**：Stage 4 门禁全部通过，项目已交付。
+
+### 执行步骤
+
+1. 用 `agents/retrospective-agent.md` 创建复盘 Agent
+2. 输入：`pipeline-execution-log.md` + `pipeline-metrics.json` + Bug 清单 + 审查报告历史
+3. 产出：`retrospective.md` + 可选白皮书修订提案
+4. 6项必须产出：
+   - 流程健康度评分（各 Stage 实际/预期耗时比值）
+   - Agent 效率分析（各角色产出质量、返工率）
+   - 契约偏差分析（spec.md 与实际实现的差异点）
+   - 模式提取（本次迭代验证有效的实践）
+   - 反模式记录（本次迭代暴露的流程缺陷）
+   - 白皮书修订建议（具体条款 + 修订理由）
+5. 异常模式识别（4项检查）：
+   - 模块实际耗时 > 预期 2 倍 → 高风险模块类型
+   - Agent CR 打回率 > 30% → 需强化该角色 Skill
+   - 阶段实际耗时 > 预期 1.5 倍 → 瓶颈阶段
+   - Bug 某类占比 > 40% → 系统性缺陷来源
 
 ---
 

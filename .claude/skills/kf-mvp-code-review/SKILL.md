@@ -309,6 +309,33 @@ Derived from MVP Whitepaper Section 3.1 — Code Review:
 
 ---
 
+# Review 流转协议
+
+> CR 通过后 TDD Agent 方可写入 DONE 标记。打回后须重新走完整流程。
+
+```
+TDD Agent 完成开发 → 提交 CR
+  ↓
+CR Agent 审查
+  ├── PASS → TDD Agent 写入 DONE 标记 → Coordinator 释放依赖模块
+  └── FAIL → TDD Agent 修复
+       ↓
+       删除 DONE 标记（如存在）
+       ↓
+       TDD 重新验证（确保修复不引入新问题）
+       ↓
+       重新提交 CR 复评
+       ↓
+       打回上限 3 轮 → 超过 → BLOCKED → 人类介入
+```
+
+**DONE 标记写入前置条件**（全部满足才可写入）：
+1. ✅ 所有模块测试通过
+2. ✅ CR 终审 PASS
+3. ✅ 无已知 P0/P1 Bug
+
+---
+
 # Review States
 
 ## State 1: PASS
@@ -374,3 +401,6 @@ Derived from MVP Whitepaper Section 3.1 — Code Review:
 - **Error message sanitization** — Never expose internal details (stack traces, SQL) in error responses
 - **Test coverage matters** — Implementation without tests is half-reviewed at best
 - **Review ≠ rewrite** — Suggest fixes, don't rewrite code unless explicitly asked
+- **终审（DONE 前强制触发）** — TDD Agent 所有测试通过后、写 DONE 标记前，必须触发 CR 终审
+- **流转协议** — Review → fix → 删除 DONE 标记 → TDD 重新验证 → 再写 DONE → 提交复评
+- **打回上限** — 同一模块 CR 打回最多 3 轮，超过 → 标记 BLOCKED → 人类介入

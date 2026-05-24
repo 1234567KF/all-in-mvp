@@ -100,10 +100,37 @@ Per-module specification defining:
 - NOT plural: `users`, `products`
 - NOT verbs: `userManagement`
 
+## Module Granularity Standard（模块粒度标准）
+
+> 每个模块必须满足以下规模约束，超标即拆，不足即合：
+
+| 维度 | 最小值 | 最大值 | 超标处理 |
+|------|--------|--------|----------|
+| **API 端点** | 3 个 | 15 个 | 超过 15 个端点 → 按子域拆分为 2 个模块 |
+| **数据库表** | 1 个（可归属 atomic_group） | 3 个 | 超过 3 张表 → 评估是否跨 atomic_group，是则拆分 |
+| **代码行数（预估）** | 150 行 | 800 行 | 超过 800 行 → 拆分为独立子模块 |
+| **业务规则数** | 1 条 | 8 条 | 超过 8 条 → 考虑拆分或标记为复杂模块（需额外审查） |
+
+**拆分示例**：
+- ❌ `product` 模块 18 个 API → 拆分为 `product-catalog`（查询/展示）+ `product-inventory`（库存/入库）
+- ✅ `auth` 模块 5 个 API + 1 张表 + 300 行 → 符合标准
+
+**合并示例**：
+- ❌ `config-theme`（2 API）+ `config-lang`（2 API） → 合并为 `config` 模块（4 API + 1 表）
+- ✅ `util` 类模块无独立 API → 不独立成模块，作为 shared 工具函数
+
 ## Module Output Template
 
 ```markdown
 # [Module Name] Module Specification
+
+<!--
+# @version: 1.0
+# @last_modified: [ISO datetime]
+# @modified_by: biz-expert-agent
+# @change: 初始模块定义
+# @grill_round: 0
+-->
 
 > **Version**: 1.0  
 > **Based on PRD**: [PRD path]  
