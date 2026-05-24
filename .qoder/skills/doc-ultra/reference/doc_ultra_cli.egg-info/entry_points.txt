@@ -1,2 +1,0 @@
-[console_scripts]
-doc-ultra = doc_ultra.cli:main
