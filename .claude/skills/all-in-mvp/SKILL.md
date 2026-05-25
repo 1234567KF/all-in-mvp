@@ -5,24 +5,92 @@ metadata:
   pattern: pipeline+inversion+reviewer+generator
   stage-gates: true
   max-parallel-agents: 3
+  based_on: MVP白皮书 v2.4.0
 ---
 
 # Parallel MVP Pipeline — 多 Agent 并行开发流水线
 
-> 基于《MVP 白皮书》的多 Agent 并行工程方法论。4 个阶段、严格门禁、最大并行度。
+> 基于《MVP 白皮书 v2.4》的多 Agent 并行工程方法论。3 种运行模式、严格门禁、最大并行度。
 
 ---
 
 ## 执行概览
 
 ```
-Stage1: 需求对齐（串行）→ PRD.md
-Stage2: 规划阶段（串行→并行）→ Spec + Schema + 模块定义 + Mock + 测试
-Stage3: 执行阶段（大规模并行）→ 后端 TDD + 前端 Mock + 测试补充
-Stage4: 集成验收（串行收敛）→ 合并 + 联调 + 集成测试 + 修复
+【轻量模式】简单任务 → QuickStep1-3（单Agent直通，10-30min）
+【全量模式】全新项目 → Stage1→Stage2→Stage3→Stage4（6-10 Agent，4-12h）
+【增量模式】迭代项目 → 裁剪Stage执行（1-4h）
 ```
 
-**黄金规则**：Stage 不可跳过。Stage N 的产出物【锁定】后才能进入 Stage N+1。
+**黄金规则**：全量/增量模式下 Stage 不可跳过。轻量模式走简化通道（3 步替代 4 Stage）。
+
+---
+
+## 快速通道：简单任务判定（进入流水线前执行）
+
+> **在执行完整流水线之前，先判定任务复杂度。简单任务走轻量通道，避免杀鸡用牛刀。**
+
+### 判定流程
+
+```
+用户需求进入
+    ↓
+评估以下 7 个维度：
+  1. API/接口数量 ≤2？
+  2. 无数据库 或 单表 CRUD？
+  3. 单用户角色（无登录/单一类型）？
+  4. 无状态流转（单状态）？
+  5. 单页面 或 2 个简单页面？
+  6. 无外部服务调用？
+  7. 仅 1 个全栈模块？
+    ↓
+满足 ≥3 项 → 轻量模式（3 步直通车）
+不满足     → 全量/增量模式（完整流水线）
+```
+
+### 轻量模式 QuickStep 1-3
+
+```
+QuickStep1: 需求摘要
+    ├── 输出：需求卡片 + 技术摘要（单个 .md，YAML front matter）
+    ├── 不产生：PRD.md / spec.md / schema.sql / api-contract.yaml / task.md
+    └── 耗时：2-5min
+    ↓
+QuickStep2: 直接开发
+    ├── 单 Agent 全栈开发（后端+前端一起写）
+    ├── 无 Coordinator、无 Mock、无模块拆分
+    ├── 可选 L1 单元测试（按需）
+    └── 耗时：5-20min
+    ↓
+QuickStep3: 轻量验收
+    ├── 运行 + 冒烟测试
+    ├── 用户确认可用
+    └── 耗时：2-5min
+```
+
+### 需求卡片模板
+
+```yaml
+# @task: <一句话任务描述>
+# @type: simple
+# @tech: <html+css+js | hono+sqlite | vue+vite | ...>
+# @apis: <API端点列表，无则写 none>
+# @db: <数据表，无则写 none>
+# @pages: <页面列表>
+# @acceptance: <1-2条验收标准>
+```
+
+**典型简单任务**：个人博客、落地页、留言板、JSON API 代理、单表 CRUD、Markdown 预览器。
+
+### 轻量→全量升级
+
+开发中发现以下情况应升级为全量模式：
+- 需要 ≥3 个 API 端点
+- 需要多表关联/事务
+- 用户追加需求导致模块 ≥2
+- 需要多角色权限
+
+> 升级时保留已产出代码，补充执行全量 Stage1→Stage2。
 
 ---
 
@@ -63,7 +131,7 @@ Stage4: 集成验收（串行收敛）→ 合并 + 联调 + 集成测试 + 修�
 
 ---
 
-## Stage 2: 规划阶段（①→②→↺→③a∥③b-1∥③b-2）
+## Stage 2: 规划阶段（①→②→↺→③a∥③b-1∥③b-2→③c）
 
 **前置条件**：`PRD.md` 已存在并锁定。
 
@@ -125,6 +193,15 @@ Stage4: 集成验收（串行收敛）→ 合并 + 联调 + 集成测试 + 修�
    - 准备场景级共享测试数据
    - **此阶段只写用例，不执行**
 
+### 2.7 ③c 测试用例静态审查（串行收尾，1 Agent）
+
+1. 用 `agents/test-review.md` 创建审查 Agent
+2. 输入：`integration-tests/modules/` + `integration-tests/scenarios/` + `<module>.md` + `PRD.md`
+3. 产出：测试用例审查报告
+4. 4项检查：文件存在性、API路由有效性、场景覆盖完整性、fixture类型一致性
+5. **此阶段只审查用例结构，不执行测试（执行在 Stage4）**
+6. 通过标准：无 ERROR 级别问题。WARNING 可记录但通过。
+
 ### Stage 2 门禁
 
 **全部通过后才能进入 Stage 3：**
@@ -136,6 +213,7 @@ Stage4: 集成验收（串行收敛）→ 合并 + 联调 + 集成测试 + 修�
 - [ ] `mocks/` 已搭建并可运行
 - [ ] `integration-tests/modules/` 已产出
 - [ ] `integration-tests/scenarios/` 已产出
+- [ ] ③c 测试用例静态审查通过（无 ERROR）
 
 ---
 
@@ -207,6 +285,7 @@ suggested_fix: <optional_suggestion>
 | 目录存在，无 DONE/BLOCKED | 已分配，开发中 | 等待 |
 | DONE 存在 | 已完成 | 释放下游依赖模块 |
 | BLOCKED 存在 | 开发阻塞 | 读取原因，决定降级或等待 |
+| DEFER 存在 | 主动推迟 | 级联DEFER下游依赖模块，其余模块继续执行 |
 | DONE 和 BLOCKED 同时存在 | 已完成但有遗留问题 | 标记为 DONE（遗留问题进 Stage4） |
 
 ### 3.1 后端团队：TDD 开发
@@ -270,7 +349,15 @@ for i in {1..3}; do npx vitest run; done
 
 **前置条件**：Stage 3 门禁全部通过。
 
-### 4.1 后端模块合并
+### 4.0 Stage4 Coordinator（集成协调者）
+
+1. 用 `agents/stage4-coordinator.md` 创建 Stage4 Coordinator Agent
+2. 编排 4.1-4.5 子阶段执行顺序
+3. 接收联调问题 → 分类（契约/实现/理解偏差）→ 分发（后端/前端/Mock）
+4. 跟踪Bug修复状态，执行最终门禁检查
+5. 可复用 Stage3 Pipeline Coordinator 实例（已有全局上下文）
+
+### 4.1 后端模块合并（四步子流程）
 
 - 合并各模块路由到统一入口
 - 验证全局 Schema 一致性
@@ -365,6 +452,18 @@ for i in {1..3}; do npx vitest run; done
 
 ---
 
+## 增量模式：Stage 裁剪规则
+
+全量/增量模式通用。增量模式下按以下规则裁剪：
+
+| 迭代场景 | Stage1 | Stage2 | Stage3 | Stage4 |
+|---------|--------|--------|--------|--------|
+| 新增独立模块 | 更新PRD | 仅新模块走①→②→↺→③ | 仅新模块 | 集成新模块 |
+| 修改现有模块 | 更新PRD变更记录 | 重走①→②→↺（仅受影响部分）| 重新开发变更模块 | 重新集成 |
+| Bug修复 | 跳过 | 跳过 | 跳过 | 仅Stage4 |
+
+---
+
 ## 并发模型速查
 
 | 阶段 | 并行度 | 说明 |
@@ -374,15 +473,19 @@ for i in {1..3}; do npx vitest run; done
 | Stage2 ↺ | 串行循环 | grill 审查 → 修正 → 再审 |
 | Stage2 ③a/③b-1/③b-2 | 并行 | Mock + 两类测试 同时启动 |
 | Stage2 ③b-1 内部 | 最多 2 | 按模块平分 |
+| Stage2 ③c | 串行 | ③a/③b全部完成后方可启动 |
 | Stage3 后端 | 最多 3 | Coordinator 按依赖图调度 |
 | Stage3 前端 | 最多 3 | 基于 Mock，无需等后端 |
-| Stage4 | 串行 | 合并 → 联调 → 测试 → 修复 |
+| Stage4 | 串行 | Stage4 Coordinator 编排 → 合并 → 联调 → 测试 → 修复 |
+| Stage5 | 串行 | 1 个复盘 Agent |
 
 ---
 
 ## Gotchas
 
-- **Stage 不可跳过**：门禁是硬约束。不要在 Stage2 还没锁定时就开始 Stage3 的开发，Schema 变更会导致所有模块返工。
+- **先判定再执行**：进入流水线前先走「快速通道：简单任务判定」。简单任务用轻量模式（10-30min），不要对简单任务上全量四阶段流水线。
+- **轻量模式无门禁**：简单任务用户确认即通过，不要求 L1-L5 全层测试。
+- **Stage 不可跳过（全量/增量）**：门禁是硬约束。不要在 Stage2 还没锁定时就开始 Stage3 的开发，Schema 变更会导致所有模块返工。
 - **Schema 锁定后严禁修改**：如果必须变更，先通知所有依赖该表的 Agent，走变更评审后再修改。
 - **模块边界不可交叉**：Backend Agent 只写自己模块的 routes/service/schema。跨模块调用通过 API，不直接访问其他模块的数据库或 Service。
 - **Mock 与真实 API 必须一致**：两者基于同一 `api-contract.yaml` 生成。联调发现问题时更新契约文件，然后同步修改 Mock 和真实实现。
@@ -390,6 +493,32 @@ for i in {1..3}; do npx vitest run; done
 - **文件驱动通信**：Agent 之间不直接发消息。Coordinator 通过扫描文件系统中的 DONE/BLOCKED 标记了解进度。产出物文件即状态信号。
 - **Agent 数量上限**：后端 3 个、前端 3 个、测试 2 个。超过上限的模块按批次排队，不新增 Agent。
 - **确定性分配**：同输入必须产生相同的模块拆分和分配结果。`task.md` 中模块的枚举顺序作为稳定排序依据。
+- **DEFER vs BLOCKED**：DEFER 是主动推迟（不可/不值得本轮完成），BLOCKED 是被动等待（等待依赖/修复）。两者互斥——一个模块不能同时为两者。DEFER 会级联标记下游依赖模块。
+- **增量模式跳过规则**：Bug修复 → 跳过 Stage1-3，直接 Stage4。新增独立模块 → Stage2 仅处理新模块。修改现有模块 → 仅重走受影响部分。
+
+---
+
+## Stage 5: 流程复盘与经验沉淀（串行，1 Agent）
+
+**前置条件**：Stage 4 门禁全部通过，项目已交付。
+
+### 执行步骤
+
+1. 用 `agents/retrospective-agent.md` 创建复盘 Agent
+2. 输入：`pipeline-execution-log.md` + `pipeline-metrics.json` + Bug 清单 + 审查报告历史
+3. 产出：`retrospective.md` + 可选白皮书修订提案
+4. 6项必须产出：
+   - 流程健康度评分（各 Stage 实际/预期耗时比值）
+   - Agent 效率分析（各角色产出质量、返工率）
+   - 契约偏差分析（spec.md 与实际实现的差异点）
+   - 模式提取（本次迭代验证有效的实践）
+   - 反模式记录（本次迭代暴露的流程缺陷）
+   - 白皮书修订建议（具体条款 + 修订理由）
+5. 异常模式识别（4项检查）：
+   - 模块实际耗时 > 预期 2 倍 → 高风险模块类型
+   - Agent CR 打回率 > 30% → 需强化该角色 Skill
+   - 阶段实际耗时 > 预期 1.5 倍 → 瓶颈阶段
+   - Bug 某类占比 > 40% → 系统性缺陷来源
 
 ---
 

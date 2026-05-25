@@ -45,21 +45,25 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Output Artifacts
 
+> **模块组织原则**：Mock 文件按业务模块组织，与 biz-expert 的 `<module>.md` 定义一一对应。每个模块一个 route 文件 + 一个 data 文件。
+
 ```
 mocks/
 ├── server.ts              # Mock server entry
 ├── routes/
-│   ├── auth.ts           # Auth mock routes
-│   ├── users.ts          # Users mock routes
-│   ├── products.ts       # Products mock routes
-│   └── ...
+│   ├── auth.ts           # Auth mock routes（对应 auth 模块）
+│   ├── users.ts          # Users mock routes（对应 user 模块）
+│   ├── products.ts       # Products mock routes（对应 product 模块）
+│   └── ...（每个 <module>.md 对应一个 route 文件）
 ├── data/
-│   ├── users.json       # Seed data
-│   ├── products.json     # Seed data
+│   ├── users.json       # Seed data（与 routes/users.ts 对应）
+│   ├── products.json     # Seed data（与 routes/products.ts 对应）
 │   └── ...
 └── utils/
     └── delay.ts          # Simulate network latency
 ```
+
+> **模块对应规则**：biz-expert 定义的每个 `<module>.md` 中的接口清单 → `mocks/routes/<module>.ts`，数据表 → `mocks/data/<module>.json`。新增模块时同步新增对应 mock 文件。
 
 ---
 
@@ -401,12 +405,15 @@ let {module}s = [...seedData];
 - Include realistic seed data
 - Simulate network latency
 - Handle all error cases
+- Organize mock files per module (1 route file + 1 data file per <module>.md)
+- Monitor change-request.md for contract changes and sync promptly
 
 **MUST NOT DO:**
 - Add non-contract endpoints
 - Return inconsistent data formats
 - Skip soft delete handling
 - Hardcode production URLs
+- Lag behind contract changes (drift > 24h is BLOCKED)
 
 ---
 
@@ -417,6 +424,66 @@ let {module}s = [...seedData];
 - **Latency is intentional** — Don't remove delay; it helps frontend test loading states
 - **Data is ephemeral** — Mock data resets on server restart; use for dev only
 - **Token has no real validation** — Any "Bearer mock-token" works for protected routes
+- **Contract drift** — Run `npm run mock:verify` before each Stage4 integration; drift > 24h triggers BLOCKED
+- **Module alignment** — Each biz-expert `<module>.md` requires exactly 1 mock route file + 1 mock data file
+
+---
+
+# Mock-实现变更同步协议
+
+> 契约锁定后如 API 仍需变更，Mock 必须同步更新以保证前端始终有可用的开发环境。
+
+## 变更触发流程
+
+```
+开发 Agent 发现 api-contract.yaml 不合理
+  ↓
+提交变更申请 → change-request.md
+  ↓
+Coordinator 暂缓该模块（BLOCKED = contract_change_pending）
+  ↓
+人类审查（小变更 < 3 接口可自动批准）
+  ↓ 批准
+更新 api-contract.yaml
+  ↓
+Mock Agent 同步更新 → 受影响前端 Agent 收到通知
+  ↓
+前端对应页面标记「需重新联调」
+```
+
+## change-request.md 模板
+
+```markdown
+# API Contract Change Request
+
+**申请模块**: [module name]
+**申请时间**: [ISO datetime]
+**影响接口数**: [N]
+**变更级别**: 微小 / 中等 / 重大
+
+## 变更描述
+[当前契约的问题 + 建议的修正]
+
+## 影响的接口清单
+| 方法 | 路径 | 变更类型 | 说明 |
+|------|------|---------|------|
+| POST | /api/xxx | 新增字段 | ... |
+
+## 影响的前端页面
+[Coordinator 自动分析输出]
+```
+
+## Coordinator 自动分析
+
+收到 change-request 后，Coordinator 自动：
+1. 读取变更接口列表
+2. 扫描所有前端页面引用的 API（通过 `api.config.ts` 映射）
+3. 输出受影响页面清单
+4. 暂缓受影响模块的开发
+
+## 同步后的 Mock 验证
+
+变更同步完成后，必须重新运行 `npm run mock:verify`，确认 Mock 与更新后的契约一致。
 
 ---
 

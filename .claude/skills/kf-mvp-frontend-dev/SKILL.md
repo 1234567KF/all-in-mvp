@@ -727,3 +727,68 @@ export default defineConfig({
 - **Default stack** — If no UI framework specified, use Ant Design Vue for B2B/admin, Tailwind CSS for branded web
 - **MVP exemptions** — No SSR, no PWA, no complex state hydration. Keep it simple.
 - **Axios baseURL** — Always use env var `VITE_API_BASE_URL`, default to `/api`
+- **Mock env setup** — Development: `VITE_API_BASE_URL=http://localhost:3001/api`；Production: `/api`
+
+---
+
+# 前端三层测试（FT1-FT3）
+
+> 白皮书 v2.4 定义的前端三层测试体系，覆盖组件渲染、交互行为、页面流程。
+
+| 层级 | 测试类型 | 工具 | 覆盖目标 |
+|------|---------|------|---------|
+| **FT1** | 组件单元测试 | Vitest + @vue/test-utils | 组件渲染、props、事件、slot、composable |
+| **FT2** | 页面交互测试 | Vitest + @vue/test-utils + Mock API | 表单验证、状态管理、路由跳转、API 调用 |
+| **FT3** | 端到端流程测试 | Playwright | 完整用户旅程、跨页面流程、真实浏览器渲染 |
+
+**测试文件位置**：
+```
+src/__tests__/
+├── components/      # FT1: 组件单元测试
+├── pages/           # FT2: 页面交互测试
+└── e2e/             # FT3: Playwright 端到端测试
+```
+
+---
+
+# Mock 连接与验证规范
+
+## 环境变量配置
+
+```env
+# .env.development
+VITE_API_BASE_URL=http://localhost:3001/api
+
+# .env.production
+VITE_API_BASE_URL=/api
+```
+
+## API 配置切换（api.config.ts）
+
+```typescript
+// src/api/config.ts
+export const apiConfig = {
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  // 按模块映射 baseURL，支持逐模块切换 Mock → Real
+  moduleBaseURL: {
+    auth: import.meta.env.VITE_API_AUTH_URL || import.meta.env.VITE_API_BASE_URL || '/api',
+    user: import.meta.env.VITE_API_USER_URL || import.meta.env.VITE_API_BASE_URL || '/api',
+    // Stage4 联调时逐个模块切换：
+    // user: 'http://localhost:3000/api',  // 切换到真实后端
+  }
+};
+```
+
+## Mock 持续验证
+
+开发期间每次 `npm run dev` 时自动验证 Mock 契约：
+```json
+{
+  "scripts": {
+    "mock:sync": "node scripts/verify-mock-contract.ts",
+    "dev": "npm run mock:sync && vite"
+  }
+}
+```
+
+> Mock drift 超过 24h → 前端标记 BLOCKED → 等待 Mock 同步

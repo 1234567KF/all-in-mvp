@@ -431,3 +431,22 @@ Before finalizing, verify:
 - **Status codes** — 400 for validation, 401 for auth, 403 for permission, 404 for not found
 - **Error response format** — Always check `{ success: false, error: { code, message } }`
 - **Soft delete** — Tests should verify deleted items are not returned in list/detail
+- **Boundary with ③b-2** — 测试文件抬头看接口名（`POST /api/xxx`）→ ③b-1；抬头看角色旅程（"以某角色完成某事"）→ ③b-2
+
+---
+
+# ③b-1 与 ③b-2 边界仲裁规则
+
+> 当测试应归属哪一方不明确时，按以下规则判定：
+
+| 判定条件 | 归属 | 原因 |
+|---------|------|------|
+| 测试只涉及单个模块的数据库读写 + 接口参数校验 | **③b-1（本项目）** | 单模块职责 |
+| 测试覆盖多模块协作但不涉及 PRD 定义的业务主流程 | **③b-1（本项目）** | 按模块拆分各自覆盖 |
+| 测试覆盖 PRD「业务主流程」中定义的完整用户旅程 | **③b-2** | 场景测试核心职责 |
+| 边界不清时（如单模块异常路径需要跨模块数据） | ③b-1 写骨架 + 标记 TODO，③b-2 在对应场景中补全 | 分工不阻塞 |
+
+**协作模式**：边界不清时，本项目：
+1. 写测试骨架（定义接口 + 基本断言）
+2. 标记 `// TODO: ③b-2 补全跨模块数据准备`
+3. 不阻塞 ③b-2 的流程，双方并行推进

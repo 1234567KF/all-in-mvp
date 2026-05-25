@@ -259,6 +259,28 @@ async function fileExists(filePath: string): Promise<boolean> {
 ```
 
 **Agent spawn instruction**:
+```yaml
+# Agent 分配摘要（Coordinator → Agent，用于降低上下文消耗）
+agent: Backend-1
+role: 后端开发专家
+domain: 认证与权限
+module: user
+apis:
+  - GET /api/users
+  - POST /api/users
+  - GET /api/users/:id
+tables:
+  - users (id, email, password_hash, role)
+acceptance:
+  happy_path: 3
+  exception_path: 4
+module_spec_path: src/modules/user.md
+integration_test: integration-tests/modules/user.test.ts
+```
+
+> Agent 需要完整信息时通过文件路径按需读取 `<module>.md`。摘要版 YAML 降低上下文消耗。
+
+**完整执行指令**:
 ```
 Agent: Backend-1
 Role: 后端开发专家
@@ -317,7 +339,104 @@ Execute TDD loop:
 
 ---
 
-## Phase Gate 5: File Race Protection
+### 每轮分配后：三检机制（MUST）
+
+> 每轮分配完成后，Coordinator 必须执行「三检」，任一失败 → 写入 `SCHEDULER_ERROR.md` → 人类介入。
+
+| 检查项 | 验证内容 | 失败处理 |
+|--------|---------|---------|
+| **① 全集校验** | 已分配集合 + 未分配集合 == 模块全集 | 漏分配或重复分配 → ERROR |
+| **② 依赖校验** | 已分配模块的依赖是否全部 DONE | 依赖未满足 → 回退该模块为 UNALLOCATED |
+| **③ 容量校验** | 本轮分配数 ≤ 空闲 Agent 数 | 超配 → 自动按优先级裁剪到空闲 slot 数 |
+
+```typescript
+// 三检伪代码
+function tripleCheck(assigned: Set<string>, unassigned: Set<string>, all: string[]): CheckResult {
+  // ① 全集校验
+  if (assigned.size + unassigned.size !== all.length) {
+    return { pass: false, error: '全集校验失败：漏分配或重复分配' };
+  }
+  // ② 依赖校验
+  for (const mod of assigned) {
+    if (!allDepsDone(mod)) {
+      return { pass: false, error: `依赖校验失败：${mod} 的依赖未满足` };
+    }
+  }
+  // ③ 容量校验
+  if (assigned.size > availableSlots) {
+    return { pass: false, error: `容量校验失败：分配 ${assigned.size} > 空闲 ${availableSlots}` };
+  }
+  return { pass: true };
+}
+```
+
+---
+
+### 状态持久化（pipeline-state.json）
+
+Coordinator 维护 `pipeline-state.json`，每次状态变更原子写入（先写临时文件 → 重命名）：
+
+```json
+{
+  "pipeline_id": "uuid",
+  "stage": "Stage3",
+  "current_round": 2,
+  "agent_slots": {
+    "backend": [
+      { "id": "be-1", "status": "BUSY", "module": "user", "since": "2026-05-24T10:00:00Z" },
+      { "id": "be-2", "status": "BUSY", "module": "product", "since": "2026-05-24T10:00:00Z" },
+      { "id": "be-3", "status": "IDLE", "module": null, "since": null }
+    ],
+    "frontend": []
+  },
+  "module_states": {
+    "user": { "status": "ALLOCATED", "agent": "be-1", "allocated_at": "2026-05-24T10:00:00Z" },
+    "product": { "status": "ALLOCATED", "agent": "be-2", "allocated_at": "2026-05-24T10:00:00Z" },
+    "trace": { "status": "UNALLOCATED", "agent": null, "allocated_at": null }
+  },
+  "last_checkpoint": "2026-05-24T10:00:00Z"
+}
+```
+
+**崩溃恢复**：Coordinator 重启后读取 `pipeline-state.json`，恢复所有 slot 和模块状态。
+
+---
+
+### 数据竞争检测
+
+> 每个领域所有模块 DONE 后执行一次，检测多模块操作同一张表引发的潜在竞争。
+
+```
+触发条件：某个领域（认证/业务核心/工具配置）下所有模块 DONE
+  ↓
+1. 提取该领域所有模块的 schema 定义
+2. 检测是否存在两个模块操作同一张表（即使操作不同字段）
+3. 检测外键关联表上的操作时序是否正确
+4. 发现潜在竞争 → 写入 race-condition-warnings.md
+  ↓
+Stage4 联调重点验证 race-condition-warnings.md 中列出的项
+```
+
+**race-condition-warnings.md 模板**：
+```markdown
+# Data Race Condition Warnings
+
+**检测时间**: [ISO datetime]
+**检测领域**: 业务核心
+
+## 潜在数据竞争
+
+| 表名 | 操作模块 A | 操作模块 B | 冲突类型 | 风险 |
+|------|-----------|-----------|---------|------|
+| products | product (WRITE) | trace (READ) | 读写竞争 | 中 |
+
+## 建议验证项
+- [ ] 并发场景下 product 写入同时 trace 读取的一致性
+```
+
+---
+
+### Phase Gate 5: File Race Protection
 
 **Principle**: All marker files use atomic write-then-rename to prevent partial reads.
 

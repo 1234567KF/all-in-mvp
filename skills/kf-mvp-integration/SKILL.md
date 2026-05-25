@@ -482,6 +482,61 @@ export async function waitForMessage(
 
 ---
 
+# Stage4 四步合并流程
+
+> Stage4 Coordinator 主导的模块合并流程
+
+```
+Step 1: 模块分组
+  └── 按原子表组（atomic_group）分组，同组模块一起合并
+  ↓
+Step 2: 契约校验
+  └── 验证 api-contract.yaml ↔ 实际实现的一致性
+  └── 运行 npm run mock:verify
+  ↓
+Step 3: Merge + Migrate
+  └── 合并各模块代码到主分支
+  └── 执行 Drizzle Migration（Stage4 首次迁移）
+  └── Stage3 开发期间用 db:push，Stage4 merge 后用 migrate
+  ↓
+Step 4: 集成测试
+  └── 运行全量测试套件
+  └── Happy Path 通过率 100% + Exception Path ≥80%
+  └── 检查 race-condition-warnings.md
+```
+
+## 切换策略
+
+按模块逐个切换 Mock → Real：
+
+```typescript
+// src/api/config.ts — 切换示例
+moduleBaseURL: {
+  auth: 'http://localhost:3000/api',     // ✅ 已切换到真实后端
+  user: 'http://localhost:3000/api',     // ✅ 已切换
+  product: 'http://localhost:3001/api',  // ⏳ 仍使用 Mock
+  trace: 'http://localhost:3001/api',    // ⏳ 仍使用 Mock
+}
+```
+
+切换节奏：每个模块后端 DONE + CR 通过后，前端对应页面即可切换。
+
+## 回滚协议
+
+```
+切换后发现 Bug
+  ↓
+标记该模块为 BLOCKED
+  ↓
+回退 baseURL 到 Mock 服务器
+  ↓
+Debug Agent 接收修复任务
+  ↓
+修复验证通过 → 再次切换到 Real
+```
+
+---
+
 # Acceptance Criteria Verification
 
 ## PRD验收标准核对
@@ -549,3 +604,7 @@ export async function waitForMessage(
 - **Response timing** — Real API may be slower than mock, handle loading states
 - **Null handling** — Real backend may return null where mock returns empty
 - **Date formats** — Backend may use different date format than mock
+- **四步合并** — Stage4 Coordinator 主导：模块分组 → 契约校验 → Merge → migrate → 集成测试
+- **通过率阈值** — Happy Path 100%（不通过不能 DONE）；Exception Path ≥80%（允许已知问题记录）
+- **逐模块切换** — 按模块逐个切换 Mock→Real，不要一次性全切。在 `api.config.ts` 中按模块映射 baseURL
+- **回滚协议** — 切换后发现问题 → 标记该模块 BLOCKED → 回退到 Mock → Debug Agent 修复 → 再次切换

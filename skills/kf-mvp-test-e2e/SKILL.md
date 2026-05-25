@@ -420,3 +420,29 @@ describe('[Scenario] Business Rules', () => {
 - **Token refresh** — Tests with long wait may need token refresh
 - **Foreign key order** — Create entities in dependency order
 - **Soft delete in E2E** — Deleted items may still exist in other module's cache
+- **Boundary with ③b-1** — 测试文件抬头看接口名（`POST /api/xxx`）→ ③b-1；抬头看角色旅程（"以某角色完成某事"）→ ③b-2
+
+---
+
+# ③b-1 与 ③b-2 边界仲裁规则
+
+> 当测试应归属哪一方不明确时，按以下规则判定：
+
+| 判定条件 | 归属 | 原因 |
+|---------|------|------|
+| 测试只涉及单个模块的数据库读写 + 接口参数校验 | **③b-1** | 单模块职责 |
+| 测试覆盖多模块协作但不涉及 PRD 定义的业务主流程 | **③b-1** | 按模块拆分各自覆盖 |
+| 测试覆盖 PRD「业务主流程」中定义的完整用户旅程 | **③b-2（本项目）** | 场景测试核心职责 |
+| 边界不清时（如单模块异常路径需要跨模块数据） | ③b-1 写骨架 + 标记 TODO，③b-2 在对应场景中补全 | 分工不阻塞 |
+
+**粗判原则**：
+```
+测试文件抬头看：
+  ├── 接口名（POST /api/xxx）→ ③b-1 单模块测试
+  └── 角色旅程（"以某角色完成某事"）→ ③b-2 业务条线测试（本项目）
+```
+
+**协作模式**：收到 ③b-1 标记的 TODO 后：
+1. 在对应场景测试中补全跨模块数据准备
+2. 确保 ③b-1 的骨架在完整流程中可正确执行
+3. 不重复测试 ③b-1 已覆盖的单模块接口验证
