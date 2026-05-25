@@ -1,2 +1,7 @@
 MVP白皮书.md
 .claude/settings.local.json
+*.db
+*.db-wal
+*.db-shm
+*.vite/
+node_modules/

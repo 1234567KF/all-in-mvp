@@ -125,8 +125,23 @@ for platform_config in "${PLATFORMS[@]}"; do
     if [ -f "$OVL_SKILL_FILE" ]; then
       msg_ok "overlay: $skill_name"
       copy_dir "$OVERLAY_DIR/$skill_name" "$DST_SKILL_DIR" "$DRY_RUN"
+      # Remove agents/ from skill dir (goes to .qoder/agents/ separately)
+      if [ -d "$DST_SKILL_DIR/agents" ] && [ "$DRY_RUN" = false ]; then
+        rm -rf "$DST_SKILL_DIR/agents"
+      fi
       OVERLAY_COUNT=$((OVERLAY_COUNT + 1))
       COPY_COUNT=$((COPY_COUNT + 1))
+      # Copy agents/ from overlay to platform agents dir (qoder only)
+      if [ "$PLATFORM_NAME" = "qoder" ] && [ -d "$OVERLAY_DIR/$skill_name/agents" ]; then
+        AGENTS_DST="$(dirname "$TARGET_DIR")/agents"
+        msg_step "agents: $skill_name -> .qoder/agents/"
+        if [ "$DRY_RUN" = false ]; then
+          mkdir -p "$AGENTS_DST"
+          for agent_file in "$OVERLAY_DIR/$skill_name/agents"/mvp-*.md; do
+            [ -f "$agent_file" ] && cp "$agent_file" "$AGENTS_DST/"
+          done
+        fi
+      fi
     elif [ -d "$SRC_SKILL_DIR" ]; then
       msg_step "copy:   $skill_name"
       copy_dir "$SRC_SKILL_DIR" "$DST_SKILL_DIR" "$DRY_RUN"

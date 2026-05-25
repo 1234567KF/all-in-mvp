@@ -17,7 +17,6 @@ const pricingSeed = [
   { modelId: 'deepseek-r1', short: 'R1', name: 'DeepSeek R1', inputPerMtok: 4.80, outputPerMtok: 19.20, cacheReadPerMtok: 0.019, note: 'DeepSeek 推理模型', currency: '¥' },
   { modelId: 'gpt-4o', short: 'GPT-4o', name: 'GPT-4o', inputPerMtok: 7.50, outputPerMtok: 37.50, cacheReadPerMtok: 1.88, note: 'OpenAI 多模态模型', currency: '¥' },
   { modelId: 'minimax-m2.5', short: 'M2.5', name: 'MiniMax M2.5', inputPerMtok: 2.10, outputPerMtok: 8.40, cacheReadPerMtok: 0.21, note: 'MiniMax', currency: '¥' },
-  { modelId: 'claude-sonnet-4', short: 'Sonnet 4', name: 'Claude Sonnet 4', inputPerMtok: 21.60, outputPerMtok: 108.00, cacheReadPerMtok: 2.70, note: 'Anthropic Claude', currency: '¥' },
   { modelId: 'claude-haiku-3.5', short: 'Haiku 3.5', name: 'Claude Haiku 3.5', inputPerMtok: 1.80, outputPerMtok: 9.00, cacheReadPerMtok: 0.216, note: 'Anthropic Claude', currency: '¥' },
 ]
 
@@ -55,6 +54,7 @@ export async function seed(): Promise<void> {
       input_cached INTEGER NOT NULL DEFAULT 0,
       output_tokens INTEGER NOT NULL DEFAULT 0,
       latency_ms INTEGER,
+      message TEXT,
       message_size_bytes INTEGER,
       opt_id TEXT,
       note TEXT,
@@ -116,7 +116,7 @@ export async function seed(): Promise<void> {
   }
 
   console.log('[seed] Database initialized with seed data')
-  console.log(`[seed] Inserted ${mechanismsSeed.length} mechanisms and ${pricingSeed.length} pricing records`)
+  console.log(`[seed] Inserted ${mechanismsSeed.length} mechanisms, ${pricingSeed.length} pricing`)
 }
 
 // Run directly

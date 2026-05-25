@@ -6,6 +6,7 @@
       <el-menu mode="horizontal" :ellipsis="false" style="margin-left: 24px; background: transparent; border-bottom: none;"
         :default-active="$route.path" router>
         <el-menu-item index="/dashboard" style="color: #e0e0e0; font-size: 0.85rem;">看板</el-menu-item>
+        <el-menu-item index="/turns" style="color: #e0e0e0; font-size: 0.85rem;">轮次</el-menu-item>
         <el-menu-item index="/sessions" style="color: #e0e0e0; font-size: 0.85rem;">会话</el-menu-item>
       </el-menu>
       <div style="flex: 1;"></div>

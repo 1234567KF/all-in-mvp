@@ -122,6 +122,7 @@ export async function createTurn(c: Context) {
     inputUncached,
     inputCached,
     outputTokens,
+    message: body.message || null,
     latencyMs: body.latency_ms || null,
     messageSizeBytes: body.message_size_bytes || null,
     optId: body.opt_id || null,

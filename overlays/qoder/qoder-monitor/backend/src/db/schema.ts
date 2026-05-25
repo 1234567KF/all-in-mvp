@@ -35,6 +35,7 @@ export const turns = sqliteTable('turns', {
   inputCached: integer('input_cached').notNull().default(0),
   outputTokens: integer('output_tokens').notNull().default(0),
   latencyMs: integer('latency_ms'),
+  message: text('message'),
   messageSizeBytes: integer('message_size_bytes'),
   optId: text('opt_id'),
   note: text('note'),

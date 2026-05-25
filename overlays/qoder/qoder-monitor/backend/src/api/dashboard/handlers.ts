@@ -23,6 +23,31 @@ export function getDashboardSummary(c: Context) {
     .limit(50)
     .all()
 
+  // Enrich turns with cost and savings
+  const allPricing = db.select().from(schema.pricing).all()
+  const allOpts = db.select().from(schema.optimizations).all()
+  const enrichedTurns = recentTurns.map(t => {
+    const pricing = allPricing.find(p => p.modelId === t.modelUsed)
+    const inputPrice = pricing?.inputPerMtok ?? 0
+    const outputPrice = pricing?.outputPerMtok ?? 0
+    const cachePrice = pricing?.cacheReadPerMtok ?? inputPrice
+    const inputCost = ((t.inputUncached ?? 0) / 1000000 * inputPrice) + ((t.inputCached ?? 0) / 1000000 * cachePrice)
+    const outputCost = ((t.outputTokens ?? 0) / 1000000 * outputPrice)
+    const estimatedCost = Math.round((inputCost + outputCost) * 10000) / 10000
+
+    // Look up savings by opt_id
+    let savings = 0
+    if (t.optId) {
+      const opt = allOpts.find(o => o.optId === t.optId)
+      if (opt) {
+        const mechs = JSON.parse(opt.mechanisms || '{}')
+        savings = Object.values(mechs).reduce((s: number, v: any) => s + (typeof v === 'number' ? v : 0), 0)
+      }
+    }
+
+    return { ...t, estimatedCost, savings }
+  })
+
   // Get sessions
   const sessionConditions = sessionId ? eq(schema.sessions.id, sessionId) : sql`1=1`
   const sessionsList = db.select({
@@ -68,7 +93,7 @@ export function getDashboardSummary(c: Context) {
         mechanisms: savings.mechanisms,
         total_savings: savings.total_savings,
       },
-      recent_turns: isEmpty ? [] : recentTurns,
+      recent_turns: isEmpty ? [] : enrichedTurns,
       sessions: isEmpty ? [] : sessionsList,
     }
   })

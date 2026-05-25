@@ -18,54 +18,70 @@
     </template>
     <EmptyState v-if="!filteredTurns.length" message="暂无轮次数据 — 发送消息后自动出现" />
     <el-table v-else :data="filteredTurns" style="width: 100%" stripe size="small"
+      @expand-change="handleExpandChange"
       :header-cell-style="{ background: '#0f3460', color: '#e0e0e0', borderColor: '#1a1a2e' }"
       :cell-style="{ background: '#16213e', color: '#ccc', borderColor: '#0f3460' }">
-      <el-table-column prop="id" label="ID" min-width="120">
+      <el-table-column type="expand" width="30">
+        <template #default="{ row }">
+          <div class="expand-message">
+            <div class="message-label">消息内容：</div>
+            <div class="message-text">{{ row.message || '(无消息内容)' }}</div>
+          </div>
+        </template>
+      </el-table-column>
+      <el-table-column prop="id" label="ID" min-width="100">
         <template #default="{ row }">
           <code style="font-size: 0.7rem; color: #8888aa;">{{ row.id?.substring(0, 8) }}...</code>
         </template>
       </el-table-column>
-      <el-table-column prop="type" label="类型" width="70">
+      <el-table-column prop="type" label="类型" width="60">
         <template #default="{ row }">
           <el-tag :type="row.type === 'a2a' ? 'warning' : 'primary'" size="small" effect="dark">
             {{ row.type === 'a2a' ? 'A2A' : '轮次' }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="direction" label="方向" width="70">
+      <el-table-column label="方向" width="60">
         <template #default="{ row }">
-          <span v-if="row.direction === 'input'">📤 输入</span>
-          <span v-else>📥 输出</span>
+          <span v-if="row.role === 'human'">📤</span>
+          <span v-if="row.role === 'ai'">📥</span>
         </template>
       </el-table-column>
-      <el-table-column prop="modelUsed" label="模型" min-width="150">
+      <el-table-column prop="message" label="消息" min-width="220">
+        <template #default="{ row }">
+          <span class="msg-preview" :title="row.message || ''">
+            {{ row.message ? (row.message.length > 30 ? row.message.substring(0, 30) + '...' : row.message) : '-' }}
+          </span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="modelUsed" label="模型" min-width="130">
         <template #default="{ row }">
           <el-tag size="small" effect="dark" color="#0f3460" style="color: #e94560;">
             {{ row.modelUsed || '-' }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="phase" label="阶段" width="80">
+      <el-table-column prop="phase" label="阶段" width="60">
         <template #default="{ row }">
           <el-tag size="small" effect="plain" type="info">{{ row.phase || '-' }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="输入未命中" width="100" align="right">
-        <template #default="{ row }">{{ formatNum(row.inputTokensUncached) }}</template>
+      <el-table-column label="输入未命" width="80" align="right">
+        <template #default="{ row }">{{ formatNum(row.inputUncached) }}</template>
       </el-table-column>
-      <el-table-column label="输入缓存" width="90" align="right">
-        <template #default="{ row }">{{ formatNum(row.inputTokensCached) }}</template>
+      <el-table-column label="缓存" width="70" align="right">
+        <template #default="{ row }">{{ formatNum(row.inputCached) }}</template>
       </el-table-column>
-      <el-table-column label="输出" width="90" align="right">
+      <el-table-column label="输出" width="70" align="right">
         <template #default="{ row }">{{ formatNum(row.outputTokens) }}</template>
       </el-table-column>
-      <el-table-column label="估算成本" width="110" align="right">
+      <el-table-column label="成本" width="90" align="right">
         <template #default="{ row }">
-          <span v-if="row.estimatedCost != null">{{ '¥' + row.estimatedCost.toFixed(4) }}</span>
-          <span v-else style="color: #888">无定价</span>
+          <span v-if="row.estimatedCost != null && row.estimatedCost > 0">{{ '¥' + row.estimatedCost.toFixed(4) }}</span>
+          <span v-else style="color: #888">-</span>
         </template>
       </el-table-column>
-      <el-table-column label="优化节省" width="100" align="right">
+      <el-table-column label="节省" width="80" align="right">
         <template #default="{ row }">
           <span v-if="row.savings && row.savings > 0" style="color: #67c23a;">{{ formatNum(row.savings) }}</span>
           <span v-else style="color: #555;">0</span>
@@ -112,6 +128,10 @@ function formatNum(n: number | null | undefined): string {
   if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K'
   return n.toString()
 }
+
+function handleExpandChange(row: any, expandedRows: any[]) {
+  // 仅记录展开状态，可扩展为加载更多详情
+}
 </script>
 
 <style scoped>
@@ -119,4 +139,9 @@ function formatNum(n: number | null | undefined): string {
 .section-card :deep(.el-card__header) { border-bottom: 1px solid #0f3460; color: #e0e0e0; font-size: 0.9rem; }
 .turn-table-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
 .turn-filters { display: flex; gap: 8px; }
+.expand-message { padding: 12px 20px; background: #1a1a2e; border-radius: 6px; }
+.message-label { font-size: 0.75rem; color: #8888aa; margin-bottom: 6px; }
+.message-text { font-size: 0.85rem; color: #e0e0e0; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+.msg-preview { color: #a0a0c0; font-size: 0.8rem; cursor: pointer; }
+.msg-preview:hover { color: #409eff; }
 </style>

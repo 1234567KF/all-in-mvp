@@ -1,8 +1,7 @@
 'use strict'
 // ============================================================
-// perf-auto-log.cjs — Qoder UserPromptSubmit Hook
-// Captures user input and POSTs to qoder-monitor backend
-// Triggered by: UserPromptSubmit event in ~/.qoder/settings.json
+// monitor-ai-response.cjs — Qoder PostToolUse Hook
+// Captures tool response from PostToolUse event and posts to API
 // ============================================================
 
 const http = require('http')
@@ -10,16 +9,17 @@ const fs = require('fs')
 const path = require('path')
 
 const API_URL = process.env.QODER_MONITOR_URL || 'http://localhost:3456'
-const LOG_FILE = path.join(__dirname, 'perf-hook.log')
+const LOG_FILE = path.join(__dirname, 'monitor-hook.log')
+
+const MAX_MESSAGE_LEN = 3000
 
 function log(msg) {
   try {
     const ts = new Date().toISOString()
-    fs.appendFileSync(LOG_FILE, `[${ts}] [auto-log] ${msg}\n`)
+    fs.appendFileSync(LOG_FILE, `[${ts}] [ai-resp] ${msg}\n`)
   } catch {}
 }
 
-// Read stdin with timeout (prevents hanging when no input piped)
 function readStdin(timeoutMs = 3000) {
   return new Promise((resolve) => {
     let data = ''
@@ -39,9 +39,9 @@ function readStdin(timeoutMs = 3000) {
   })
 }
 
-function postToApi(path, body) {
+function postToApi(urlPath, body) {
   return new Promise((resolve) => {
-    const url = new URL(path, API_URL)
+    const url = new URL(urlPath, API_URL)
     const postData = JSON.stringify(body)
     const req = http.request({
       hostname: url.hostname,
@@ -67,72 +67,62 @@ function postToApi(path, body) {
   })
 }
 
+function truncate(text, maxLen) {
+  if (!text || text.length <= maxLen) return text
+  return text.substring(0, maxLen) + `\n\n... [已截断，原始长度 ${text.length} 字符]`
+}
+
+function getToolResultMessage(toolName, toolResponse, isFailure, errorMsg) {
+  const prefix = isFailure ? `[工具执行失败: ${toolName}]` : `[工具: ${toolName}]`
+  const errorSuffix = errorMsg ? `\n错误: ${errorMsg}` : ''
+
+  if (toolResponse) {
+    const responseStr = typeof toolResponse === 'string' ? toolResponse : JSON.stringify(toolResponse)
+    return prefix + '\n' + truncate(responseStr, MAX_MESSAGE_LEN) + errorSuffix
+  }
+
+  // If no tool_response, still use tool_name + note for visibility
+  return prefix + errorSuffix
+}
+
 async function main() {
-  log('=== perf-auto-log started ===')
-
-  // Read hook context from stdin
-  let raw
-  try {
-    raw = await readStdin(3000)
-  } catch (e) {
-    log(`stdin read failed: ${e.message}`)
-    process.exit(0)
-  }
-
-  if (!raw.trim()) {
-    log('No stdin data, exiting')
-    process.exit(0)
-  }
+  const raw = await readStdin(3000)
+  if (!raw.trim()) return
 
   let data
-  try {
-    data = JSON.parse(raw)
-  } catch (e) {
-    log(`JSON parse failed: ${e.message}`)
-    process.exit(0)
-  }
+  try { data = JSON.parse(raw) } catch { return }
 
   const hookEvent = data.hook_event_name || ''
   const sessionId = data.session_id || 'unknown'
-  const prompt = data.prompt || ''
-  const transcriptPath = data.transcript_path || ''
+  const toolName = data.tool_name || 'unknown'
+  const toolResponse = data.tool_response
+  const errorMsg = data.error || ''
+  const isFailure = hookEvent === 'PostToolUseFailure'
 
-  log(`Event: ${hookEvent}, Session: ${sessionId}, Prompt length: ${prompt.length}`)
+  if (hookEvent !== 'PostToolUse' && hookEvent !== 'PostToolUseFailure') return
 
-  if (hookEvent !== 'UserPromptSubmit') {
-    log(`Unexpected event: ${hookEvent}, exiting`)
-    process.exit(0)
-  }
-
-  // BR-002: Empty message - skip
-  if (!prompt || !prompt.trim()) {
-    log('Empty prompt, skipping')
-    process.exit(0)
-  }
-
-  // Estimate model from environment or use default (BR-003)
   const model = process.env.QODER_MODEL || 'deepseek-v4-pro'
 
-  // Build turn record
+  // Build message from tool_response (available in PostToolUse/PostToolUseFailure)
+  const message = getToolResultMessage(toolName, toolResponse, isFailure, errorMsg)
+  const byteLen = Buffer.byteLength(message, 'utf8')
+
   const turnData = {
     session_id: sessionId,
     type: 'turn',
-    role: 'human',
+    role: 'ai',
     timestamp: new Date().toISOString(),
     model_used: model,
-    message_size_bytes: Buffer.byteLength(prompt, 'utf8'),
+    message: message,
+    note: isFailure ? `工具执行失败: ${toolName}` : `工具名: ${toolName}`,
+    output_tokens: Math.max(1, Math.floor(byteLen / 4)),
+    message_size_bytes: byteLen,
     data_source: 'hook',
-    note: prompt.slice(0, 200),  // First 200 chars as note
   }
 
-  log(`POST /api/turns (human): session=${sessionId}, bytes=${turnData.message_size_bytes}`)
-
+  log(`POST /api/turns (ai): session=${sessionId}, tool=${toolName}, len=${message.length}`)
   const result = await postToApi('/api/turns', turnData)
   log(`Response: ${JSON.stringify(result)}`)
-  log('=== perf-auto-log ended ===')
 }
 
-main().catch((e) => {
-  log(`Fatal error: ${e.message}`)
-  process.exit(0)  // Never block the IDE
-})
+main().catch(() => process.exit(0))

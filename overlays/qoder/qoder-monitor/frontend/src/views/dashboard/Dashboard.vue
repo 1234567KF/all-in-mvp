@@ -13,7 +13,6 @@
         <el-col :span="12"><ModelDist /></el-col>
         <el-col :span="12"><Savings /></el-col>
       </el-row>
-      <TurnTable />
     </template>
   </div>
 </template>
@@ -24,7 +23,6 @@ import { useDashboardStore } from '../../stores/dashboard'
 import SummaryCards from './SummaryCards.vue'
 import ModelDist from './ModelDist.vue'
 import Savings from './Savings.vue'
-import TurnTable from './TurnTable.vue'
 import EmptyState from '../../components/EmptyState.vue'
 
 const store = useDashboardStore()

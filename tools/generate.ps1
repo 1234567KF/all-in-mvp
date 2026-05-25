@@ -44,7 +44,33 @@ foreach ($t in $targets) {
             Write-Host "  [COPY]    $skillName"
         }
         if (-not $DryRun) {
-            robocopy $srcDir $dstDir /E /NFL /NDL /NJH /NJS /NP /XO 2>&1 | Out-Null
+            # overlay 复制时排除 agents/（由后续逻辑独立复制到 .qoder/agents/）
+            if (Test-Path $ovlFile) {
+                # 先清理技能目录中旧版 agents/ 残留
+                $agentsInSkill = Join-Path $dstDir "agents"
+                if (Test-Path $agentsInSkill) {
+                    Remove-Item -Path $agentsInSkill -Recurse -Force
+                }
+                robocopy $srcDir $dstDir /E /XD agents /NFL /NDL /NJH /NJS /NP /XO 2>&1 | Out-Null
+            } else {
+                robocopy $srcDir $dstDir /E /NFL /NDL /NJH /NJS /NP /XO 2>&1 | Out-Null
+            }
+        }
+        # Copy agents/ from overlay to platform agents dir (qoder only)
+        if ($t.Name -eq "qoder") {
+            $ovlAgents = Join-Path $t.OverlayDir "$skillName\agents"
+            if (Test-Path $ovlAgents) {
+                $agentsDst = Join-Path (Split-Path $t.Dir -Parent) "agents"
+                Write-Host "  [AGENTS]  $skillName -> .qoder\agents\"
+                if (-not $DryRun) {
+                    if (-not (Test-Path $agentsDst)) {
+                        New-Item -Path $agentsDst -ItemType Directory -Force | Out-Null
+                    }
+                    Get-ChildItem -Path $ovlAgents -Filter "mvp-*.md" | ForEach-Object {
+                        Copy-Item -Path $_.FullName -Destination $agentsDst -Force
+                    }
+                }
+            }
         }
     }
     # shared references
