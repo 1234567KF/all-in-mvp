@@ -5,7 +5,7 @@ description: Qoder 特化版多Agent并行MVP开发流水线。Triggers: MVP, �
 
 # Parallel MVP Pipeline — Qoder 特化版
 
-> 基于《MVP 白皮书 v2.4》的多 Agent 并行工程方法论，针对 Qoder IDE 环境深度适配。
+> 基于《MVP 白皮书 v2.5》的多 Agent 并行工程方法论，针对 Qoder IDE 环境深度适配。增量变更强制走完整流水线（§0.2决策树）。
 > 利用 Qoder Custom Subagents（具备文件读写能力）+ Experts Mode（专家团面板）+ Canvas（进度看板）。
 
 ---

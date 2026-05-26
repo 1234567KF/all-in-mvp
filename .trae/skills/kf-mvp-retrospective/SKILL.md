@@ -263,7 +263,7 @@ Derived from MVP Whitepaper Section 13 — Stage5 流程复盘:
 
 **复盘时间**: <timestamp>
 **复盘Agent**: Stage5 Retrospective Agent
-**基于白皮书版本**: v2.4.0
+**基于白皮书版本**: v2.5.0
 
 ---
 

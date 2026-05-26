@@ -1,0 +1,330 @@
+# Pipeline Monitor MVP — API 契约
+# @version: 1.0.draft
+# @status: DRAFT
+# @format: OpenAPI-inspired (simplified YAML)
+
+openapi: "3.0.0"
+info:
+  title: Pipeline Monitor API
+  version: 1.0.0
+  description: 流水线日志记录与回溯系统 API
+
+servers:
+  - url: http://localhost:3000
+    description: 本地开发服务器
+
+# ============================================================
+# 数据模型 (Components)
+# ============================================================
+components:
+  schemas:
+
+    Pipeline:
+      type: object
+      properties:
+        id:          { type: string, format: uuid }
+        name:        { type: string }
+        status:      { type: string, enum: [RUNNING, DONE, FAILED, CANCELLED] }
+        mode:        { type: string, enum: [full, incremental, simple] }
+        task_desc:   { type: string }
+        created_at:  { type: string, format: date-time }
+        updated_at:  { type: string, format: date-time }
+
+    PipelineCreate:
+      type: object
+      required: [name]
+      properties:
+        name:       { type: string }
+        mode:       { type: string, enum: [full, incremental, simple], default: full }
+        task_desc:  { type: string, default: "" }
+
+    PipelineUpdate:
+      type: object
+      properties:
+        status: { type: string, enum: [DONE, FAILED, CANCELLED] }
+
+    Event:
+      type: object
+      properties:
+        id:          { type: string, format: uuid }
+        pipeline_id: { type: string, format: uuid }
+        event_type:  { type: string, enum: [PIPELINE_START, PIPELINE_END, STAGE_START, STAGE_END, AGENT_SPAWN, AGENT_DONE, AGENT_BLOCKED, FILE_CHANGE, TOOL_CALL, ERROR, GATE_CHECK, GRILL_ROUND] }
+        agent_name:  { type: string }
+        stage:       { type: string }
+        message:     { type: string }
+        metadata:    { type: object }
+        timestamp:   { type: string, format: date-time }
+        seq:         { type: integer }
+
+    EventCreate:
+      type: object
+      required: [event_type, message]
+      properties:
+        event_type: { type: string }
+        agent_name: { type: string, default: "" }
+        stage:      { type: string, default: "" }
+        message:    { type: string }
+        metadata:   { type: object, default: {} }
+
+    EventBatchCreate:
+      type: object
+      required: [events]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventCreate'
+
+    EventList:
+      type: object
+      properties:
+        data:       { type: array, items: { $ref: '#/components/schemas/Event' } }
+        total:      { type: integer }
+        page:       { type: integer }
+        pageSize:   { type: integer }
+
+    StatsOverview:
+      type: object
+      properties:
+        total_events:         { type: integer }
+        stage_distribution:   { type: object }
+        agent_distribution:   { type: object }
+        event_type_distribution: { type: object }
+
+    StageDuration:
+      type: object
+      properties:
+        stage:        { type: string }
+        duration_ms:  { type: integer }
+        event_count:  { type: integer }
+
+    AgentActivity:
+      type: object
+      properties:
+        agent_name:     { type: string }
+        event_count:    { type: integer }
+        file_changes:   { type: integer }
+        errors:         { type: integer }
+        first_seen:     { type: string, format: date-time }
+        last_seen:      { type: string, format: date-time }
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:     { type: string }
+        message:   { type: string }
+        details:   { type: object }
+
+# ============================================================
+# API 端点
+# ============================================================
+paths:
+
+  # --- Pipeline 管理 ---
+  /api/pipelines:
+    post:
+      summary: 创建 Pipeline 记录
+      tags: [Pipeline]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PipelineCreate' }
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Pipeline' }
+        '400':
+          description: 参数错误
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/pipelines/{id}:
+    patch:
+      summary: 更新 Pipeline 状态
+      tags: [Pipeline]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PipelineUpdate' }
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Pipeline' }
+        '404':
+          description: Pipeline 不存在
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/pipelines/current:
+    get:
+      summary: 获取当前活跃 Pipeline（最新一条）
+      tags: [Pipeline]
+      responses:
+        '200':
+          description: 返回最新 Pipeline
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Pipeline' }
+        '404':
+          description: 无 Pipeline 记录
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  # --- Event 写入 ---
+  /api/events:
+    post:
+      summary: 写入单条事件
+      tags: [Event]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EventCreate' }
+      responses:
+        '201':
+          description: 写入成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Event' }
+        '400':
+          description: 无活跃 Pipeline 或参数错误
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/events/batch:
+    post:
+      summary: 批量写入事件
+      tags: [Event]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EventBatchCreate' }
+      responses:
+        '201':
+          description: 批量写入成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count: { type: integer }
+                  events: { type: array, items: { $ref: '#/components/schemas/Event' } }
+        '400':
+          description: 无活跃 Pipeline 或数据验证失败（事务回滚）
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  # --- Event 查询 ---
+  /api/events:
+    get:
+      summary: 查询事件列表（支持多维度过滤 + 分页）
+      tags: [Event]
+      parameters:
+        - name: pipeline_id
+          in: query
+          schema: { type: string }
+          description: 按 Pipeline ID 过滤（必填）
+        - name: stage
+          in: query
+          schema: { type: string }
+        - name: agent_name
+          in: query
+          schema: { type: string }
+        - name: event_type
+          in: query
+          schema: { type: string }
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+          description: 起始时间 (ISO8601)
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+          description: 结束时间 (ISO8601)
+        - name: search
+          in: query
+          schema: { type: string }
+          description: 关键词搜索（message + metadata）
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, default: 50 }
+        - name: sort
+          in: query
+          schema: { type: string, enum: [asc, desc], default: asc }
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EventList' }
+
+  # --- 统计接口 ---
+  /api/stats/overview:
+    get:
+      summary: Pipeline 概览统计
+      tags: [Stats]
+      parameters:
+        - name: pipeline_id
+          in: query
+          schema: { type: string }
+          description: 不传则使用当前活跃 Pipeline
+      responses:
+        '200':
+          description: 统计结果
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StatsOverview' }
+
+  /api/stats/stage-duration:
+    get:
+      summary: Stage 耗时统计
+      tags: [Stats]
+      parameters:
+        - name: pipeline_id
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Stage 耗时列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/StageDuration' }
+
+  /api/stats/agent-activity:
+    get:
+      summary: Agent 活跃度统计
+      tags: [Stats]
+      parameters:
+        - name: pipeline_id
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Agent 活跃度列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AgentActivity' }
