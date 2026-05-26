@@ -43,12 +43,6 @@ pipelineRoutes.get("/", async (c) => {
   return c.json(list, 200);
 });
 
-// POST /api/pipelines/stop-all — 停止所有运行中的流水线（必须在 /:id 之前注册）
-pipelineRoutes.post("/stop-all", async (c) => {
-  const result = await service.stopAllPipelines();
-  return c.json(result, 200);
-});
-
 // GET /api/pipelines/current — 获取当前 Pipeline（必须在 /:id 之前注册）
 pipelineRoutes.get("/current", async (c) => {
   const pipeline = await service.getCurrentPipeline();

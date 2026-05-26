@@ -37,11 +37,6 @@ const statusBadgeStyle = (s) => {
 };
 
 // Computed
-// 是否有运行中的流水线
-const hasRunningPipelines = computed(() => {
-  return pipelines.value.some(p => p.status === "RUNNING") || pipeline.value?.status === "RUNNING";
-});
-
 const statusColor = computed(() => {
   const map = { RUNNING: "#3fb950", DONE: "#58a6ff", FAILED: "#f85149", CANCELLED: "#8b949e" };
   return map[pipeline.value?.status] || "#8b949e";
@@ -95,19 +90,6 @@ function selectPipeline(id) {
   viewMode.value = "detail";
   resetFilters();
   refreshAll();
-}
-
-async function stopAllPipelines() {
-  if (!confirm("确定要停止所有运行中的流水线吗？")) return;
-  try {
-    const res = await fetch(`${API_BASE}/pipelines/stop-all`, { method: "POST" });
-    if (res.ok) {
-      const result = await res.json();
-      if (result.count > 0) {
-        await refreshAll();
-      }
-    }
-  } catch (e) { /* ignore */ }
 }
 
 function goBack() {
@@ -253,8 +235,7 @@ function fmtDuration(ms) {
           <input type="checkbox" v-model="autoRefresh" style="accent-color: #3fb950;" />
           自动刷新 (3s)
         </label>
-        <button @click="stopAllPipelines" :disabled="!hasRunningPipelines" style="background: #da3633; border: none; color: #fff; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;" :style="{ opacity: hasRunningPipelines ? 1 : 0.4, cursor: hasRunningPipelines ? 'pointer' : 'not-allowed' }">🛑 停止所有流水线</button>
-        <button @click="refreshAll" style="background: #21262d; border: 1px solid #30363d; color: #c9d1d9; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px;">🔄 刷新</button>
+<button @click="refreshAll" style="background: #21262d; border: 1px solid #30363d; color: #c9d1d9; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px;">🔄 刷新</button>
       </div>
     </div>
 
