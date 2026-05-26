@@ -21,19 +21,22 @@ function now(): string {
 // ============================================================
 
 export async function createEvent(input: EventCreate): Promise<{ event: Event } | { error: string; status: number }> {
-  // 找到当前活跃的 Pipeline
-  const currentPipeline = await db.select().from(pipelines)
-    .where(eq(pipelines.status, "RUNNING"))
-    .orderBy(desc(pipelines.createdAt))
-    .limit(1).get();
-
-  if (!currentPipeline) {
-    return { error: "No active pipeline", status: 400 };
+  // 确定 pipelineId: 优先使用传入的，否则找当前活跃的
+  let targetPipelineId = input.pipelineId;
+  if (!targetPipelineId) {
+    const currentPipeline = await db.select().from(pipelines)
+      .where(eq(pipelines.status, "RUNNING"))
+      .orderBy(desc(pipelines.createdAt))
+      .limit(1).get();
+    if (!currentPipeline) {
+      return { error: "No active pipeline", status: 400 };
+    }
+    targetPipelineId = currentPipeline.id;
   }
 
   // 检查事件上限
   const eventCount = await db.select({ count: count() }).from(events)
-    .where(eq(events.pipelineId, currentPipeline.id)).get();
+    .where(eq(events.pipelineId, targetPipelineId!)).get();
   if (eventCount && eventCount.count >= MAX_EVENTS_PER_PIPELINE) {
     return { error: `Event limit exceeded (max: ${MAX_EVENTS_PER_PIPELINE})`, status: 400 };
   }
@@ -45,12 +48,12 @@ export async function createEvent(input: EventCreate): Promise<{ event: Event } 
 
   // 计算下一个 seq
   const maxSeq = await db.select({ maxSeq: sql<number>`COALESCE(MAX(seq), 0)` }).from(events)
-    .where(eq(events.pipelineId, currentPipeline.id)).get();
+    .where(eq(events.pipelineId, targetPipelineId!)).get();
   const nextSeq = (maxSeq?.maxSeq ?? 0) + 1;
 
   const event: Event = {
     id: uuid(),
-    pipelineId: currentPipeline.id,
+    pipelineId: targetPipelineId!,
     eventType: input.eventType,
     agentName: input.agentName || "",
     stage: input.stage || "",
@@ -80,13 +83,18 @@ export async function createEventBatch(input: EventBatchCreate): Promise<{ event
     return { error: "Events array cannot be empty", status: 400 };
   }
 
-  const currentPipeline = await db.select().from(pipelines)
-    .where(eq(pipelines.status, "RUNNING"))
-    .orderBy(desc(pipelines.createdAt))
-    .limit(1).get();
-
-  if (!currentPipeline) {
-    return { error: "No active pipeline", status: 400 };
+  // 从 batch 中第一个事件的 pipelineId 确定目标
+  const firstPipelineId = input.events[0].pipelineId;
+  let targetPipelineId = firstPipelineId;
+  if (!targetPipelineId) {
+    const currentPipeline = await db.select().from(pipelines)
+      .where(eq(pipelines.status, "RUNNING"))
+      .orderBy(desc(pipelines.createdAt))
+      .limit(1).get();
+    if (!currentPipeline) {
+      return { error: "No active pipeline", status: 400 };
+    }
+    targetPipelineId = currentPipeline.id;
   }
 
   // 验证所有 event_type
@@ -101,13 +109,13 @@ export async function createEventBatch(input: EventBatchCreate): Promise<{ event
 
   // 检查上限
   const eventCount = await db.select({ count: count() }).from(events)
-    .where(eq(events.pipelineId, currentPipeline.id)).get();
+    .where(eq(events.pipelineId, targetPipelineId)).get();
   if (eventCount && eventCount.count + input.events.length > MAX_EVENTS_PER_PIPELINE) {
     return { error: `Event limit exceeded (max: ${MAX_EVENTS_PER_PIPELINE})`, status: 400 };
   }
 
   const maxSeq = await db.select({ maxSeq: sql<number>`COALESCE(MAX(seq), 0)` }).from(events)
-    .where(eq(events.pipelineId, currentPipeline.id)).get();
+    .where(eq(events.pipelineId, targetPipelineId)).get();
   let nextSeq = (maxSeq?.maxSeq ?? 0) + 1;
 
   const createdEvents: Event[] = [];
@@ -117,7 +125,7 @@ export async function createEventBatch(input: EventBatchCreate): Promise<{ event
     for (const ev of input.events) {
       const event: Event = {
         id: uuid(),
-        pipelineId: currentPipeline.id,
+        pipelineId: targetPipelineId,
         eventType: ev.eventType,
         agentName: ev.agentName || "",
         stage: ev.stage || "",

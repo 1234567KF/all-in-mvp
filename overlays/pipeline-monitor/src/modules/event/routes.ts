@@ -16,6 +16,7 @@ eventRoutes.post("/", async (c) => {
   }
   const input: EventCreate = {
     eventType: body.eventType,
+    pipelineId: body.pipelineId,
     agentName: body.agentName || "",
     stage: body.stage || "",
     message: body.message,

@@ -41,4 +41,9 @@ export function initDB() {
     CREATE INDEX IF NOT EXISTS idx_events_type ON events(pipeline_id, event_type);
     CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(pipeline_id, timestamp);
   `);
+
+  // 迁移: 添加 session_name 列 (幂等)
+  try {
+    sqlite.exec(`ALTER TABLE pipelines ADD COLUMN session_name TEXT NOT NULL DEFAULT ''`);
+  } catch {}
 }

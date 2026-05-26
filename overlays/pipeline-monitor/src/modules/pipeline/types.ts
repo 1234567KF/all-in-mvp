@@ -5,6 +5,7 @@ export interface Pipeline {
   status: "RUNNING" | "DONE" | "FAILED" | "CANCELLED";
   mode: "full" | "incremental" | "simple";
   taskDesc: string;
+  sessionName: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -14,6 +15,7 @@ export interface PipelineCreate {
   name: string;
   mode?: "full" | "incremental" | "simple";
   taskDesc?: string;
+  sessionName?: string;
 }
 
 // 更新 Pipeline 请求体

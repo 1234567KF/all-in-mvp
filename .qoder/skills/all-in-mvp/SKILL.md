@@ -22,6 +22,27 @@ description: Qoder 特化版多Agent并行MVP开发流水线。Triggers: MVP, �
 
 ---
 
+## Phase 0: Pipeline Monitor 自动回溯（强制前置步骤）
+
+> 每次执行 all-in-mvp 时，**必须首先执行本步骤**，自动启动 Pipeline Monitor 并创建回溯 Pipeline。
+> 记录所有 Agent 工具调用，实现全链路可追溯。
+
+### 执行步骤
+
+1. **运行 Session 初始化脚本**（获取端口 + 创建 Pipeline）：
+   ```
+   node overlays/pipeline-monitor/scripts/manage-session.cjs <workspacePath> "<taskName>" "<mode>"
+   ```
+   - 输出格式：JSON `{ pipelineId, sessionName, port }`
+   - 脚本自动执行：启动 Daemon（如未运行）、创建 Pipeline、记录 PIPELINE_START
+   - 解析输出后设置环境变量：`PM_PORT`, `PM_PIPELINE_ID`, `PM_SESSION_NAME`
+2. **后续事件自动记录**：
+   - FILE_CHANGE / TOOL_CALL / ERROR 由 PostToolUse Hook **自动**写入，无需手动处理
+   - Agent 手动写入：AGENT_SPAWN / STAGE_START / STAGE_END / GATE_CHECK / PIPELINE_END
+3. **任务完成时**记录 PIPELINE_END + PATCH 状态为 DONE/FAILED
+
+---
+
 ## Qoder 环境适配说明
 
 ### 1. Agent 执行模式

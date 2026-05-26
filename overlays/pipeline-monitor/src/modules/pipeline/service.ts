@@ -17,6 +17,7 @@ export async function createPipeline(input: PipelineCreate): Promise<Pipeline> {
     status: "RUNNING",
     mode: input.mode || "full",
     taskDesc: input.taskDesc || "",
+    sessionName: input.sessionName || "",
     createdAt: now(),
     updatedAt: now(),
   };
@@ -27,6 +28,7 @@ export async function createPipeline(input: PipelineCreate): Promise<Pipeline> {
     status: pipeline.status,
     mode: pipeline.mode,
     taskDesc: pipeline.taskDesc,
+    sessionName: pipeline.sessionName,
     createdAt: pipeline.createdAt,
     updatedAt: pipeline.updatedAt,
   });
@@ -52,6 +54,7 @@ export async function updatePipeline(id: string, input: PipelineUpdate): Promise
     status: updated.status as Pipeline["status"],
     mode: updated.mode as Pipeline["mode"],
     taskDesc: updated.taskDesc,
+    sessionName: updated.sessionName,
     createdAt: updated.createdAt,
     updatedAt: updated.updatedAt,
   };
@@ -67,14 +70,10 @@ export async function getCurrentPipeline(): Promise<Pipeline | null> {
     status: result.status as Pipeline["status"],
     mode: result.mode as Pipeline["mode"],
     taskDesc: result.taskDesc,
+    sessionName: result.sessionName,
     createdAt: result.createdAt,
     updatedAt: result.updatedAt,
   };
-}
-
-// Pipeline 列表项（含事件计数）
-export interface PipelineListItem extends Pipeline {
-  eventCount: number;
 }
 
 export async function getPipelineById(id: string): Promise<Pipeline | null> {
@@ -87,9 +86,15 @@ export async function getPipelineById(id: string): Promise<Pipeline | null> {
     status: result.status as Pipeline["status"],
     mode: result.mode as Pipeline["mode"],
     taskDesc: result.taskDesc,
+    sessionName: result.sessionName,
     createdAt: result.createdAt,
     updatedAt: result.updatedAt,
   };
+}
+
+// Pipeline 列表项（含事件计数）
+export interface PipelineListItem extends Pipeline {
+  eventCount: number;
 }
 
 export async function listPipelines(): Promise<PipelineListItem[]> {
@@ -111,8 +116,55 @@ export async function listPipelines(): Promise<PipelineListItem[]> {
     status: r.status as Pipeline["status"],
     mode: r.mode as Pipeline["mode"],
     taskDesc: r.taskDesc,
+    sessionName: r.session_name,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
     eventCount: r.event_count,
   }));
+}
+
+// 停止所有运行中的流水线
+export async function stopAllPipelines(): Promise<{ count: number }> {
+  const eventsTable = (await import("../../db/schema.js")).events;
+  const { count, sql } = await import("drizzle-orm");
+
+  // 查找所有 RUNNING 状态的 pipeline
+  const runningPipelines = await db.select().from(pipelines)
+    .where(eq(pipelines.status, "RUNNING"))
+    .orderBy(desc(pipelines.createdAt));
+
+  if (runningPipelines.length === 0) {
+    return { count: 0 };
+  }
+
+  const now = new Date().toISOString();
+
+  for (const p of runningPipelines) {
+    // 更新状态为 CANCELLED
+    await db.update(pipelines).set({
+      status: "CANCELLED",
+      updatedAt: now,
+    }).where(eq(pipelines.id, p.id));
+
+    // 计算下一个 seq
+    const maxSeq = await db.select({ maxSeq: sql<number>`COALESCE(MAX(seq), 0)` })
+      .from(eventsTable)
+      .where(eq(eventsTable.pipelineId, p.id)).get();
+    const nextSeq = (maxSeq?.maxSeq ?? 0) + 1;
+
+    // 记录 PIPELINE_END 事件
+    await db.insert(eventsTable).values({
+      id: crypto.randomUUID(),
+      pipelineId: p.id,
+      eventType: "PIPELINE_END",
+      agentName: "system",
+      stage: "",
+      message: `批量停止: 由用户手动终止`,
+      metadata: JSON.stringify({ status: "CANCELLED", triggeredBy: "user" }),
+      timestamp: now,
+      seq: nextSeq,
+    });
+  }
+
+  return { count: runningPipelines.length };
 }

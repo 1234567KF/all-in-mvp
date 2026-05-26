@@ -16,6 +16,7 @@ pipelineRoutes.post("/", async (c) => {
     name: body.name,
     mode: body.mode,
     taskDesc: body.taskDesc,
+    sessionName: body.sessionName,
   };
   const pipeline = await service.createPipeline(input);
   return c.json(pipeline, 201);
@@ -40,6 +41,12 @@ pipelineRoutes.patch("/:id", async (c) => {
 pipelineRoutes.get("/", async (c) => {
   const list = await service.listPipelines();
   return c.json(list, 200);
+});
+
+// POST /api/pipelines/stop-all — 停止所有运行中的流水线（必须在 /:id 之前注册）
+pipelineRoutes.post("/stop-all", async (c) => {
+  const result = await service.stopAllPipelines();
+  return c.json(result, 200);
 });
 
 // GET /api/pipelines/current — 获取当前 Pipeline（必须在 /:id 之前注册）

@@ -37,6 +37,11 @@ const statusBadgeStyle = (s) => {
 };
 
 // Computed
+// 是否有运行中的流水线
+const hasRunningPipelines = computed(() => {
+  return pipelines.value.some(p => p.status === "RUNNING") || pipeline.value?.status === "RUNNING";
+});
+
 const statusColor = computed(() => {
   const map = { RUNNING: "#3fb950", DONE: "#58a6ff", FAILED: "#f85149", CANCELLED: "#8b949e" };
   return map[pipeline.value?.status] || "#8b949e";
@@ -90,6 +95,19 @@ function selectPipeline(id) {
   viewMode.value = "detail";
   resetFilters();
   refreshAll();
+}
+
+async function stopAllPipelines() {
+  if (!confirm("确定要停止所有运行中的流水线吗？")) return;
+  try {
+    const res = await fetch(`${API_BASE}/pipelines/stop-all`, { method: "POST" });
+    if (res.ok) {
+      const result = await res.json();
+      if (result.count > 0) {
+        await refreshAll();
+      }
+    }
+  } catch (e) { /* ignore */ }
 }
 
 function goBack() {
@@ -181,6 +199,35 @@ onMounted(async () => {
 
 onUnmounted(() => clearInterval(timer));
 
+// Helper: get accent color for event row (left border)
+function getEventAccent(evt) {
+  const m = evt.metadata || {};
+  // Stage 转换
+  if (evt.eventType === "STAGE_START") return "3px solid #58a6ff";
+  if (evt.eventType === "STAGE_END") return "3px solid #3fb950";
+  // Pipeline 生命周期
+  if (evt.eventType === "PIPELINE_START") return "3px solid #a371f7";
+  if (evt.eventType === "PIPELINE_END") return "3px solid #3fb950";
+  // Agent 生命周期
+  if (evt.eventType === "AGENT_SPAWN") return "3px solid #79c0ff";
+  if (evt.eventType === "AGENT_DONE") return "3px solid #3fb950";
+  if (evt.eventType === "AGENT_BLOCKED") return "3px solid #f85149";
+  // 门禁/审查
+  if (evt.eventType === "GATE_CHECK") return m.result === "PASS" ? "3px solid #3fb950" : "3px solid #f85149";
+  if (evt.eventType === "GRILL_ROUND") return "3px solid #d29922";
+  // 错误
+  if (evt.eventType === "ERROR") return "3px solid #f85149";
+  // 产物变更
+  if (evt.eventType === "FILE_CHANGE") return "3px solid #a5d6ff";
+  return "3px solid transparent";
+}
+
+// Stage 颜色映射
+function stageColor(stage) {
+  const map = { Stage1: "#58a6ff", Stage2: "#d29922", Stage3: "#3fb950", Stage4: "#a371f7", Stage5: "#f778ba" };
+  return map[stage] || "#8b949e";
+}
+
 // Helper: format date
 function fmtDate(ts) {
   if (!ts) return "";
@@ -206,6 +253,7 @@ function fmtDuration(ms) {
           <input type="checkbox" v-model="autoRefresh" style="accent-color: #3fb950;" />
           自动刷新 (3s)
         </label>
+        <button @click="stopAllPipelines" :disabled="!hasRunningPipelines" style="background: #da3633; border: none; color: #fff; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;" :style="{ opacity: hasRunningPipelines ? 1 : 0.4, cursor: hasRunningPipelines ? 'pointer' : 'not-allowed' }">🛑 停止所有流水线</button>
         <button @click="refreshAll" style="background: #21262d; border: 1px solid #30363d; color: #c9d1d9; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px;">🔄 刷新</button>
       </div>
     </div>
@@ -224,6 +272,7 @@ function fmtDuration(ms) {
           <div style="display: flex; gap: 20px; font-size: 12px; color: #8b949e; margin-bottom: 8px;">
             <span>📋 {{ p.eventCount }} 事件</span>
             <span>📌 {{ p.mode }}</span>
+            <span v-if="p.sessionName" style="color: #484f58;">🔗 {{ p.sessionName }}</span>
           </div>
           <div style="font-size: 11px; color: #484f58;">
             创建：{{ fmtDate(p.createdAt) }}
@@ -258,6 +307,10 @@ function fmtDuration(ms) {
       <div>
         <div style="font-size: 12px; color: #8b949e; margin-bottom: 4px;">Mode</div>
         <div style="font-size: 14px;">{{ pipeline.mode }}</div>
+      </div>
+      <div v-if="pipeline.sessionName">
+        <div style="font-size: 12px; color: #8b949e; margin-bottom: 4px;">Session</div>
+        <div style="font-size: 13px; color: #8b949e;">{{ pipeline.sessionName }}</div>
       </div>
       <div v-if="stats">
         <div style="font-size: 12px; color: #8b949e; margin-bottom: 4px;">Events</div>
@@ -301,16 +354,41 @@ function fmtDuration(ms) {
           <div>暂无事件</div>
         </div>
         <div v-else style="max-height: 500px; overflow-y: auto;">
-          <div v-for="evt in events" :key="evt.id" @click="selectedEvent = evt" style="padding: 10px 16px; border-bottom: 1px solid #21262d; cursor: pointer; transition: background 0.15s; display: flex; gap: 12px; align-items: flex-start;"
+          <div v-for="evt in events" :key="evt.id" @click="selectedEvent = evt"
+               :style="{ borderLeft: getEventAccent(evt) }"
+               style="padding: 10px 16px; border-bottom: 1px solid #21262d; cursor: pointer; transition: background 0.15s; display: flex; gap: 12px; align-items: flex-start; border-left: 3px solid transparent;"
                @mouseenter="e => e.currentTarget.style.background = '#1c2128'" @mouseleave="e => e.currentTarget.style.background = ''">
             <div style="font-size: 18px; flex-shrink: 0; width: 28px; text-align: center;">{{ eventTypeIcon[evt.eventType] || "📌" }}</div>
             <div style="flex: 1; min-width: 0;">
-              <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 2px;">
+              <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 2px; flex-wrap: wrap;">
                 <span style="font-size: 13px; font-weight: 600;">{{ eventTypeLabel[evt.eventType] || evt.eventType }}</span>
                 <span v-if="evt.agentName" style="background: #1f6feb22; color: #58a6ff; padding: 1px 6px; border-radius: 4px; font-size: 11px;">{{ evt.agentName }}</span>
-                <span v-if="evt.stage" style="background: #30363d; color: #8b949e; padding: 1px 6px; border-radius: 4px; font-size: 11px;">{{ evt.stage }}</span>
+                <span v-if="evt.stage" :style="{ background: stageColor(evt.stage) + '22', color: stageColor(evt.stage), padding: '1px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 600 }">{{ evt.stage }}</span>
               </div>
-              <div style="font-size: 13px; color: #c9d1d9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ evt.message }}</div>
+              <div style="font-size: 13px; color: #c9d1d9;">{{ evt.message }}</div>
+              <!-- 产物变更摘要 -->
+              <div v-if="evt.eventType === 'FILE_CHANGE' && evt.metadata?.file_path" style="margin-top: 3px; display: flex; gap: 4px; align-items: center;">
+                <span style="background: #1f6feb11; color: #79c0ff; padding: 1px 8px; border-radius: 4px; font-size: 11px; font-family: monospace;">📄 {{ evt.metadata.file_path }}</span>
+                <span v-if="evt.metadata?.operation" style="font-size: 10px; color: #8b949e; background: #21262d; padding: 0 6px; border-radius: 3px;">{{ evt.metadata.operation }}</span>
+              </div>
+              <!-- Agent 启动摘要 -->
+              <div v-else-if="evt.eventType === 'AGENT_SPAWN' && evt.metadata?.subagent" style="margin-top: 3px;">
+                <span style="background: #3fb95015; color: #7ee787; padding: 1px 8px; border-radius: 4px; font-size: 11px;">🤖 {{ evt.metadata.subagent }}</span>
+              </div>
+              <!-- 拷问审查摘要 -->
+              <div v-else-if="evt.eventType === 'GRILL_ROUND'" style="margin-top: 3px;">
+                <span :style="{ background: (evt.metadata?.result === 'PASS' ? '#3fb950' : '#f85149') + '15', color: evt.metadata?.result === 'PASS' ? '#3fb950' : '#f85149', padding: '1px 8px', borderRadius: '4px', fontSize: '11px' }">🔄 Round {{ evt.metadata?.round }} · {{ evt.metadata?.result }}</span>
+              </div>
+              <!-- 门禁检查摘要 -->
+              <div v-else-if="evt.eventType === 'GATE_CHECK'" style="margin-top: 3px; display: flex; gap: 4px; flex-wrap: wrap; align-items: center;">
+                <span :style="{ background: (evt.metadata?.result === 'PASS' ? '#3fb950' : '#f85149') + '15', color: evt.metadata?.result === 'PASS' ? '#3fb950' : '#f85149', padding: '1px 8px', borderRadius: '4px', fontSize: '11px' }">{{ evt.metadata?.result === 'PASS' ? '✅' : '❌' }} {{ evt.metadata?.result }}</span>
+                <span v-for="g in (evt.metadata?.gates || [])" :key="g" style="background: #30363d; color: #8b949e; padding: 1px 6px; border-radius: 4px; font-size: 10px;">{{ g }}</span>
+              </div>
+              <!-- 状态转换摘要（PIPELINE_END / STAGE_END 显示耗时等） -->
+              <div v-else-if="evt.eventType === 'PIPELINE_END' && evt.metadata?.status" style="margin-top: 3px;">
+                <span :style="{ background: '#3fb95015', color: '#3fb950', padding: '1px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600 }">🏁 {{ evt.metadata.status }}</span>
+                <span v-if="evt.metadata?.duration" style="margin-left: 6px; font-size: 10px; color: #8b949e;">{{ fmtDuration(evt.metadata.duration) }}</span>
+              </div>
               <div style="font-size: 11px; color: #484f58; margin-top: 2px;">#{{ evt.seq }} · {{ fmtDate(evt.timestamp) }}</div>
             </div>
           </div>

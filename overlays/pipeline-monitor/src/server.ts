@@ -23,7 +23,7 @@ app.route("/api/events", eventRoutes);
 app.route("/api/stats", statsRoutes);
 
 // 健康检查
-app.get("/health", (c) => c.json({ status: "ok" }));
+app.get("/health", (c) => c.json({ service: "pipeline-monitor", status: "ok" }));
 
 // 启动服务
 const port = parseInt(process.env.PORT || "3000");

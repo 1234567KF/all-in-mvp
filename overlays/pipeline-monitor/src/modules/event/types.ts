@@ -35,6 +35,7 @@ export const VALID_EVENT_TYPES: EventType[] = [
 
 export interface EventCreate {
   eventType: EventType;
+  pipelineId?: string;
   agentName?: string;
   stage?: string;
   message: string;

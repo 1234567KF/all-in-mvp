@@ -9,6 +9,7 @@ export const pipelines = sqliteTable("pipelines", {
   status: text("status").notNull().default("RUNNING"),
   mode: text("mode").notNull().default("full"),
   taskDesc: text("task_desc").notNull().default(""),
+  sessionName: text("session_name").notNull().default(""),
   createdAt: text("created_at").notNull().default("(datetime('now'))"),
   updatedAt: text("updated_at").notNull().default("(datetime('now'))"),
 });

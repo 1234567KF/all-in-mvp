@@ -22,6 +22,55 @@ description: Qoder 特化版多Agent并行MVP开发流水线。Triggers: MVP, �
 
 ---
 
+## Phase 0: Pipeline Monitor 自动回溯（强制前置步骤）
+
+> 每次执行 all-in-mvp 时，自动启动 Pipeline Monitor 并创建回溯 Pipeline。
+> 记录所有 Agent 工具调用，实现全链路可追溯。
+
+### 执行步骤
+
+1. **运行 Session 初始化脚本**（获取端口 + 创建 Pipeline）：
+   ```
+   node overlays/pipeline-monitor/scripts/manage-session.cjs <workspacePath> "<taskName>" "<mode>"
+   ```
+   - 输出格式：JSON `{ pipelineId, sessionName, port }`
+   - 脚本自动执行：启动 Daemon（如未运行）、创建 Pipeline、记录 PIPELINE_START
+2. **记录后续事件**（按需手动写入）：
+   - 注意：FILE_CHANGE / TOOL_CALL / ERROR 由 PostToolUse Hook **自动**写入，无需手动处理
+3. **全部完成后**记录 PIPELINE_END + PATCH 状态为 DONE/FAILED
+
+### 事件记录指引
+
+| 时机 | 事件类型 | 记录方式 |
+|------|----------|----------|
+| Session 创建时 | PIPELINE_START | manage-session.cjs 自动 |
+| Agent 被 spawn/完成/阻塞时 | AGENT_SPAWN / AGENT_DONE / AGENT_BLOCKED | 手动 POST /api/events |
+| Write/Edit/create_file 等 | FILE_CHANGE | Hook 自动 |
+| run_in_terminal/search_* 等 | TOOL_CALL | Hook 自动 |
+| Stage 开始 / 完成 | STAGE_START / STAGE_END | 手动 POST /api/events |
+| 门禁检查 | GATE_CHECK | 手动 POST /api/events |
+| 拷问审查 | GRILL_ROUND | 手动 POST /api/events |
+| Pipeline 完成 | PIPELINE_END | 手动 POST /api/events |
+| 任何错误 | ERROR | Hook 自动 |
+
+### 环境变量
+
+设置环境变量便于后续使用：
+```
+export PM_PORT=<port>
+export PM_PIPELINE_ID=<pipelineId>
+export PM_SESSION_NAME=<sessionName>
+```
+
+### 注意事项
+
+- Pipeline Monitor 为全局单实例（端口 :3000），多个 AI IDE 共享同一实例
+- 每条 all-in-mvp 调用在 DB 中创建独立 Pipeline，通过 `sessionName` 区分（格式：`workspaceName@HHmmss`）
+- Hook 脚本失败时不阻塞 Agent 执行（静默退出）
+- 本阶段无门禁检查
+
+---
+
 ## Qoder 环境适配说明
 
 ### 1. Agent 执行模式
