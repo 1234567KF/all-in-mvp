@@ -320,6 +320,8 @@ When submitting for review:
 ## Verification
 [ ] Unit tests pass
 [ ] Integration tests pass
+[ ] Visual regression tests pass （V1+V2+V3，如为前端Bug）
+[ ] Before/after screenshot comparison （如为 CAUSE:VISUAL_CSS）
 [ ] Manual verification complete
 ```
 
@@ -348,8 +350,34 @@ When submitting for review:
 | `CAUSE:DESIGN_MISSING` | 架构遗漏 | Schema 缺少必要字段、API 缺少必要端点 |
 | `CAUSE:IMPL_ERROR` | 代码实现错误 | 空指针、逻辑错误、类型错误 |
 | `CAUSE:IMPL_CONTRACT` | 实现与契约不一致 | 返回的字段名/状态码与 api-contract.yaml 不符 |
+| `CAUSE:VISUAL_CSS` | CSS/样式视觉错误 | 颜色错误、布局错乱、元素遮挡、响应式断点失效 |
 | `CAUSE:TEST_GAP` | 测试覆盖不足 | 已有测试通过但未覆盖该场景 |
 | `CAUSE:ENV_MISMATCH` | 环境差异导致 | 开发环境正常但联调环境出错 |
+
+**视觉类 Bug 特殊要求** — `CAUSE:VISUAL_CSS` 修复后必须产出 before/after 截图对比：
+
+```yaml
+# Bug Report 视觉附加字段
+visual_evidence:
+  before: "regression/screenshots/bug-004-before.png"
+  after: "regression/screenshots/bug-004-after.png"
+  diff: "regression/screenshots/bug-004-diff.png"
+  description: "按钮颜色从灰色 #9CA3AF 修正为蓝色 #3B82F6"
+```
+
+```bash
+# 产出示意流程
+# 1. 截修复前截图
+npx playwright screenshot --selector=".btn-primary" regression/screenshots/bug-004-before.png
+
+# 2. 应用修复
+
+# 3. 截修复后截图
+npx playwright screenshot --selector=".btn-primary" regression/screenshots/bug-004-after.png
+
+# 4. 产生对比
+# diff.png 可手动或通过 image-magick 生成
+```
 
 **回归测试位置**：
 ```
@@ -397,4 +425,5 @@ regression/
 - **Foreign key order** — "Cannot delete" might be FK constraint, not soft delete
 - **根因分类** — 修复后在 Bug Report 中标注根因类型：`CAUSE:PRD_AMBIGUITY` / `CAUSE:DESIGN_FLAW` / `CAUSE:IMPL_ERROR`
 - **回归测试目录** — 修复后的回归测试放入 `regression/bug-<编号>-<简述>.test.ts`
+- **视觉Bug截图** — CAUSE:VISUAL_CSS 修复后必须提供 before/after 截图，存入 `regression/screenshots/`
 - **终止条件** — 正常终止（P0/P1 已修复）/ 时间终止（超 4h 入后续迭代）/ 回归终止（修复引入新 P0）/ 人工终止（人类决策停止）

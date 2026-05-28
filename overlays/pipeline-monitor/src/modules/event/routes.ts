@@ -92,3 +92,10 @@ statsRoutes.get("/agent-activity", async (c) => {
   const result = await service.getAgentActivity(pipelineId || undefined);
   return c.json(result, 200);
 });
+
+// GET /api/stats/agent-tasks
+statsRoutes.get("/agent-tasks", async (c) => {
+  const pipelineId = c.req.query("pipeline_id");
+  const result = await service.getAgentTaskProgress(pipelineId || undefined);
+  return c.json(result, 200);
+});

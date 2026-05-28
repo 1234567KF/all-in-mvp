@@ -138,22 +138,26 @@ Stage4交付前的硬性门禁（全部通过才可交付）：
 - [ ] 前端切换 Mock → 真实后端 API，所有页面无报错
 - [ ] 所有 API 调用返回格式与 api-contract.yaml 一致
 - [ ] 无未解决的 integration-issues.md 记录
+- [ ] 无未解决的 VISUAL_PENDING 标记（所有前端页面视觉已由人类确认）
 
 ### 4.C 集成测试门禁
 - [ ] Happy Path 100% 通过
 - [ ] Exception Path ≥ 80% 通过
 - [ ] 全量回归测试通过（含 regression/ 目录）
+- [ ] 视觉回归测试通过（V1 computed style + V2 像素对比 + V3 布局完整性）
 - [ ] 无 flaky tests
 
 ### 4.D Bug门禁
 - [ ] 0个 P0 Bug
 - [ ] 0个 P1 Bug
 - [ ] 所有已修复Bug有回归测试
+- [ ] 视觉相关Bug修复后有 before/after 截图对比
 
 ### 4.E 交付门禁
 - [ ] `delivery/` 归档包完整
 - [ ] `retro-<project>.md`（L1自动回溯）已生成
 - [ ] `pipeline-metrics.json` 已生成
+- [ ] 视觉回归基线已提交到版本控制
 
 ---
 
@@ -300,3 +304,5 @@ export const apiConfig = {
 - **Drizzle migration timing** — Migration runs in Stage4 after merge, not in Stage3 during development. Stage3 uses db:push for rapid iteration.
 - **Regression tests are non-negotiable** — Every bug fix must include a regression test. No exceptions.
 - **Issue triage matters** — Sending a contract problem to a Debug Agent wastes time. Route correctly.
+- **VISUAL_PENDING blocks delivery** — Before declaring Stage4 complete, Coordinator MUST verify all VISUAL_PENDING files are resolved (deleted or replaced with DONE by human). Unresolved VISUAL_PENDING = delivery BLOCKED.
+- **Visual regression is part of integration test pass** — V1+V2+V3 visual tests must pass alongside functional tests. Visual regression failure is a P1 bug.

@@ -12,6 +12,8 @@ const pageSize = ref(50);
 const stats = ref(null);
 const stageDurations = ref([]);
 const agentActivities = ref([]);
+const agentTasks = ref([]);
+const selectedAgentTasks = ref(null);
 const autoRefresh = ref(true);
 const loading = ref(false);
 let timer = null;
@@ -49,6 +51,7 @@ const eventTypeLabel = computed(() => {
     AGENT_SPAWN: "Agent 启动", AGENT_DONE: "Agent 完成", AGENT_BLOCKED: "Agent 阻塞",
     FILE_CHANGE: "文件变更", TOOL_CALL: "工具调用",
     ERROR: "错误", GATE_CHECK: "门禁检查", GRILL_ROUND: "拷问审查",
+    AGENT_TASK_PLAN: "任务规划", AGENT_TASK_RESULT: "任务结果",
   };
   return map;
 });
@@ -60,6 +63,7 @@ const eventTypeIcon = computed(() => {
     AGENT_SPAWN: "🤖", AGENT_DONE: "✅", AGENT_BLOCKED: "🚫",
     FILE_CHANGE: "📄", TOOL_CALL: "🔧",
     ERROR: "❌", GATE_CHECK: "🚦", GRILL_ROUND: "🔄",
+    AGENT_TASK_PLAN: "📋", AGENT_TASK_RESULT: "✅",
   };
   return map;
 });
@@ -133,6 +137,15 @@ async function fetchEvents() {
   } catch (e) { /* ignore */ }
 }
 
+async function fetchAgentTasks() {
+  const pid = selectedPipelineId.value || pipeline.value?.id;
+  if (!pid) return;
+  try {
+    const res = await fetch(`${API_BASE}/stats/agent-tasks?pipeline_id=${pid}`);
+    if (res.ok) agentTasks.value = await res.json();
+  } catch (e) { /* ignore */ }
+}
+
 async function fetchStats() {
   const pid = selectedPipelineId.value || pipeline.value?.id;
   if (!pid) return;
@@ -152,7 +165,7 @@ async function refreshAll(showLoading = true) {
   if (showLoading) loading.value = true;
   await fetchPipeline(selectedPipelineId.value || undefined);
   if (pipeline.value) {
-    await Promise.all([fetchEvents(), fetchStats()]);
+    await Promise.all([fetchEvents(), fetchStats(), fetchAgentTasks()]);
   }
   if (showLoading) loading.value = false;
 }
@@ -406,6 +419,34 @@ function fmtDuration(ms) {
           </div>
         </div>
 
+        <!-- Agent Task Progress -->
+        <div v-if="agentTasks.length" style="background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 14px;">
+          <div style="font-size: 13px; font-weight: 600; margin-bottom: 10px;">🎯 Agent 任务进度</div>
+          <div v-for="at in agentTasks" :key="at.agentName" @click="selectedAgentTasks = at"
+               style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 6px 8px; border-radius: 6px; cursor: pointer; transition: background 0.15s;"
+               @mouseenter="e => e.currentTarget.style.background = '#1c2128'"
+               @mouseleave="e => e.currentTarget.style.background = ''">
+            <div style="position: relative; width: 36px; height: 36px; flex-shrink: 0;">
+              <svg viewBox="0 0 36 36" style="width: 36px; height: 36px; transform: rotate(-90deg);">
+                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#21262d" stroke-width="3"/>
+                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#58a6ff" stroke-width="3"
+                  :stroke-dasharray="97.4"
+                  :stroke-dashoffset="97.4 * (1 - (at.completed + at.failed) / Math.max(at.total, 1))"
+                  stroke-linecap="round"/>
+              </svg>
+              <span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #c9d1d9;">{{ at.completed + at.failed }}/{{ at.total }}</span>
+            </div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 12px; font-weight: 600; color: #e6edf3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ at.agentName }}</div>
+              <div style="display: flex; gap: 8px; font-size: 10px; margin-top: 2px;">
+                <span style="color: #3fb950;">✓ {{ at.completed }}</span>
+                <span v-if="at.failed > 0" style="color: #f85149;">✗ {{ at.failed }}</span>
+                <span v-if="at.total - at.completed - at.failed > 0" style="color: #8b949e;">○ {{ at.total - at.completed - at.failed }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Agent Activity -->
         <div v-if="agentActivities.length" style="background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 14px;">
           <div style="font-size: 13px; font-weight: 600; margin-bottom: 10px;">🤖 Agent 活跃度</div>
@@ -417,6 +458,45 @@ function fmtDuration(ms) {
             <span style="font-size: 11px; color: #8b949e; width: 50px;">{{ aa.eventCount }} 事件</span>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Agent Task Detail Modal -->
+    <div v-if="selectedAgentTasks" @click.self="selectedAgentTasks = null" style="position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100;">
+      <div style="background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 24px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div style="font-size: 18px; font-weight: 600;">🎯 {{ selectedAgentTasks.agentName }}</div>
+          <button @click="selectedAgentTasks = null" style="background: none; border: none; color: #8b949e; font-size: 20px; cursor: pointer;">✕</button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px; padding: 12px; background: #0d1117; border-radius: 8px;">
+          <div style="text-align: center;">
+            <div style="font-size: 28px; font-weight: 700; color: #58a6ff;">{{ selectedAgentTasks.completed + selectedAgentTasks.failed }}/{{ selectedAgentTasks.total }}</div>
+            <div style="font-size: 11px; color: #8b949e; margin-top: 2px;">已完成</div>
+          </div>
+          <div style="flex: 1;">
+            <div style="height: 6px; background: #21262d; border-radius: 3px; overflow: hidden;">
+              <div :style="{ width: (selectedAgentTasks.total > 0 ? ((selectedAgentTasks.completed + selectedAgentTasks.failed) / selectedAgentTasks.total * 100) : 0) + '%', background: 'linear-gradient(90deg, #3fb950, #58a6ff)', height: '100%', borderRadius: '3px' }"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 6px;">
+              <span style="color: #3fb950;">✓ {{ selectedAgentTasks.completed }} 已完成</span>
+              <span v-if="selectedAgentTasks.failed > 0" style="color: #f85149;">✗ {{ selectedAgentTasks.failed }} 失败</span>
+              <span style="color: #484f58;">○ {{ selectedAgentTasks.total - selectedAgentTasks.completed - selectedAgentTasks.failed }} 待办</span>
+            </div>
+          </div>
+        </div>
+        <div v-if="selectedAgentTasks.tasks.length > 0">
+          <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #8b949e;">任务清单</div>
+          <div v-for="(task, i) in selectedAgentTasks.tasks" :key="i"
+               style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid #21262d; font-size: 13px;">
+            <span :style="{
+              color: task.status === 'DONE' ? '#3fb950' : task.status === 'FAILED' ? '#f85149' : '#8b949e',
+              fontSize: '14px'
+            }">{{ task.status === 'DONE' ? '✅' : task.status === 'FAILED' ? '❌' : '⏳' }}</span>
+            <span style="flex: 1; color: #c9d1d9;">{{ task.taskName }}</span>
+            <span style="font-size: 11px; color: #484f58;">{{ new Date(task.timestamp).toLocaleTimeString('zh-CN') }}</span>
+          </div>
+        </div>
+        <div v-else style="text-align: center; padding: 20px; color: #8b949e; font-size: 13px;">暂无任务记录</div>
       </div>
     </div>
 

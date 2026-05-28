@@ -446,3 +446,122 @@ describe('[Scenario] Business Rules', () => {
 1. 在对应场景测试中补全跨模块数据准备
 2. 确保 ③b-1 的骨架在完整流程中可正确执行
 3. 不重复测试 ③b-1 已覆盖的单模块接口验证
+
+---
+
+# 视觉回归测试（v2.5 新增）
+
+> **核心问题**：E2E 测试的 DOM 文本断言无法发现 CSS 布局错误、颜色错误、元素遮挡等视觉问题。LLM 无视觉能力，必须靠自动化工具补强。
+
+> **分工**：视觉回归测试归属 ③b-2（业务条线测试），因为视觉正确性是完整用户旅程的一部分——用户看到的不只是数据，还是布局、颜色、交互反馈。
+
+---
+
+## 视觉测试与功能测试的边界
+
+| 维度 | 功能 E2E | 视觉回归 |
+|------|---------|---------|
+| 问题 | "提交订单后是否跳转到订单页？" | "订单确认按钮是否是蓝色 #3B82F6？" |
+| 断言 | `expect(page).toHaveURL(/orders/)` | `expect(btn).toHaveCSS('background-color', 'rgb(59, 130, 246)')` |
+| 工具 | Playwright 功能断言 | Playwright computed style + toHaveScreenshot |
+| 归属 | ③b-2 业务条线 | ③b-2 业务条线（视觉子集） |
+
+---
+
+## 视觉断言模板
+
+```typescript
+// integration-tests/scenarios/visual/<scenario>.visual.spec.ts
+import { test, expect } from '@playwright/test';
+
+test.describe('[Visual] Consumer Scan Journey', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/scan');
+    await page.waitForLoadState('networkidle');
+  });
+
+  test('scan result page — product info card colors', async ({ page }) => {
+    // 模拟扫描结果加载
+    await page.locator('[data-testid="scan-input"]').fill('TRACE-001');
+    await page.locator('[data-testid="btn-scan"]').click();
+    await page.waitForSelector('[data-testid="scan-result"]');
+
+    // V1: computed style 断言
+    const card = page.locator('[data-testid="product-card"]');
+    await expect(card).toHaveCSS('border-color', 'rgb(229, 231, 235)');
+    await expect(card).toHaveCSS('border-radius', '8px');
+
+    const title = page.locator('[data-testid="product-name"]');
+    await expect(title).toHaveCSS('font-size', '18px');
+    await expect(title).toHaveCSS('font-weight', '600');
+
+    // V2: 像素快照
+    await expect(page.locator('[data-testid="scan-result"]'))
+      .toHaveScreenshot('scan-result-product.png', { maxDiffPixels: 100 });
+  });
+
+  test('scan result — marketing activity badge', async ({ page }) => {
+    await page.locator('[data-testid="scan-input"]').fill('TRACE-002');
+    await page.locator('[data-testid="btn-scan"]').click();
+    await page.waitForSelector('[data-testid="activity-badge"]');
+
+    const badge = page.locator('[data-testid="activity-badge"]');
+    // 营销活动标签必须是红色
+    await expect(badge).toHaveCSS('background-color', 'rgb(239, 68, 68)');
+    await expect(page).toHaveScreenshot('scan-activity-badge.png');
+  });
+
+  test('responsive layout — mobile viewport', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.locator('[data-testid="scan-input"]').fill('TRACE-001');
+    await page.locator('[data-testid="btn-scan"]').click();
+
+    // V3: 移动端无元素重叠
+    const overlaps = await page.evaluate(() => {
+      const cards = document.querySelectorAll('[data-testid="product-card"]');
+      const result = [];
+      for (let i = 0; i < cards.length; i++) {
+        for (let j = i + 1; j < cards.length; j++) {
+          const a = cards[i].getBoundingClientRect();
+          const b = cards[j].getBoundingClientRect();
+          if (!(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom)) {
+            result.push(`card[${i}] ↔ card[${j}]`);
+          }
+        }
+      }
+      return result;
+    });
+    expect(overlaps).toHaveLength(0);
+
+    await expect(page).toHaveScreenshot('scan-mobile.png', { maxDiffPixels: 50 });
+  });
+});
+```
+
+---
+
+## 多分辨率视觉覆盖矩阵
+
+每个关键业务页面必须覆盖：
+
+| 分辨率 | 宽度 | 类型 | 说明 |
+|--------|------|------|------|
+| Desktop | 1920×1080 | 主要视图 | 标准桌面端 |
+| Laptop | 1366×768 | 次要视图 | 常见笔记本 |
+| Tablet | 768×1024 | 可选 | 平板横屏 |
+| Mobile | 375×812 | 可选 | 手机（如有移动端需求） |
+
+---
+
+## 视觉测试文件位置
+
+```
+integration-tests/
+├── modules/                          # ③b-1 单模块测试
+├── scenarios/                        # ③b-2 业务条线测试
+│   ├── <scenario>.test.ts            # 功能E2E
+│   └── visual/                       # 视觉回归测试（归属 ③b-2）
+│       ├── <scenario>.visual.spec.ts # computed style + 像素快照
+│       └── <scenario>-snapshots/     # 基线截图（提交到 Git）
+└── helpers.ts
+```

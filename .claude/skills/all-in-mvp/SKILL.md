@@ -258,6 +258,11 @@ checks:
   coverage: 85.2
   code_review: PASS
   flaky_test: false
+  # 视觉验证（v2.5 新增）
+  visual_computed_style: PASS      # 防线1：computed style 断言全部通过
+  visual_regression: PASS           # 防线2：像素对比通过（或首次基线已生成）
+  visual_layout_integrity: PASS     # 防线3：无元素重叠、DOM结构正确
+  visual_human_review: NOT_REQUIRED # REQUIRED | NOT_REQUIRED（CSS/布局变更时 REQUIRED）
 issues: []
 ```
 
@@ -277,16 +282,60 @@ action_required: <what_needs_to_happen>
 suggested_fix: <optional_suggestion>
 ```
 
+#### VISUAL_PENDING 标记（v2.5 新增）
+
+> **前端专用**：当修改涉及 CSS/布局/动画，Agent 不能自行判定视觉正确。标记 VISUAL_PENDING 等待人类视觉确认。
+
+文件路径：`src/modules/<module>/VISUAL_PENDING`
+
+文件内容（YAML 格式）：
+```yaml
+module: <module_name>
+agent: <agent_name>
+status: VISUAL_PENDING
+pending_at: "YYYY-MM-DD HH:MM:SS"
+reason: |
+  CSS layout changed — header + sidebar restructured
+  Cannot verify visual correctness autonomously
+screenshots:
+  before: "screenshots/dashboard-before.png"
+  after: "screenshots/dashboard-after.png"
+  diff: "screenshots/dashboard-diff.png"
+automated_checks:
+  computed_style: PASS
+  visual_regression: FAIL  # expected after layout change
+  layout_integrity: PASS
+review_url: "http://localhost:5173/dashboard"
+human_action: "请打开 review_url 查看视觉效果，确认无误后删除此文件并创建 DONE"
+```
+
+#### V_PENDING 标记（v2.5 新增，轻量版）
+
+> 用于非模块目录（如 `src/views/`、`src/components/`）。前端页面完成但等待视觉确认。
+
+文件路径：`src/views/<page>/V_PENDING` 或 `src/components/<component>/V_PENDING`
+
+文件内容（简化 YAML）：
+```yaml
+page: <page_name>
+status: V_PENDING
+reason: <一句话原因>
+review_url: <本地预览地址>
+```
+
 #### Coordinator 扫描规则
 
 | 模块目录状态 | 含义 | Coordinator 动作 |
 |------------|------|-----------------|
 | 目录不存在 | 未分配 | 下一轮扫描时分配 |
-| 目录存在，无 DONE/BLOCKED | 已分配，开发中 | 等待 |
+| 目录存在，无状态文件 | 已分配，开发中 | 等待 |
 | DONE 存在 | 已完成 | 释放下游依赖模块 |
 | BLOCKED 存在 | 开发阻塞 | 读取原因，决定降级或等待 |
 | DEFER 存在 | 主动推迟 | 级联DEFER下游依赖模块，其余模块继续执行 |
+| VISUAL_PENDING 存在 | 前端视觉待人类确认 | **不作为DONE**，不释放下游；通知人类审核 |
+| V_PENDING 存在 | 前端页面视觉待确认 | 同 VISUAL_PENDING |
 | DONE 和 BLOCKED 同时存在 | 已完成但有遗留问题 | 标记为 DONE（遗留问题进 Stage4） |
+| DONE 和 VISUAL_PENDING 同时存在 | 非法状态 | ERROR：Agent 违规自标 DONE |
 
 ### 3.1 后端团队：TDD 开发
 
@@ -307,20 +356,24 @@ suggested_fix: <optional_suggestion>
 - 在后端开发过程中持续补充复杂边界用例
 - 后端每完成一个新模块，补充该模块的边界测试
 
-### Stage 3 门禁 (MUST — 迭代18强化)
+### Stage 3 门禁 (MUST — v2.5 视觉强化)
 
-**测试门禁强化**：每个模块必须通过完整的5层测试才能标记DONE。
+**测试门禁强化**：每个模块必须通过完整的5层测试 + 3道视觉防线才能标记DONE。
 
 - [ ] 后端全部模块 DONE（模块目录下存在 DONE 标记）
-- [ ] 前端全部页面 DONE
+- [ ] 前端全部页面 DONE（或 VISUAL_PENDING 已由人类确认后转 DONE）
 - [ ] **L1 单元测试**：所有Service函数、纯函数、工具函数测试通过
 - [ ] **L2 API集成测试**：每个路由的happy+error path测试通过
 - [ ] **L3 数据库集成测试**：事务、迁移、约束测试通过
 - [ ] **L4 有头浏览器测试**：真实浏览器渲染、交互测试通过（本地验证）
 - [ ] **L5 无头CI测试**：Playwright headless测试通过
+- [ ] **V1 视觉样式断言**：computed style 断言全部通过（颜色/尺寸/间距/排版/布局/定位/边框）
+- [ ] **V2 视觉回归快照**：像素对比通过（或首次基线已生成）
+- [ ] **V3 布局完整性**：无元素重叠、DOM结构正确、z-index层级正确
 - [ ] **覆盖率 ≥ 80%**（statements + branches + functions）
 - [ ] **无 flaky tests**：同一测试运行10次全部通过
 - [ ] Code Review 无 P0 问题
+- [ ] **前端无未解决的 VISUAL_PENDING**（全部由人类确认或判定为 NOT_REQUIRED）
 
 ### Stage 3 测试执行流程
 
@@ -330,16 +383,25 @@ suggested_fix: <optional_suggestion>
 # 1. L1-L3 后端测试
 npx vitest run --coverage
 
-# 2. L4 有头浏览器测试（本地人工验证）
+# 2. V1 视觉样式断言（computed style）
+npx playwright test tests/visual/<page>.visual.spec.ts
+
+# 3. V2 视觉回归快照（像素对比）
+npx playwright test tests/visual/<page>.screenshot.spec.ts
+
+# 4. V3 布局完整性检查
+npx playwright test tests/visual/<page>.visual.spec.ts -g "overlapping"
+
+# 5. L4 有头浏览器测试（本地人工验证）
 npx playwright test --project=chromium-headed
 
-# 3. L5 无头CI测试
+# 6. L5 无头CI测试
 npx playwright test --project=chromium-headless
 
-# 4. 覆盖率检查（必须 ≥ 80%）
+# 7. 覆盖率检查（必须 ≥ 80%）
 npx vitest run --coverage --reporter=json
 
-# 5. 稳定性检查（运行3次确保无flaky）
+# 8. 稳定性检查（运行3次确保无flaky）
 for i in {1..3}; do npx vitest run; done
 ```
 
@@ -399,15 +461,17 @@ for i in {1..3}; do npx vitest run; done
 
 用 `agents/debug-fixer.md` 创建 Debug Agent，按需执行修复循环。
 
-### Stage 4 门禁（终检）(MUST — 迭代20强化)
+### Stage 4 门禁（终检）(MUST — v2.5 视觉强化)
 
-**终检强化**：集成验收必须通过完整的质量审计清单。
+**终检强化**：集成验收必须通过完整的质量审计清单，含视觉验证。
 
 - [ ] 后端合并完成，路由一致性验证通过
 - [ ] 前后端联调全部模块通过
 - [ ] 集成测试通过率 100%
 - [ ] **5层测试全部通过**：L1-L5无失败
+- [ ] **3道视觉防线全部通过**：V1-V3无失败
 - [ ] **有头/无头一致性**：L4和L5结果一致
+- [ ] **视觉一致性**：所有 VISUAL_PENDING 已由人类确认并转为 DONE
 - [ ] **安全测试通过**：防刷、注入、XSS、越权全部通过
 - [ ] **性能测试通过**：p99 < 500ms，错误率 < 1%
 - [ ] **数据一致性验证**：无外键违反、无orphan记录
@@ -425,6 +489,9 @@ for i in {1..3}; do npx vitest run; done
 - [ ] L3 数据库集成测试：事务、迁移、约束
 - [ ] L4 有头浏览器测试：真实浏览器验证
 - [ ] L5 无头CI测试：CI环境验证
+- [ ] V1 视觉样式测试：computed style 断言（颜色/尺寸/间距/排版/布局/定位/边框）
+- [ ] V2 视觉回归测试：像素对比快照
+- [ ] V3 布局完整性测试：重叠检测、A11y tree快照
 - [ ] 状态机测试：所有状态流转（如有状态实体）
 - [ ] 数据权限测试：行级+列级权限（如有多角色）
 - [ ] 并发测试：共享资源的竞态条件
@@ -440,12 +507,14 @@ for i in {1..3}; do npx vitest run; done
 ## 一致性审计
 - [ ] Mock与后端响应格式一致
 - [ ] 有头与无头测试结果一致
+- [ ] 视觉快照与基线一致
 - [ ] 数据库schema与Drizzle定义一致
 - [ ] API实现与api-contract.yaml一致
 - [ ] 前端调用与后端路由一致
 
 ## 稳定性审计
 - [ ] 无flaky tests（连续运行10次全部通过）
+- [ ] 无视觉回归（像素diff通过）
 - [ ] 无内存泄漏（5分钟负载测试通过）
 - [ ] 无race condition（并发测试通过）
 ```
@@ -517,6 +586,10 @@ for i in {1..3}; do npx vitest run; done
 - **确定性分配**：同输入必须产生相同的模块拆分和分配结果。`task.md` 中模块的枚举顺序作为稳定排序依据。
 - **DEFER vs BLOCKED**：DEFER 是主动推迟（不可/不值得本轮完成），BLOCKED 是被动等待（等待依赖/修复）。两者互斥——一个模块不能同时为两者。DEFER 会级联标记下游依赖模块。
 - **增量模式判定规则**：纯Bug修复（不改需求文档）→ 跳过 Stage1-3，直接 Stage4。非Bug变更（Issue/新功能/改善实现/需求调整）→ 必须走完整 PRD→Stage2→Stage3→Stage4 增量流水线。判定红线：只要变更需要修改 PRD 文档中任何一个字，即触发完整流水线。不确定时默认走非Bug变更流程。
+- **LLM 无视觉能力 — 不能自标 DONE**：修改了 CSS/布局/动画的前端 Agent 必须标记 VISUAL_PENDING，等待人类视觉确认。Agent 自行判定"看起来没问题"是 P0 错误。只有纯逻辑/文本修改可自标 DONE。
+- **toBeVisible() 不等于视觉正确**：Playwright 的 `toBeVisible()` 只检查 DOM 中存在且无 `display:none`/`visibility:hidden`。它不检查颜色是否正确、元素是否被遮挡、布局是否错乱。必须用三道视觉防线（V1 computed style + V2 像素对比 + V3 布局完整性）。
+- **VISUAL_PENDING 不可跳过**：Coordinator 将 VISUAL_PENDING 视为非完成状态，不释放下游依赖。人类未确认前 Stage4 门禁不能通过。
+- **视觉回归基线必须进 Git**：`tests/visual/*-snapshots/` 目录提交到版本控制。首次运行 `--update-snapshots` 生成基线后提交。后续 CI 中对比。
 
 ---
 

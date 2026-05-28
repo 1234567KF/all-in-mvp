@@ -26,7 +26,7 @@ app.route("/api/stats", statsRoutes);
 app.get("/health", (c) => c.json({ service: "pipeline-monitor", status: "ok" }));
 
 // 启动服务
-const port = parseInt(process.env.PORT || "3000");
+const port = parseInt(process.env.PORT || "3010");
 console.log(`🚀 Pipeline Monitor API running at http://localhost:${port}`);
 
 serve({

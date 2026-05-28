@@ -23,7 +23,9 @@ export type EventType =
   | "TOOL_CALL"
   | "ERROR"
   | "GATE_CHECK"
-  | "GRILL_ROUND";
+  | "GRILL_ROUND"
+  | "AGENT_TASK_PLAN"
+  | "AGENT_TASK_RESULT";
 
 export const VALID_EVENT_TYPES: EventType[] = [
   "PIPELINE_START", "PIPELINE_END",
@@ -31,6 +33,7 @@ export const VALID_EVENT_TYPES: EventType[] = [
   "AGENT_SPAWN", "AGENT_DONE", "AGENT_BLOCKED",
   "FILE_CHANGE", "TOOL_CALL",
   "ERROR", "GATE_CHECK", "GRILL_ROUND",
+  "AGENT_TASK_PLAN", "AGENT_TASK_RESULT",
 ];
 
 export interface EventCreate {
@@ -57,6 +60,18 @@ export interface EventQuery {
   page?: number;
   pageSize?: number;
   sort?: "asc" | "desc";
+}
+
+export interface AgentTaskProgress {
+  agentName: string;
+  total: number;
+  completed: number;
+  failed: number;
+  tasks: Array<{
+    taskName: string;
+    status: "DONE" | "FAILED" | "IN_PROGRESS";
+    timestamp: string;
+  }>;
 }
 
 export interface StatsOverview {

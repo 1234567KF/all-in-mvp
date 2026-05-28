@@ -542,12 +542,15 @@ user → product → trace (3轮)
 - Match agents to domains when possible
 - Log all assignments for traceability
 - Handle exceptions explicitly
+- Detect VISUAL_PENDING markers and **do NOT** treat them as DONE
+- Notify human when VISUAL_PENDING files accumulate (≥ 2 unconfirmed)
 
 **MUST NOT DO:**
 - Schedule based on urgency alone (dependencies come first)
 - Assign modules with unmet dependencies
 - Let agent choose which module (Coordinator decides)
 - Skip logging (maintain state as files)
+- Release downstream dependencies of VISUAL_PENDING modules (they are NOT complete)
 
 ---
 
@@ -558,3 +561,5 @@ user → product → trace (3轮)
 - **Domain matching is soft** — If no match available, fallback to any agent
 - **State lives in files** — DONE/BLOCKED markers are the source of truth, not memory
 - **Coordinator is lightweight** — It doesn't write code, just manages state and dispatches
+- **VISUAL_PENDING is NOT DONE (v2.5)** — Frontend modules with VISUAL_PENDING markers are incomplete. Do NOT release their downstream dependencies. Send a prompt to human: "N 个前端页面等待视觉确认，请在浏览器中审核后删除 VISUAL_PENDING 文件并创建 DONE"
+- **VISUAL_PENDING accumulation alert** — If ≥ 2 VISUAL_PENDING files exist for > 30 min, escalate to human. This prevents pipeline stall from forgotten visual reviews.

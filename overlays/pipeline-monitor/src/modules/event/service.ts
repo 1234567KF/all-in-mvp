@@ -3,7 +3,7 @@ import { events, pipelines } from "../../db/schema.js";
 import { eq, and, like, gte, lte, desc, asc, count, sql } from "drizzle-orm";
 import type {
   Event, EventCreate, EventBatchCreate, EventQuery,
-  StatsOverview, StageDuration, AgentActivity,
+  StatsOverview, StageDuration, AgentActivity, AgentTaskProgress,
 } from "./types.js";
 import { VALID_EVENT_TYPES } from "./types.js";
 
@@ -254,6 +254,99 @@ export async function getStageDuration(pipelineId?: string): Promise<StageDurati
 
     result.push({ stage: start.stage, durationMs, eventCount: evCount });
   }
+
+  return result;
+}
+
+// ============================================================
+// Agent 任务进度
+// ============================================================
+
+export async function getAgentTaskProgress(pipelineId?: string): Promise<AgentTaskProgress[]> {
+  let pid = pipelineId;
+  if (!pid) {
+    const current = await db.select().from(pipelines)
+      .where(eq(pipelines.status, "RUNNING"))
+      .orderBy(desc(pipelines.createdAt)).limit(1).get();
+    if (!current) return [];
+    pid = current.id;
+  }
+
+  // 获取所有 AGENT_TASK_PLAN 事件 - 每个 agent 的任务规划
+  const planEvents = await db.select().from(events)
+    .where(and(eq(events.pipelineId, pid), eq(events.eventType, "AGENT_TASK_PLAN")))
+    .orderBy(asc(events.seq));
+
+  // 获取所有 AGENT_TASK_RESULT 事件
+  const resultEvents = await db.select().from(events)
+    .where(and(eq(events.pipelineId, pid), eq(events.eventType, "AGENT_TASK_RESULT")))
+    .orderBy(asc(events.seq));
+
+  const agentProgress = new Map<string, AgentTaskProgress>();
+
+  // 处理 PLAN 事件：初始化每个 agent 的任务清单
+  for (const ev of planEvents) {
+    const meta = JSON.parse(ev.metadata);
+    const agentName = ev.agentName || meta.agentName || "unknown";
+    const tasks: Array<{ taskName: string; planIndex: number }> = meta.tasks || [];
+    const total = meta.total || tasks.length || 0;
+
+    agentProgress.set(agentName, {
+      agentName,
+      total,
+      completed: 0,
+      failed: 0,
+      tasks: tasks.map((t: { taskName: string; planIndex?: number }, i: number) => ({
+        taskName: t.taskName || `Task #${i + 1}`,
+        status: "IN_PROGRESS" as const,
+        timestamp: ev.timestamp,
+      })),
+    });
+  }
+
+  // 处理 RESULT 事件：标记任务完成或失败
+  for (const ev of resultEvents) {
+    const meta = JSON.parse(ev.metadata);
+    const agentName = ev.agentName || meta.agentName || "unknown";
+    const taskName = meta.taskName || "";
+    const taskIndex = meta.taskIndex;
+    const status: "DONE" | "FAILED" = meta.status === "FAILED" ? "FAILED" : "DONE";
+
+    let progress = agentProgress.get(agentName);
+    if (!progress) {
+      // 如果没有 PLAN 事件，动态创建
+      progress = {
+        agentName,
+        total: 0,
+        completed: 0,
+        failed: 0,
+        tasks: [],
+      };
+      agentProgress.set(agentName, progress);
+    }
+
+    // 更新计数
+    if (status === "DONE") progress.completed++;
+    else progress.failed++;
+
+    // 更新 tasks 列表
+    if (taskName) {
+      const existingTask = progress.tasks.find(t => t.taskName === taskName);
+      if (existingTask) {
+        existingTask.status = status;
+        existingTask.timestamp = ev.timestamp;
+      } else {
+        progress.tasks.push({ taskName, status, timestamp: ev.timestamp });
+      }
+    } else if (typeof taskIndex === "number" && taskIndex >= 0 && taskIndex < progress.tasks.length) {
+      progress.tasks[taskIndex].status = status;
+      progress.tasks[taskIndex].timestamp = ev.timestamp;
+    }
+  }
+
+  // 按 task count 降序排列
+  const result = Array.from(agentProgress.values());
+  result.sort((a, b) => b.total - a.total);
 
   return result;
 }

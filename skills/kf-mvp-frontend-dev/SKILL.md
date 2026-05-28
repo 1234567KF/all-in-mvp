@@ -707,12 +707,18 @@ export default defineConfig({
 - Handle loading and error states
 - Use Composition API (not Options API)
 - Type all props and emits
+- Write computed style assertions (防线1) for every page/component that renders visible UI
+- Generate visual regression baselines (防线2) for key pages and states
+- Run full visual verification suite before marking DONE
+- Mark VISUAL_PENDING when layout/CSS is modified (do NOT self-mark DONE)
 
 **MUST NOT DO:**
 - Use any type without reason
 - Hardcode API URLs (use env vars)
 - Skip loading states
 - Use var instead of const/let
+- Self-mark DONE after CSS/layout changes without human visual review
+- Skip visual test execution (防线1+2+3) and claim "looks fine"
 
 ---
 
@@ -728,6 +734,10 @@ export default defineConfig({
 - **MVP exemptions** — No SSR, no PWA, no complex state hydration. Keep it simple.
 - **Axios baseURL** — Always use env var `VITE_API_BASE_URL`, default to `/api`
 - **Mock env setup** — Development: `VITE_API_BASE_URL=http://localhost:3001/api`；Production: `/api`
+- **Visual verification is MANDATORY** — `toBeVisible()` is NOT enough. Every page MUST have computed style assertions. Key pages MUST have visual regression screenshots. Agent cannot claim "done" based solely on DOM text assertions.
+- **VISUAL_PENDING ≠ DONE** — Modifying CSS or layout → mark VISUAL_PENDING, not DONE. Only human eyes can confirm visual correctness. Autonomously claiming visual correctness is a P0 error.
+- **Computed styles are deterministic** — `toHaveCSS('color', 'rgb(...)')` is reliable and doesn't need AI vision. Use it aggressively.
+- **Screenshot retries** — Visual regression failures due to font/OS differences can be retried once. Second failure → VISUAL_PENDING.
 
 ---
 
@@ -792,3 +802,316 @@ export const apiConfig = {
 ```
 
 > Mock drift 超过 24h → 前端标记 BLOCKED → 等待 Mock 同步
+
+---
+
+# 视觉自验证协议（Visual Self-Verification Protocol）
+
+> **核心问题**：LLM 无视觉能力，不能"看"到渲染结果。Playwright 的 `toBeVisible()` 只检查元素存在于 DOM，不检查 CSS 布局是否正确、颜色是否匹配、元素是否被遮挡。Agent 声称"改好了"但实际页面错乱，根源在此。
+
+> **解决方案**：三道自动化防线，不依赖 AI 视觉，全部确定性可验证。
+
+---
+
+## 防线 1：Computed Style 断言（MUST — 每个页面组件）
+
+Playwright 可读取浏览器实际渲染的 computed styles。这些是**确定性数值**，LLM 可直接验证：
+
+```typescript
+// tests/visual/<page>.visual.spec.ts
+import { test, expect } from '@playwright/test';
+
+test.describe('Dashboard Page — Visual Verification', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/dashboard');
+    await page.waitForLoadState('networkidle');
+  });
+
+  // ====== 关键元素样式断言 ======
+
+  test('primary button should have correct colors', async ({ page }) => {
+    const btn = page.locator('.btn-primary').first();
+    await expect(btn).toHaveCSS('background-color', 'rgb(59, 130, 246)');
+    await expect(btn).toHaveCSS('color', 'rgb(255, 255, 255)');
+    await expect(btn).toHaveCSS('border-radius', '6px');
+    await expect(btn).toHaveCSS('font-size', '14px');
+  });
+
+  test('page header should have correct layout', async ({ page }) => {
+    const header = page.locator('.page-header');
+    await expect(header).toHaveCSS('display', 'flex');
+    await expect(header).toHaveCSS('justify-content', 'space-between');
+    await expect(header).toHaveCSS('align-items', 'center');
+
+    // 最小高度
+    const box = await header.boundingBox();
+    expect(box!.height).toBeGreaterThanOrEqual(60);
+  });
+
+  // ====== 布局完整性断言 ======
+
+  test('no overlapping elements at standard resolutions', async ({ page }) => {
+    // 桌面端 1920x1080
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await page.waitForTimeout(500);
+    const overlaps1920 = await checkOverlaps(page);
+    expect(overlaps1920).toHaveLength(0);
+
+    // 笔记本 1366x768
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await page.waitForTimeout(500);
+    const overlaps1366 = await checkOverlaps(page);
+    expect(overlaps1366).toHaveLength(0);
+  });
+
+  test('scrollbar only when content overflows', async ({ page }) => {
+    // 主内容区
+    const main = page.locator('main');
+    const hasScroll = await main.evaluate(el => el.scrollHeight > el.clientHeight);
+
+    if (hasScroll) {
+      await expect(main).toHaveCSS('overflow-y', /auto|scroll/);
+    }
+  });
+
+  // ====== 空状态/错误状态断言 ======
+
+  test('empty state should be centered', async ({ page }) => {
+    // 访问无数据页面
+    await page.goto('/dashboard?empty=true');
+
+    const empty = page.locator('[data-testid="empty-state"]');
+    await expect(empty).toBeVisible();
+    await expect(empty).toHaveCSS('text-align', 'center');
+
+    // 空状态图标不应为 0x0
+    const icon = empty.locator('svg, img').first();
+    if (await icon.count() > 0) {
+      const box = await icon.boundingBox();
+      expect(box!.width).toBeGreaterThan(0);
+      expect(box!.height).toBeGreaterThan(0);
+    }
+  });
+
+  test('error banner should have red background', async ({ page }) => {
+    await page.goto('/dashboard?error=true');
+
+    const errorBanner = page.locator('[data-testid="error-banner"], .alert-error').first();
+    if (await errorBanner.count() > 0) {
+      const bg = await errorBanner.evaluate(el => getComputedStyle(el).backgroundColor);
+      // 红色系背景（rgb 中 R 分量明显大于 G 和 B）
+      const match = bg.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+      if (match) {
+        const r = parseInt(match[1]), g = parseInt(match[2]), b = parseInt(match[3]);
+        expect(r).toBeGreaterThan(g + 50);
+        expect(r).toBeGreaterThan(b + 50);
+      }
+    }
+  });
+
+  // ====== z-index 层级断言 ======
+
+  test('modal should be above overlay', async ({ page }) => {
+    await page.locator('[data-testid="btn-open-modal"]').click();
+    await page.waitForSelector('.modal');
+
+    const overlayZ = await page.locator('.modal-overlay').evaluate(el => parseInt(getComputedStyle(el).zIndex) || 0);
+    const modalZ = await page.locator('.modal').evaluate(el => parseInt(getComputedStyle(el).zIndex) || 0);
+
+    expect(modalZ).toBeGreaterThan(overlayZ);
+  });
+});
+
+// ====== 通用工具：重叠检测 ======
+
+async function checkOverlaps(page) {
+  const overlaps = await page.evaluate(() => {
+    const results: string[] = [];
+    const selectors = ['.card', '.panel', '.sidebar', '.modal', '[data-testid]'];
+    for (const sel of selectors) {
+      const elements = document.querySelectorAll(sel);
+      for (let i = 0; i < elements.length; i++) {
+        for (let j = i + 1; j < elements.length; j++) {
+          const a = elements[i].getBoundingClientRect();
+          const b = elements[j].getBoundingClientRect();
+          if (a.width === 0 || b.width === 0) continue; // skip hidden
+          if (!(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom)) {
+            results.push(`${sel}[${i}] ↔ ${sel}[${j}]`);
+          }
+        }
+      }
+    }
+    return results;
+  });
+  return overlaps;
+}
+```
+
+**必须覆盖的 computed style 检查项**：
+
+| 检查类型 | 关键属性 | 适用场景 |
+|---------|---------|---------|
+| **颜色** | `background-color`, `color`, `border-color` | 按钮、标签、告警、状态指示器 |
+| **尺寸** | `width`, `height`, `min-height`, `max-width` | 容器、卡片、图片、头像 |
+| **间距** | `padding`, `margin`, `gap` | 列表、网格、表单组 |
+| **排版** | `font-size`, `font-weight`, `line-height`, `text-align` | 标题、正文、标签 |
+| **布局** | `display`, `flex-direction`, `justify-content`, `align-items` | 页面框架、工具栏、卡片组 |
+| **定位** | `position`, `z-index`, `top/right/bottom/left` | 模态框、下拉菜单、固定导航栏 |
+| **边框** | `border-radius`, `border-width`, `border-style` | 卡片、按钮、输入框 |
+
+---
+
+## 防线 2：视觉回归快照（自动像素对比）
+
+Playwright 内置 `toHaveScreenshot()` 进行像素级对比。首次运行生成基线，后续自动对比：
+
+```typescript
+// tests/visual/<page>.screenshot.spec.ts
+import { test, expect } from '@playwright/test';
+
+test.describe('Visual Regression — Dashboard', () => {
+  // 关键页面/状态截图
+
+  test('dashboard main view', async ({ page }) => {
+    await page.goto('/dashboard');
+    await page.waitForLoadState('networkidle');
+    await expect(page).toHaveScreenshot('dashboard-main.png', {
+      fullPage: false,        // 仅视口，非全页
+      maxDiffPixels: 100,     // 允许 100 像素差异（字体渲染差异容差）
+    });
+  });
+
+  test('dashboard empty state', async ({ page }) => {
+    await page.goto('/dashboard?empty=true');
+    await page.waitForLoadState('networkidle');
+    await expect(page).toHaveScreenshot('dashboard-empty.png');
+  });
+
+  test('modal open state', async ({ page }) => {
+    await page.goto('/dashboard');
+    await page.locator('[data-testid="btn-create"]').click();
+    await page.waitForSelector('.modal');
+    await expect(page).toHaveScreenshot('modal-create.png');
+  });
+
+  test('form validation errors', async ({ page }) => {
+    await page.goto('/dashboard');
+    await page.locator('[data-testid="btn-create"]').click();
+    await page.locator('[data-testid="btn-submit"]').click(); // 空表单提交
+    await page.waitForSelector('.error-message');
+    await expect(page).toHaveScreenshot('form-validation.png');
+  });
+});
+```
+
+**基线管理**：
+
+```bash
+# 首次：生成基线截图（在本地有头浏览器运行）
+npx playwright test --project=chromium-headed --update-snapshots
+
+# CI：对比基线（无头浏览器）
+npx playwright test --project=chromium-headless
+
+# 基线存储在版本控制中
+tests/visual/
+├── dashboard-main-snapshots/
+│   └── dashboard-main.png          # 黄金基线（提交到 Git）
+├── dashboard-empty-snapshots/
+│   └── dashboard-empty.png
+└── ...
+```
+
+> ⚠️ **假阳性处理**：不同 OS/字体可能导致像素差异。设置 `maxDiffPixels: 100` 容忍微小差异。超过阈值的差异标记为 VISUAL_REGRESSION → Agent 必须修复。
+
+---
+
+## 防线 3：DOM 结构快照（A11y Tree）
+
+比像素对比更稳定，不受字体渲染影响，能发现结构性布局问题：
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test('dashboard a11y structure', async ({ page }) => {
+  await page.goto('/dashboard');
+  await page.waitForLoadState('networkidle');
+
+  // 获取完整可访问性树（只含可见元素的结构化描述）
+  const snapshot = await page.accessibility.snapshot();
+
+  // 验证关键区域存在
+  const roles = extractRoles(snapshot);
+  expect(roles).toContain('navigation');  // 导航栏
+  expect(roles).toContain('main');        // 主内容区
+  expect(roles).toContain('heading');     // 页面标题
+
+  // 存储快照用于回归对比
+  expect(snapshot).toMatchSnapshot('dashboard-a11y-tree.json');
+});
+
+function extractRoles(node: any, roles: string[] = []): string[] {
+  if (node.role) roles.push(node.role);
+  if (node.children) {
+    for (const child of node.children) {
+      extractRoles(child, roles);
+    }
+  }
+  return roles;
+}
+```
+
+---
+
+## 开发完成即执行（Agent 强制流程）
+
+**每个前端页面/组件开发完成后，Agent 必须执行以下步骤才能标记 DONE：**
+
+```
+1. 启动 dev server
+   npx vite --port 5173 &
+
+2. 运行 computed style 断言
+   npx playwright test tests/visual/<page>.visual.spec.ts
+   → 全部 PASS 才继续
+
+3. 运行视觉回归快照
+   npx playwright test tests/visual/<page>.screenshot.spec.ts
+   → 首次运行自动生成基线；后续运行对比基线
+
+4. 运行布局完整性检查
+   npx playwright test tests/visual/<page>.visual.spec.ts -g "overlapping"
+   → 无重叠元素
+
+5. 产出视觉验证报告 → 写入 Done 文件 visual_verification 字段
+```
+
+---
+
+## VISUAL_PENDING 状态
+
+当修改涉及以下内容时，Agent **不能自行标记 DONE**，必须标记 `VISUAL_PENDING`：
+
+| 变更类型 | 状态 | 解除条件 |
+|---------|------|---------|
+| 修改 .css / scoped style | VISUAL_PENDING | 人类审核截图 → 改标 DONE |
+| 新增/修改组件布局结构 | VISUAL_PENDING | 人类审核截图 → 改标 DONE |
+| 新增/修改动画/过渡 | VISUAL_PENDING | 人类审核截图 → 改标 DONE |
+| 纯逻辑修复（composable/api/store） | 可自标 DONE | 所有 computed style 断言通过 |
+| 纯文本/文案修改 | 可自标 DONE | 所有 computed style 断言通过 |
+
+**VISUAL_PENDING 标记模板**（写入模块目录下的 `VISUAL_PENDING` 文件）：
+```yaml
+module: dashboard
+agent: frontend-dev-1
+status: VISUAL_PENDING
+reason: "CSS layout changed, header + sidebar + main area restructured"
+screenshots:
+  before: "screenshots/dashboard-before.png"
+  after: "screenshots/dashboard-after.png"
+  diff: "screenshots/dashboard-diff.png"
+computed_style_checks_passed: true
+visual_regression_passed: false  # 布局变更，需要人类确认
+review_url: "http://localhost:5173/dashboard"
+human_action: "请打开 review_url 查看视觉效果，确认无误后删除此文件并创建 DONE"
+```

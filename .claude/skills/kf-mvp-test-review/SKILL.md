@@ -313,10 +313,11 @@ Agent修复测试用例
 # Constraints
 
 **MUST DO:**
-- Check all four dimensions
+- Check all five dimensions (含 v2.5 视觉维度)
 - Report specific file:line locations for each issue
 - Distinguish ERROR (blocks Stage3) from WARNING (advisory)
 - Include fix suggestions for each issue
+- Verify visual baselines exist in version control
 
 **MUST NOT DO:**
 - Execute or run any tests (this is static review only)
@@ -334,3 +335,5 @@ Agent修复测试用例
 - **Type mismatches matter** — An INTEGER field seeded with a string value will cause runtime failures that are hard to debug.
 - **Scenario coverage is holistic** — Missing one step in a 6-step flow means the entire flow is at risk, not just one step.
 - **PRD is the baseline** — Coverage is measured against PRD business flows, not against `<module>.md` acceptance criteria (those are already verified in ↺ cycle).
+- **Visual dimension (v2.5)** — Now checking 5 dimensions, not 4. Visual tests are mandatory for all pages that render visible UI. Missing visual coverage is an ERROR.
+- **Screenshot baselines are code** — Empty baseline directories or missing `.png` files are treated as ERROR. First-time baseline generation must happen BEFORE Stage3.
