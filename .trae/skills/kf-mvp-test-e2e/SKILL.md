@@ -2,13 +2,13 @@
 name: kf-mvp-test-e2e
 description: >-
   Load when user asks to write end-to-end tests, scenario tests, or cross-module
-  integration tests. Triggers: 端到端测试, 场景测试, e2e, e2e test,
-  业务流程测试, cross-module, 跨模块测试. Also load when PRD business
+  integration tests. Triggers: 端到端测�? 场景测试, e2e, e2e test,
+  业务流程测试, cross-module, 跨模块测�? Also load when PRD business
   flow needs automated testing.
 metadata:
   pattern: generator
   domain: mvp-stage2
-recommended_model: pro
+recommended_model: mino-v2.5-pro
 graph:
   dependencies:
     - target: kf-mvp-biz-expert
@@ -26,7 +26,7 @@ graph:
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP End-to-End Scenario Test Writer — 业务条线测试编写技能
+# MVP End-to-End Scenario Test Writer �?业务条线测试编写技�?
 
 > **Core Belief**: Single module tests verify interfaces work. E2E tests verify business works. A business story must be told from start to finish, not in fragments.
 
@@ -36,12 +36,12 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-Derived from MVP Whitepaper Section 2.6 — ③b-2 业务条线测试:
+Derived from MVP Whitepaper Section 2.6 �?③b-2 业务条线测试:
 
-1. **Business story first** — Tests follow user's journey, not module boundaries
-2. **Cross-module flow** — One test may touch multiple modules
-3. **Data factory** — Shared test data factory for consistent setup
-4. **Single agent** — One test writer for flow consistency (no parallel splitting)
+1. **Business story first** �?Tests follow user's journey, not module boundaries
+2. **Cross-module flow** �?One test may touch multiple modules
+3. **Data factory** �?Shared test data factory for consistent setup
+4. **Single agent** �?One test writer for flow consistency (no parallel splitting)
 
 ---
 
@@ -65,7 +65,7 @@ integration-tests/
 | Data | Per-module fixtures | Shared factory |
 | Parallel | 2 agents max | Single agent |
 
-**Boundary Rule**: If test header reads like "POST /api/xxx" → ③b-1. If test header reads like "User completes action X" → ③b-2
+**Boundary Rule**: If test header reads like "POST /api/xxx" �?③b-1. If test header reads like "User completes action X" �?③b-2
 
 ---
 
@@ -154,7 +154,7 @@ describe('[Business Scenario] Marketing to Trace Flow', () => {
 
 # Stage 1: Read PRD Business Flow
 
-**Extract from PRD Section 4: 业务主流程**
+**Extract from PRD Section 4: 业务主流�?*
 
 1. Identify all business journeys
 2. Map each journey to modules it touches
@@ -165,11 +165,11 @@ describe('[Business Scenario] Marketing to Trace Flow', () => {
 ```markdown
 ## 业务场景清单
 
-| 场景名 | 涉及模块 | 用户角色 | 关键断言 |
+| 场景�?| 涉及模块 | 用户角色 | 关键断言 |
 |--------|----------|----------|----------|
 | 品牌商创建营销活动 | user, product, activity | brand_owner | 活动创建成功 |
-| 消费者扫码溯源 | trace, product, activity | consumer | 显示营销信息 |
-| 赋码到产品批次 | trace, product, template | brand_owner | 码段关联正确 |
+| 消费者扫码溯�?| trace, product, activity | consumer | 显示营销信息 |
+| 赋码到产品批�?| trace, product, template | brand_owner | 码段关联正确 |
 ```
 
 ---
@@ -379,10 +379,10 @@ describe('[Scenario] Business Rules', () => {
 
 | Type | Description | Example |
 |------|-------------|---------|
-| **User Journey** | Complete user workflow | 消费者扫码查看溯源 |
-| **Business Rule** | Cross-module rule enforcement | 活动有效期检查 |
+| **User Journey** | Complete user workflow | 消费者扫码查看溯�?|
+| **Business Rule** | Cross-module rule enforcement | 活动有效期检�?|
 | **Edge Case** | Unusual but possible scenarios | 同一码被多次扫描 |
-| **Security** | Permission boundary tests | 未授权用户访问 |
+| **Security** | Permission boundary tests | 未授权用户访�?|
 
 ---
 
@@ -415,45 +415,45 @@ describe('[Scenario] Business Rules', () => {
 
 # Gotchas
 
-- **Order matters** — E2E tests are linear, setup must precede assertions
-- **Data isolation** — Each scenario should clean up after itself
-- **Token refresh** — Tests with long wait may need token refresh
-- **Foreign key order** — Create entities in dependency order
-- **Soft delete in E2E** — Deleted items may still exist in other module's cache
-- **Boundary with ③b-1** — 测试文件抬头看接口名（`POST /api/xxx`）→ ③b-1；抬头看角色旅程（"以某角色完成某事"）→ ③b-2
+- **Order matters** �?E2E tests are linear, setup must precede assertions
+- **Data isolation** �?Each scenario should clean up after itself
+- **Token refresh** �?Tests with long wait may need token refresh
+- **Foreign key order** �?Create entities in dependency order
+- **Soft delete in E2E** �?Deleted items may still exist in other module's cache
+- **Boundary with ③b-1** �?测试文件抬头看接口名（`POST /api/xxx`）→ ③b-1；抬头看角色旅程�?以某角色完成某事"）→ ③b-2
 
 ---
 
-# ③b-1 与 ③b-2 边界仲裁规则
+# ③b-1 �?③b-2 边界仲裁规则
 
 > 当测试应归属哪一方不明确时，按以下规则判定：
 
 | 判定条件 | 归属 | 原因 |
 |---------|------|------|
-| 测试只涉及单个模块的数据库读写 + 接口参数校验 | **③b-1** | 单模块职责 |
-| 测试覆盖多模块协作但不涉及 PRD 定义的业务主流程 | **③b-1** | 按模块拆分各自覆盖 |
-| 测试覆盖 PRD「业务主流程」中定义的完整用户旅程 | **③b-2（本项目）** | 场景测试核心职责 |
-| 边界不清时（如单模块异常路径需要跨模块数据） | ③b-1 写骨架 + 标记 TODO，③b-2 在对应场景中补全 | 分工不阻塞 |
+| 测试只涉及单个模块的数据库读�?+ 接口参数校验 | **③b-1** | 单模块职�?|
+| 测试覆盖多模块协作但不涉�?PRD 定义的业务主流程 | **③b-1** | 按模块拆分各自覆�?|
+| 测试覆盖 PRD「业务主流程」中定义的完整用户旅�?| **③b-2（本项目�?* | 场景测试核心职责 |
+| 边界不清时（如单模块异常路径需要跨模块数据�?| ③b-1 写骨�?+ 标记 TODO，③b-2 在对应场景中补全 | 分工不阻�?|
 
-**粗判原则**：
+**粗判原则**�?
 ```
 测试文件抬头看：
-  ├── 接口名（POST /api/xxx）→ ③b-1 单模块测试
-  └── 角色旅程（"以某角色完成某事"）→ ③b-2 业务条线测试（本项目）
+  ├── 接口名（POST /api/xxx）→ ③b-1 单模块测�?
+  └── 角色旅程�?以某角色完成某事"）→ ③b-2 业务条线测试（本项目�?
 ```
 
-**协作模式**：收到 ③b-1 标记的 TODO 后：
-1. 在对应场景测试中补全跨模块数据准备
+**协作模式**：收�?③b-1 标记�?TODO 后：
+1. 在对应场景测试中补全跨模块数据准�?
 2. 确保 ③b-1 的骨架在完整流程中可正确执行
-3. 不重复测试 ③b-1 已覆盖的单模块接口验证
+3. 不重复测�?③b-1 已覆盖的单模块接口验�?
 
 ---
 
-# 视觉回归测试（v2.5 新增）
+# 视觉回归测试（v2.5 新增�?
 
-> **核心问题**：E2E 测试的 DOM 文本断言无法发现 CSS 布局错误、颜色错误、元素遮挡等视觉问题。LLM 无视觉能力，必须靠自动化工具补强。
+> **核心问题**：E2E 测试�?DOM 文本断言无法发现 CSS 布局错误、颜色错误、元素遮挡等视觉问题。LLM 无视觉能力，必须靠自动化工具补强�?
 
-> **分工**：视觉回归测试归属 ③b-2（业务条线测试），因为视觉正确性是完整用户旅程的一部分——用户看到的不只是数据，还是布局、颜色、交互反馈。
+> **分工**：视觉回归测试归�?③b-2（业务条线测试），因为视觉正确性是完整用户旅程的一部分——用户看到的不只是数据，还是布局、颜色、交互反馈�?
 
 ---
 
@@ -461,7 +461,7 @@ describe('[Scenario] Business Rules', () => {
 
 | 维度 | 功能 E2E | 视觉回归 |
 |------|---------|---------|
-| 问题 | "提交订单后是否跳转到订单页？" | "订单确认按钮是否是蓝色 #3B82F6？" |
+| 问题 | "提交订单后是否跳转到订单页？" | "订单确认按钮是否是蓝�?#3B82F6�? |
 | 断言 | `expect(page).toHaveURL(/orders/)` | `expect(btn).toHaveCSS('background-color', 'rgb(59, 130, 246)')` |
 | 工具 | Playwright 功能断言 | Playwright computed style + toHaveScreenshot |
 | 归属 | ③b-2 业务条线 | ③b-2 业务条线（视觉子集） |
@@ -480,7 +480,7 @@ test.describe('[Visual] Consumer Scan Journey', () => {
     await page.waitForLoadState('networkidle');
   });
 
-  test('scan result page — product info card colors', async ({ page }) => {
+  test('scan result page �?product info card colors', async ({ page }) => {
     // 模拟扫描结果加载
     await page.locator('[data-testid="scan-input"]').fill('TRACE-001');
     await page.locator('[data-testid="btn-scan"]').click();
@@ -500,18 +500,18 @@ test.describe('[Visual] Consumer Scan Journey', () => {
       .toHaveScreenshot('scan-result-product.png', { maxDiffPixels: 100 });
   });
 
-  test('scan result — marketing activity badge', async ({ page }) => {
+  test('scan result �?marketing activity badge', async ({ page }) => {
     await page.locator('[data-testid="scan-input"]').fill('TRACE-002');
     await page.locator('[data-testid="btn-scan"]').click();
     await page.waitForSelector('[data-testid="activity-badge"]');
 
     const badge = page.locator('[data-testid="activity-badge"]');
-    // 营销活动标签必须是红色
+    // 营销活动标签必须是红�?
     await expect(badge).toHaveCSS('background-color', 'rgb(239, 68, 68)');
     await expect(page).toHaveScreenshot('scan-activity-badge.png');
   });
 
-  test('responsive layout — mobile viewport', async ({ page }) => {
+  test('responsive layout �?mobile viewport', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.locator('[data-testid="scan-input"]').fill('TRACE-001');
     await page.locator('[data-testid="btn-scan"]').click();
@@ -525,7 +525,7 @@ test.describe('[Visual] Consumer Scan Journey', () => {
           const a = cards[i].getBoundingClientRect();
           const b = cards[j].getBoundingClientRect();
           if (!(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom)) {
-            result.push(`card[${i}] ↔ card[${j}]`);
+            result.push(`card[${i}] �?card[${j}]`);
           }
         }
       }
@@ -542,14 +542,14 @@ test.describe('[Visual] Consumer Scan Journey', () => {
 
 ## 多分辨率视觉覆盖矩阵
 
-每个关键业务页面必须覆盖：
+每个关键业务页面必须覆盖�?
 
-| 分辨率 | 宽度 | 类型 | 说明 |
+| 分辨�?| 宽度 | 类型 | 说明 |
 |--------|------|------|------|
-| Desktop | 1920×1080 | 主要视图 | 标准桌面端 |
-| Laptop | 1366×768 | 次要视图 | 常见笔记本 |
-| Tablet | 768×1024 | 可选 | 平板横屏 |
-| Mobile | 375×812 | 可选 | 手机（如有移动端需求） |
+| Desktop | 1920×1080 | 主要视图 | 标准桌面�?|
+| Laptop | 1366×768 | 次要视图 | 常见笔记�?|
+| Tablet | 768×1024 | 可�?| 平板横屏 |
+| Mobile | 375×812 | 可�?| 手机（如有移动端需求） |
 
 ---
 
@@ -557,11 +557,11 @@ test.describe('[Visual] Consumer Scan Journey', () => {
 
 ```
 integration-tests/
-├── modules/                          # ③b-1 单模块测试
+├── modules/                          # ③b-1 单模块测�?
 ├── scenarios/                        # ③b-2 业务条线测试
-│   ├── <scenario>.test.ts            # 功能E2E
-│   └── visual/                       # 视觉回归测试（归属 ③b-2）
-│       ├── <scenario>.visual.spec.ts # computed style + 像素快照
-│       └── <scenario>-snapshots/     # 基线截图（提交到 Git）
+�?  ├── <scenario>.test.ts            # 功能E2E
+�?  └── visual/                       # 视觉回归测试（归�?③b-2�?
+�?      ├── <scenario>.visual.spec.ts # computed style + 像素快照
+�?      └── <scenario>-snapshots/     # 基线截图（提交到 Git�?
 └── helpers.ts
 ```

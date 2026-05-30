@@ -3,12 +3,12 @@ name: kf-mvp-performance
 description: >-
   Load when user asks for performance optimization, profiling, or speed
   improvements. Triggers: 性能优化, 性能调优, profiling, 速度优化,
-  performance, 数据库优化, query optimization. Also load when application
+  performance, 数据库优�? query optimization. Also load when application
   is slow or resource usage is high.
 metadata:
   pattern: tool-wrapper
   domain: mvp-stage4
-recommended_model: pro
+recommended_model: deepseek-v4-pro
 graph:
   dependencies:
     - target: kf-mvp-schema-design
@@ -26,7 +26,7 @@ graph:
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP Performance — 性能优化技能
+# MVP Performance �?性能优化技�?
 
 > **Core Belief**: Premature optimization is the root of all evil. Profile first, optimize second. The 20% of code causing 80% of slowdown is what matters.
 
@@ -36,10 +36,10 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-1. **Measure first** — Don't guess what's slow, measure it
-2. **Focus on bottlenecks** — 20% of code causes 80% of slowdown
-3. **Meaningful targets** — "faster" needs numbers
-4. **Maintainability matters** — Don't break code for 10ms gains
+1. **Measure first** �?Don't guess what's slow, measure it
+2. **Focus on bottlenecks** �?20% of code causes 80% of slowdown
+3. **Meaningful targets** �?"faster" needs numbers
+4. **Maintainability matters** �?Don't break code for 10ms gains
 
 ---
 
@@ -198,11 +198,11 @@ npx autocannon -c 10 -d 10 http://localhost:3000/api/users
 
 ---
 
-# Load & Stress Testing (MUST — 迭代10核心修复)
+# Load & Stress Testing (MUST �?迭代10核心修复)
 
-**问题**：工单系统的性能问题（查询慢、响应超时）经常在上线后才暴露，之前性能测试只在开发环境进行，无法反映真实负载。
+**问题**：工单系统的性能问题（查询慢、响应超时）经常在上线后才暴露，之前性能测试只在开发环境进行，无法反映真实负载�?
 
-**解决方案**：MUST 编写 **负载测试** 和 **压力测试**，使用 autocannon 或 k6 模拟真实并发。
+**解决方案**：MUST 编写 **负载测试** �?**压力测试**，使�?autocannon �?k6 模拟真实并发�?
 
 ## 负载测试模板
 
@@ -212,13 +212,13 @@ import { describe, it, expect } from 'vitest';
 import autocannon from 'autocannon';
 import { buildApp } from '@/app';
 
-describe('Ticket System — Load Testing', () => {
+describe('Ticket System �?Load Testing', () => {
   let app: ReturnType<typeof buildApp>;
   let url: string;
 
   beforeAll(async () => {
     app = buildApp();
-    // 启动测试服务器
+    // 启动测试服务�?
     const server = app.listen(0);
     url = `http://localhost:${server.port}`;
   });
@@ -236,7 +236,7 @@ describe('Ticket System — Load Testing', () => {
     expect(result.errors).toBe(0);
   });
 
-  // 负载测试：10并发用户
+  // 负载测试�?0并发用户
   it('should handle 10 concurrent users within 500ms (p99)', async () => {
     const result = await autocannon({
       url: `${url}/api/tickets`,
@@ -246,11 +246,11 @@ describe('Ticket System — Load Testing', () => {
     });
 
     expect(result.latency.p99).toBeLessThan(500);
-    expect(result.errors).toBeLessThan(5); // 错误率 < 1%
+    expect(result.errors).toBeLessThan(5); // 错误�?< 1%
     expect(result.throughput.average).toBeGreaterThan(50); // 每秒50+请求
   });
 
-  // 压力测试：100并发用户
+  // 压力测试�?00并发用户
   it('should handle 100 concurrent users without crashing', async () => {
     const result = await autocannon({
       url: `${url}/api/tickets`,
@@ -259,13 +259,13 @@ describe('Ticket System — Load Testing', () => {
       headers: { Authorization: 'Bearer test-token' },
     });
 
-    expect(result.errors).toBeLessThan(100); // 错误率 < 10%
-    expect(result.timeouts).toBe(0); // MUST: 无超时
+    expect(result.errors).toBeLessThan(100); // 错误�?< 10%
+    expect(result.timeouts).toBe(0); // MUST: 无超�?
   });
 
   // 数据库查询性能测试
   it('should query ticket list with 10k records within 100ms', async () => {
-    // 预插入10000条工单
+    // 预插�?0000条工�?
     const db = getTestDb();
     const tickets = Array.from({ length: 10000 }, (_, i) => ({
       title: `Ticket ${i}`,
@@ -296,7 +296,7 @@ describe('Ticket System — Load Testing', () => {
       headers: { Authorization: 'Bearer test-token' },
     });
 
-    // 强制GC后检查内存
+    // 强制GC后检查内�?
     if (global.gc) global.gc();
     const finalMemory = process.memoryUsage().heapUsed;
     const growth = (finalMemory - initialMemory) / initialMemory;
@@ -308,16 +308,16 @@ describe('Ticket System — Load Testing', () => {
 
 ## 性能测试指标
 
-| 指标 | 目标值 | 临界值 | 测试场景 |
+| 指标 | 目标�?| 临界�?| 测试场景 |
 |------|--------|--------|---------|
 | API响应(p99) | < 200ms | < 500ms | 正常负载 |
 | API响应(p95) | < 100ms | < 200ms | 正常负载 |
 | 并发10用户 | < 500ms | < 1000ms | 中等负载 |
-| 并发100用户 | < 2000ms | < 5000ms | 高负载 |
-| 数据库查询 | < 50ms | < 100ms | 单表10k记录 |
+| 并发100用户 | < 2000ms | < 5000ms | 高负�?|
+| 数据库查�?| < 50ms | < 100ms | 单表10k记录 |
 | 内存增长 | < 50% | < 100% | 5分钟持续负载 |
-| 错误率 | < 1% | < 5% | 任何负载 |
-| 超时率 | 0% | < 1% | 任何负载 |
+| 错误�?| < 1% | < 5% | 任何负载 |
+| 超时�?| 0% | < 1% | 任何负载 |
 
 # Constraints
 
@@ -337,8 +337,8 @@ describe('Ticket System — Load Testing', () => {
 
 # Gotchas
 
-- **Indexes have cost** — Write performance suffers slightly
-- **Cache invalidation** — Harder than it looks
-- **Connection pool** — Set appropriate pool size
-- **Pagination** — Never return all records
-- **Async I/O** — Use for database, file, network ops
+- **Indexes have cost** �?Write performance suffers slightly
+- **Cache invalidation** �?Harder than it looks
+- **Connection pool** �?Set appropriate pool size
+- **Pagination** �?Never return all records
+- **Async I/O** �?Use for database, file, network ops

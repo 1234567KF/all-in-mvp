@@ -2,13 +2,13 @@
 name: kf-mvp-vue-components
 description: >-
   Load when user asks for Vue component development, component patterns, or
-  Vue 3 best practices. Triggers: Vue组件, vue开发, component patterns,
+  Vue 3 best practices. Triggers: Vue组件, vue开�? component patterns,
   vue3, composition api, 组件模式. Also load when building reusable UI
   components or Vue development patterns.
 metadata:
   pattern: tool-wrapper
   domain: mvp-stage3
-recommended_model: pro
+recommended_model: qwen-3.7-Max
 graph:
   dependencies:
     - target: kf-mvp-frontend-dev
@@ -18,12 +18,12 @@ graph:
 ---
 
 **Default Tech Stack Context**: 
-- Frontend: Vue 3 + Vite + Pinia + Vue Router + Axios + UI Framework (6选1)
+- Frontend: Vue 3 + Vite + Pinia + Vue Router + Axios + UI Framework (6�?)
 
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP Vue Components — Vue组件技能
+# MVP Vue Components �?Vue组件技�?
 
 > **Core Belief**: Components are the atoms of your UI. Well-designed components are reusable, composable, and self-contained. Build them once, use them everywhere.
 
@@ -371,8 +371,8 @@ export function useModal() {
 
 # Gotchas
 
-- **Props vs emits** — Props flow down, emits flow up
-- **Slots** — Use slots for flexibility
-- **Teleport** — For modals and overlays
-- **Suspense** — For async components
-- **Keep-alive** — Cache component state
+- **Props vs emits** �?Props flow down, emits flow up
+- **Slots** �?Use slots for flexibility
+- **Teleport** �?For modals and overlays
+- **Suspense** �?For async components
+- **Keep-alive** �?Cache component state

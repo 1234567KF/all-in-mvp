@@ -2,13 +2,13 @@
 name: kf-mvp-api-doc
 description: >-
   Load when user asks to generate API documentation, README, or developer
-  documentation. Triggers: API文档, 开发文档, README, api doc, documentation,
+  documentation. Triggers: API文档, 开发文�? README, api doc, documentation,
   文档生成, developer docs. Also load when publishing API or onboarding
   new developers.
 metadata:
   pattern: generator
   domain: mvp-stage4
-recommended_model: pro
+recommended_model: kimi-for-coding
 graph:
   dependencies:
     - target: kf-mvp-api-contract
@@ -26,7 +26,7 @@ graph:
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP API Documentation — API文档生成技能
+# MVP API Documentation �?API文档生成技�?
 
 > **Core Belief**: Good documentation is as important as the API itself. If developers can't figure out how to use it, the API fails. Document the why, not just the what.
 
@@ -36,10 +36,10 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-1. **Examples first** — Show, don't tell
-2. **Complete coverage** — Every endpoint, every error
-3. **Consistent format** — Same structure everywhere
-4. **Actionable** — Developer can start coding after reading
+1. **Examples first** �?Show, don't tell
+2. **Complete coverage** �?Every endpoint, every error
+3. **Consistent format** �?Same structure everywhere
+4. **Actionable** �?Developer can start coding after reading
 
 ---
 
@@ -271,8 +271,8 @@ Format: `type(scope): description`
 
 # Gotchas
 
-- **Examples are king** — Developers copy-paste examples
-- **Error docs** — Document WHY errors happen, not just WHAT
-- **Versioning** — Document breaking changes clearly
-- **Interactive docs** — Swagger UI beats static docs
-- **Search** — docs/ folder should be searchable
+- **Examples are king** �?Developers copy-paste examples
+- **Error docs** �?Document WHY errors happen, not just WHAT
+- **Versioning** �?Document breaking changes clearly
+- **Interactive docs** �?Swagger UI beats static docs
+- **Search** �?docs/ folder should be searchable

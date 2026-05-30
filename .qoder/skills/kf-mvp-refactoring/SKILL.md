@@ -8,7 +8,7 @@ description: >-
 metadata:
   pattern: tool-wrapper + reviewer
   domain: mvp-stage3
-recommended_model: pro
+recommended_model: deepseek-v4-pro
 graph:
   dependencies:
     - target: kf-mvp-code-review
@@ -26,7 +26,7 @@ graph:
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP Refactoring â€” ä»£ç é‡æž„æŠ€èƒ½
+# MVP Refactoring â€?ä»£ç é‡æž„æŠ€èƒ?
 
 > **Core Belief**: Refactoring without tests is changing blind. The goal is to make changes safer, not to make code "better" by subjective standards. If it's not broken, don't fix it.
 
@@ -36,10 +36,10 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-1. **Test first** â€” Add tests before changing code
-2. **Small steps** â€” Change one thing at a time
-3. **Verify constantly** â€” Run tests after each change
-4. **Document reasons** â€” Why this refactoring is needed
+1. **Test first** â€?Add tests before changing code
+2. **Small steps** â€?Change one thing at a time
+3. **Verify constantly** â€?Run tests after each change
+4. **Document reasons** â€?Why this refactoring is needed
 
 ---
 
@@ -253,8 +253,8 @@ Don't:
 
 # Gotchas
 
-- **Boy scout rule** â€” Always leave code cleaner than found
-- **YAGNI** â€” You aren't gonna need it
-- **Premature abstraction** â€” Don't abstract until pattern is clear
-- **Naming** â€” Good names are the best documentation
-- **Simplicity** â€” Simple is better than clever
+- **Boy scout rule** â€?Always leave code cleaner than found
+- **YAGNI** â€?You aren't gonna need it
+- **Premature abstraction** â€?Don't abstract until pattern is clear
+- **Naming** â€?Good names are the best documentation
+- **Simplicity** â€?Simple is better than clever

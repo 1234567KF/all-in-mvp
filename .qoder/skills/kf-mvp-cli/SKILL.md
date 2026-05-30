@@ -2,12 +2,12 @@
 name: kf-mvp-cli
 description: >-
   Load when user asks to build CLI tools, command-line interfaces, or scripts.
-  Triggers: CLI工具, 命令行, 脚本, CLI开发, command line, scripts,
+  Triggers: CLI工具, 命令�? 脚本, CLI开�? command line, scripts,
   shell脚本, bash. Also load when creating developer tools or automation.
 metadata:
   pattern: tool-wrapper
   domain: mvp-stage4
-recommended_model: pro
+recommended_model: minimax-m2.7
 graph:
   dependencies:
     - target: all-in-mvp
@@ -23,7 +23,7 @@ graph:
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP CLI Tools — 命令行工具技能
+# MVP CLI Tools �?命令行工具技�?
 
 > **Core Belief**: Good tools make developers faster. CLI tools should do one thing well, be composable, and follow Unix philosophy. Small tools that work together beat large monolithic tools.
 
@@ -33,10 +33,10 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-1. **Single responsibility** — One tool, one purpose
-2. **Compose with pipes** — Small tools, big results
-3. **Clear output** — stdout for data, stderr for errors
-4. **Fail fast** — Check inputs early, fail with clear message
+1. **Single responsibility** �?One tool, one purpose
+2. **Compose with pipes** �?Small tools, big results
+3. **Clear output** �?stdout for data, stderr for errors
+4. **Fail fast** �?Check inputs early, fail with clear message
 
 ---
 
@@ -103,13 +103,13 @@ program.parse();
 
 ## Success Output
 ```typescript
-console.log('✓ Database pushed successfully');
-console.log('✓ Created 5 users');
+console.log('�?Database pushed successfully');
+console.log('�?Created 5 users');
 ```
 
 ## Error Output
 ```typescript
-console.error('✗ Error: Database connection failed');
+console.error('�?Error: Database connection failed');
 console.error('  Details: Cannot connect to postgres://localhost:5432');
 console.error('  Hint: Make sure PostgreSQL is running');
 process.exit(1);
@@ -185,9 +185,9 @@ export async function dbPush(env: string) {
       driver: 'better-sqlite',
       cwd: process.cwd(),
     });
-    console.log('✓ Schema pushed successfully');
+    console.log('�?Schema pushed successfully');
   } catch (error) {
-    console.error('✗ Schema push failed:', error);
+    console.error('�?Schema push failed:', error);
     process.exit(1);
   }
 }
@@ -213,7 +213,7 @@ export async function seed() {
     await db.insert(users).values(user);
   }
   
-  console.log(`✓ Created ${userList.length} users`);
+  console.log(`�?Created ${userList.length} users`);
 }
 ```
 
@@ -239,7 +239,7 @@ npm install
 npm run db:push
 npm run db:seed
 
-echo "✅ Setup complete!"
+echo "�?Setup complete!"
 ```
 
 ---
@@ -292,8 +292,8 @@ const answers = await inquirer.prompt([
 
 # Gotchas
 
-- **Exit codes** — 0 = success, non-zero = error
-- **Stdout vs stderr** — Data goes to stdout, errors to stderr
-- **Colors** — Respect NO_COLOR env var
-- **Progress** — Long operations should show progress
-- **TTY detection** — Colors only when terminal supports it
+- **Exit codes** �?0 = success, non-zero = error
+- **Stdout vs stderr** �?Data goes to stdout, errors to stderr
+- **Colors** �?Respect NO_COLOR env var
+- **Progress** �?Long operations should show progress
+- **TTY detection** �?Colors only when terminal supports it

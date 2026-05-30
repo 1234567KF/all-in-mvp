@@ -2,13 +2,13 @@
 name: kf-mvp-security
 description: >-
   Load when user asks for security review, vulnerability scan, or security best
-  practices. Triggers: 安全审查, 漏洞扫描, 安全最佳实践, security review,
+  practices. Triggers: 安全审查, 漏洞扫描, 安全最佳实�? security review,
   vulnerability scan, OWASP, authentication, authorization. Also load when
   implementing auth or handling sensitive data.
 metadata:
   pattern: reviewer + tool-wrapper
   domain: mvp-stage4
-recommended_model: pro
+recommended_model: deepseek-v4-pro
 graph:
   dependencies:
     - target: kf-mvp-arch-expert
@@ -26,7 +26,7 @@ graph:
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP Security Specialist — 安全技能
+# MVP Security Specialist �?安全技�?
 
 > **Core Belief**: Security is not an afterthought. MVP doesn't mean insecure. Build secure from day one, add layers as needed.
 
@@ -36,10 +36,10 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-1. **Defense in depth** — Multiple layers of security
-2. **Least privilege** — Only grant necessary permissions
-3. **Fail securely** — Default to denying access
-4. **Validate all input** — Trust nothing from the client
+1. **Defense in depth** �?Multiple layers of security
+2. **Least privilege** �?Only grant necessary permissions
+3. **Fail securely** �?Default to denying access
+4. **Validate all input** �?Trust nothing from the client
 
 ---
 
@@ -228,16 +228,16 @@ element.textContent = userInput; // Safe!
 **Date**: [date]
 **Reviewer**: kf-mvp-security
 
-## Authentication ✓/✗
+## Authentication �?�?
 [issues]
 
-## Authorization ✓/✗
+## Authorization �?�?
 [issues]
 
-## Input Validation ✓/✗
+## Input Validation �?�?
 [issues]
 
-## Data Protection ✓/✗
+## Data Protection �?�?
 [issues]
 
 ## Overall Risk
@@ -249,13 +249,13 @@ element.textContent = userInput; // Safe!
 
 ---
 
-# Security Testing (MUST — 迭代13核心修复)
+# Security Testing (MUST �?迭代13核心修复)
 
-**问题**：营销系统（优惠券、抽奖、红包）经常被恶意刷取，之前安全漏洞只在人工测试时发现（如：同一IP重复领取、伪造请求绕过限制）。
+**问题**：营销系统（优惠券、抽奖、红包）经常被恶意刷取，之前安全漏洞只在人工测试时发现（如：同一IP重复领取、伪造请求绕过限制）�?
 
-**解决方案**：MUST 编写 **安全测试**，覆盖防刷、限流、输入净化、越权访问。
+**解决方案**：MUST 编写 **安全测试**，覆盖防刷、限流、输入净化、越权访问�?
 
-## 防刷与限流测试模板
+## 防刷与限流测试模�?
 
 ```typescript
 // src/modules/coupon/coupon.security.test.ts
@@ -263,7 +263,7 @@ import { describe, it, expect } from 'vitest';
 import { Hono } from 'hono';
 import { rateLimit } from '@/middleware/rate-limit';
 
-describe('Marketing Security — Anti-Fraud & Rate Limiting', () => {
+describe('Marketing Security �?Anti-Fraud & Rate Limiting', () => {
   // 测试1：IP限流
   it('should block requests exceeding rate limit', async () => {
     const app = new Hono();
@@ -272,7 +272,7 @@ describe('Marketing Security — Anti-Fraud & Rate Limiting', () => {
       return c.json({ success: true });
     });
 
-    // 同一IP快速请求6次
+    // 同一IP快速请�?�?
     const promises = Array.from({ length: 6 }, () =>
       app.request('/api/coupons/claim', {
         method: 'POST',
@@ -284,8 +284,8 @@ describe('Marketing Security — Anti-Fraud & Rate Limiting', () => {
     const successCount = results.filter(r => r.status === 200).length;
     const blockedCount = results.filter(r => r.status === 429).length;
 
-    expect(successCount).toBe(5); // 只允许5次
-    expect(blockedCount).toBe(1); // 第6次被阻断
+    expect(successCount).toBe(5); // 只允�?�?
+    expect(blockedCount).toBe(1); // �?次被阻断
   });
 
   // 测试2：同一用户重复领取
@@ -293,7 +293,7 @@ describe('Marketing Security — Anti-Fraud & Rate Limiting', () => {
     const app = buildApp();
     const token = await getTestToken({ userId: 1 });
 
-    // 第一次领取
+    // 第一次领�?
     const first = await app.request('/api/coupons/claim', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
@@ -301,7 +301,7 @@ describe('Marketing Security — Anti-Fraud & Rate Limiting', () => {
     });
     expect(first.status).toBe(200);
 
-    // 第二次领取同一优惠券
+    // 第二次领取同一优惠�?
     const second = await app.request('/api/coupons/claim', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
@@ -323,10 +323,10 @@ describe('Marketing Security — Anti-Fraud & Rate Limiting', () => {
       body: JSON.stringify({ keyword: maliciousInput })
     });
 
-    // MUST：不报错（不是500），正常返回空结果或过滤后的结果
+    // MUST：不报错（不�?00），正常返回空结果或过滤后的结果
     expect(res.status).not.toBe(500);
     
-    // 验证users表仍然存在
+    // 验证users表仍然存�?
     const usersRes = await app.request('/api/users', {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -340,7 +340,7 @@ describe('Marketing Security — Anti-Fraud & Rate Limiting', () => {
 
     const xssPayload = '<script>alert("xss")</script>';
     
-    // 创建包含XSS的数据
+    // 创建包含XSS的数�?
     await app.request('/api/products', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -361,7 +361,7 @@ describe('Marketing Security — Anti-Fraud & Rate Limiting', () => {
     }
   });
 
-  // 测试5：越权访问
+  // 测试5：越权访�?
   it('should prevent horizontal privilege escalation', async () => {
     const app = buildApp();
     const userAToken = await getTestToken({ userId: 1, role: 'user' });
@@ -375,7 +375,7 @@ describe('Marketing Security — Anti-Fraud & Rate Limiting', () => {
     });
     const orderData = await order.json();
 
-    // 用户B尝试访问用户A的订单
+    // 用户B尝试访问用户A的订�?
     const res = await app.request(`/api/orders/${orderData.data.id}`, {
       headers: { Authorization: `Bearer ${userBToken}` }
     });
@@ -387,7 +387,7 @@ describe('Marketing Security — Anti-Fraud & Rate Limiting', () => {
   it('should reject requests without CSRF token', async () => {
     const app = buildApp();
     
-    // 无CSRF token的请求
+    // 无CSRF token的请�?
     const res = await app.request('/api/orders', {
       method: 'POST',
       headers: { 
@@ -403,16 +403,16 @@ describe('Marketing Security — Anti-Fraud & Rate Limiting', () => {
 });
 ```
 
-## 安全测试覆盖率要求
+## 安全测试覆盖率要�?
 
-| 测试类型 | 最低数量 | 说明 |
+| 测试类型 | 最低数�?| 说明 |
 |---------|---------|------|
 | 限流 | 每个敏感端点 | IP/用户级别请求频率限制 |
-| 防重放 | 每个领取/抽奖操作 | 同一资源只能操作一次 |
-| SQL注入 | 每个查询接口 | 恶意输入不破坏数据 |
-| XSS | 每个文本输出 | 恶意脚本被转义/过滤 |
+| 防重�?| 每个领取/抽奖操作 | 同一资源只能操作一�?|
+| SQL注入 | 每个查询接口 | 恶意输入不破坏数�?|
+| XSS | 每个文本输出 | 恶意脚本被转�?过滤 |
 | 越权 | 每个资源端点 | 不能访问其他用户数据 |
-| CSRF | 每个状态变更端点 | 必须携带有效CSRF token |
+| CSRF | 每个状态变更端�?| 必须携带有效CSRF token |
 
 # Constraints
 
@@ -432,8 +432,8 @@ describe('Marketing Security — Anti-Fraud & Rate Limiting', () => {
 
 # Gotchas
 
-- **JWT secret** — Must be long and random, stored in env var
-- **Password reset** — Use secure token with expiration
-- **Rate limiting** — Prevent brute force on auth endpoints
-- **Logging** — Never log passwords or tokens
-- **CORS** — Whitelist specific origins, don't use *
+- **JWT secret** �?Must be long and random, stored in env var
+- **Password reset** �?Use secure token with expiration
+- **Rate limiting** �?Prevent brute force on auth endpoints
+- **Logging** �?Never log passwords or tokens
+- **CORS** �?Whitelist specific origins, don't use *

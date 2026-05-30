@@ -7,7 +7,7 @@ description: >-
 metadata:
   pattern: tool-wrapper
   domain: mvp-stage2
-recommended_model: pro
+recommended_model: deepseek-v4-pro
 graph:
   dependencies:
     - target: kf-mvp-api-contract
@@ -25,7 +25,7 @@ graph:
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP API Versioning â€” APIç‰ˆæœ¬ç®¡ç†æŠ€èƒ½
+# MVP API Versioning â€?APIç‰ˆæœ¬ç®¡ç†æŠ€èƒ?
 
 > **Core Belief**: API versioning is about managing change without breaking clients. The best versioning is the one clients don't notice. Additive changes are free; breaking changes require versions.
 
@@ -110,9 +110,9 @@ app.route('/v2', v2Users);  // Mount v2
 |--------|---------|
 | Add new endpoints | `GET /api/users/preferences` |
 | Add optional parameters | `GET /api/users?include=org` |
-| Add new response fields | `{ name: "John", age: 30 }` â†’ add `avatar: "..."` |
-| Change field order | `{ a: 1, b: 2 }` â†’ `{ b: 2, a: 1 }` |
-| Add new enum values | `status: 'pending' | 'active'` â†’ add `'archived'` |
+| Add new response fields | `{ name: "John", age: 30 }` â†?add `avatar: "..."` |
+| Change field order | `{ a: 1, b: 2 }` â†?`{ b: 2, a: 1 }` |
+| Add new enum values | `status: 'pending' | 'active'` â†?add `'archived'` |
 
 ## Breaking Changes (New version required)
 
@@ -120,8 +120,8 @@ app.route('/v2', v2Users);  // Mount v2
 |--------|---------|
 | Remove endpoints | Remove `GET /api/users/legacy` |
 | Remove response fields | Remove `password_hash` from response |
-| Change parameter types | `id: string` â†’ `id: number` |
-| Change validation rules | `name` required â†’ optional |
+| Change parameter types | `id: string` â†?`id: number` |
+| Change validation rules | `name` required â†?optional |
 | Change authentication | Remove auth requirement |
 
 ---
@@ -153,7 +153,7 @@ app.use('/v1/*', async (c, next) => {
 # Client Migration Guide
 
 ```markdown
-# Migration Guide: v1 â†’ v2
+# Migration Guide: v1 â†?v2
 
 ## Changes
 
@@ -212,8 +212,8 @@ app.use('/v1/*', async (c, next) => {
 
 # Gotchas
 
-- **Additive is safe** â€” New fields don't break existing clients
-- **Version length** â€” Support at least 2 versions simultaneously
-- **Sunset date** â€” Give clients at least 6 months notice
-- **Major version** â€” Only increment for breaking changes
-- **Beta** â€” Use beta versions for experimental features
+- **Additive is safe** â€?New fields don't break existing clients
+- **Version length** â€?Support at least 2 versions simultaneously
+- **Sunset date** â€?Give clients at least 6 months notice
+- **Major version** â€?Only increment for breaking changes
+- **Beta** â€?Use beta versions for experimental features

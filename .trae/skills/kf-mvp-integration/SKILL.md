@@ -2,13 +2,13 @@
 name: kf-mvp-integration
 description: >-
   Load when user asks to integrate frontend and backend, run integration tests,
-  or verify system end-to-end. Triggers: 集成, 联调, 前后端集成, integration,
-  前后端联调, 系统验证, 验收测试. Also load when Stage4 integration
+  or verify system end-to-end. Triggers: 集成, 联调, 前后端集�? integration,
+  前后端联�? 系统验证, 验收测试. Also load when Stage4 integration
   is needed.
 metadata:
   pattern: pipeline
   domain: mvp-stage4
-recommended_model: pro
+recommended_model: qwen-3.7-Max
 graph:
   dependencies:
     - target: kf-mvp-backend-tdd
@@ -30,7 +30,7 @@ graph:
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP Integration Specialist — 集成验证技能
+# MVP Integration Specialist �?集成验证技�?
 
 > **Core Belief**: Integration is where the real system meets the designed system. The goal: swap mock for real API with zero user-visible changes.
 
@@ -40,40 +40,40 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-Derived from MVP Whitepaper Section 4 — 集成与验收:
+Derived from MVP Whitepaper Section 4 �?集成与验�?
 
-1. **Mock to real swap** — Change API URL, nothing else should change
-2. **Schema consistency** — Verify all API contracts are honored
-3. **End-to-end verification** — Every PRD acceptance criterion must pass
-4. **Bug fix loop** — Issues found → fixed → retested until clean
+1. **Mock to real swap** �?Change API URL, nothing else should change
+2. **Schema consistency** �?Verify all API contracts are honored
+3. **End-to-end verification** �?Every PRD acceptance criterion must pass
+4. **Bug fix loop** �?Issues found �?fixed �?retested until clean
 
 ---
 
 # Integration Workflow
 
 ```
-┌─ Integration Workflow ──────────────────────────────────┐
-│                                                          │
-│  Phase 1: Backend Merge                                 │
-│    → Merge all module routes to unified entry           │
-│    → Verify global Schema consistency                  │
-│    → Run all unit tests (must pass)                     │
-│                                                          │
-│  Phase 2: Frontend Integration                         │
-│    → Swap mock API → real API URL                      │
-│    → Verify all API calls work                        │
-│    → Check response format compatibility              │
-│                                                          │
-│  Phase 3: Integration Tests                           │
-│    → Run all integration tests                        │
-│    → Execute E2E scenarios                            │
-│    → Document failures                               │
-│                                                          │
-│  Phase 4: Bug Fix Loop                                │
-│    → For each failure: investigate → fix → retest    │
-│    → Loop until all tests pass                       │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
+┌─ Integration Workflow ──────────────────────────────────�?
+�?                                                         �?
+�? Phase 1: Backend Merge                                 �?
+�?   �?Merge all module routes to unified entry           �?
+�?   �?Verify global Schema consistency                  �?
+�?   �?Run all unit tests (must pass)                     �?
+�?                                                         �?
+�? Phase 2: Frontend Integration                         �?
+�?   �?Swap mock API �?real API URL                      �?
+�?   �?Verify all API calls work                        �?
+�?   �?Check response format compatibility              �?
+�?                                                         �?
+�? Phase 3: Integration Tests                           �?
+�?   �?Run all integration tests                        �?
+�?   �?Execute E2E scenarios                            �?
+�?   �?Document failures                               �?
+�?                                                         �?
+�? Phase 4: Bug Fix Loop                                �?
+�?   �?For each failure: investigate �?fix �?retest    �?
+�?   �?Loop until all tests pass                       �?
+�?                                                         �?
+└──────────────────────────────────────────────────────────�?
 ```
 
 ---
@@ -107,13 +107,13 @@ export default app;
 
 **Output**:
 ```markdown
-## Schema一致性检查
+## Schema一致性检�?
 
-| 模块 | 表 | 状态 | 问题 |
+| 模块 | �?| 状�?| 问题 |
 |------|-----|------|------|
-| user | users | ✅ | - |
-| product | products | ✅ | - |
-| trace | trace_codes | ✅ | 缺少索引 |
+| user | users | �?| - |
+| product | products | �?| - |
+| trace | trace_codes | �?| 缺少索引 |
 
 **问题清单**:
 - [ ] WARNING: trace_codes表缺少code索引
@@ -126,7 +126,7 @@ export default app;
 npm test
 
 # Expected: all tests pass
-# If any fail → fix before proceeding
+# If any fail �?fix before proceeding
 ```
 
 ---
@@ -166,13 +166,13 @@ VITE_API_BASE_URL=https://api.example.com/api
 ## Verification Template
 
 ```markdown
-## API联调检查
+## API联调检�?
 
-| 模块 | API | 前端→后端 | 后端→前端 | 状态 |
+| 模块 | API | 前端→后�?| 后端→前�?| 状�?|
 |------|-----|----------|----------|------|
-| auth | POST /auth/login | ✅ | ✅ | 通过 |
-| user | GET /users | ✅ | ✅ | 通过 |
-| product | POST /products | ✅ | ❌ | 400错误 |
+| auth | POST /auth/login | �?| �?| 通过 |
+| user | GET /users | �?| �?| 通过 |
+| product | POST /products | �?| �?| 400错误 |
 
 **问题清单**:
 - [ ] product创建返回400，字段类型不匹配
@@ -195,11 +195,11 @@ npm run test:e2e
 npm run test:all
 ```
 
-## Async Flow Integration Testing (MUST — 迭代5核心修复)
+## Async Flow Integration Testing (MUST �?迭代5核心修复)
 
-**问题**：O2O/电商等系统有大量异步流程（下单→派单→骑手接单→配送→完成），之前异步状态同步bug只在人工测试时发现（如：订单已配送但状态未更新）。
+**问题**：O2O/电商等系统有大量异步流程（下单→派单→骑手接单→配送→完成），之前异步状态同步bug只在人工测试时发现（如：订单已配送但状态未更新）�?
 
-**解决方案**：MUST 编写 **异步流程集成测试**，覆盖轮询、WebSocket、事件驱动三种模式。
+**解决方案**：MUST 编写 **异步流程集成测试**，覆盖轮询、WebSocket、事件驱动三种模式�?
 
 ### 异步流程测试模板
 
@@ -208,13 +208,13 @@ npm run test:all
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { TestFactory } from '../factories/TestFactory';
 
-describe('O2O Async Flow — Order to Delivery', () => {
+describe('O2O Async Flow �?Order to Delivery', () => {
   const factory = new TestFactory();
 
   beforeAll(async () => { await factory.setup(); });
   afterAll(async () => { await factory.cleanup(); });
 
-  // 模式1：轮询模式测试
+  // 模式1：轮询模式测�?
   describe('Polling Mode', () => {
     it('should update order status through polling', async () => {
       // 1. 创建订单
@@ -224,11 +224,11 @@ describe('O2O Async Flow — Order to Delivery', () => {
       // 2. 模拟派单（后台任务）
       await factory.simulateDispatch(order.id);
 
-      // 3. 轮询等待状态变更（MUST：不是固定sleep）
+      // 3. 轮询等待状态变更（MUST：不是固定sleep�?
       const finalStatus = await factory.pollForStatus(
         order.id,
         'DISPATCHED',
-        { interval: 500, timeout: 10000 } // 500ms轮询，最多10秒
+        { interval: 500, timeout: 10000 } // 500ms轮询，最�?0�?
       );
       expect(finalStatus).toBe('DISPATCHED');
 
@@ -261,7 +261,7 @@ describe('O2O Async Flow — Order to Delivery', () => {
       // 触发派单
       await factory.simulateDispatch(order.id);
 
-      // MUST：等待WebSocket消息（不是固定sleep）
+      // MUST：等待WebSocket消息（不是固定sleep�?
       await factory.waitForMessage(ws, (msg) => msg.type === 'STATUS_UPDATE', 5000);
 
       expect(messages).toContainEqual(
@@ -288,7 +288,7 @@ describe('O2O Async Flow — Order to Delivery', () => {
     });
   });
 
-  // 模式3：事件驱动模式测试
+  // 模式3：事件驱动模式测�?
   describe('Event-Driven Mode', () => {
     it('should process events in correct order', async () => {
       const events: string[] = [];
@@ -303,7 +303,7 @@ describe('O2O Async Flow — Order to Delivery', () => {
       await factory.simulateDispatch(order.id);
       await factory.simulateDelivery(order.id);
 
-      // MUST：事件顺序正确
+      // MUST：事件顺序正�?
       expect(events).toEqual(['created', 'dispatched', 'delivered']);
     });
 
@@ -313,16 +313,16 @@ describe('O2O Async Flow — Order to Delivery', () => {
 
       const order = await factory.createOrder({ items: [{ productId: 1, qty: 2 }] });
       await factory.simulateDelivery(order.id);
-      await factory.simulateDelivery(order.id); // 重复发送
+      await factory.simulateDelivery(order.id); // 重复发�?
 
-      // MUST：幂等，只处理一次
+      // MUST：幂等，只处理一�?
       expect(deliveryCount).toBe(1);
     });
   });
 
-  // 端到端完整流程测试
+  // 端到端完整流程测�?
   describe('Full E2E Flow', () => {
-    it('should complete order → dispatch → pickup → delivery flow', async () => {
+    it('should complete order �?dispatch �?pickup �?delivery flow', async () => {
       // Step 1: 用户下单
       const user = await factory.createUser({ role: 'consumer' });
       const token = await factory.login(user);
@@ -354,7 +354,7 @@ describe('O2O Async Flow — Order to Delivery', () => {
       const delivered = await factory.pollForStatus(order.id, 'DELIVERED', { timeout: 5000 });
       expect(delivered).toBe('DELIVERED');
 
-      // Step 6: 验证最终状态
+      // Step 6: 验证最终状�?
       const finalOrder = await factory.getOrder(order.id);
       expect(finalOrder.status).toBe('DELIVERED');
       expect(finalOrder.riderId).toBe(rider.id);
@@ -405,15 +405,15 @@ export async function waitForMessage(
 }
 ```
 
-### 异步流程测试覆盖率要求
+### 异步流程测试覆盖率要�?
 
-| 测试类型 | 最低数量 | 说明 |
+| 测试类型 | 最低数�?| 说明 |
 |---------|---------|------|
-| 轮询模式 | 每个异步状态 | 状态变更轮询 + 超时测试 |
-| WebSocket模式 | 每个实时推送 | 消息接收 + 重连 + 断线 |
+| 轮询模式 | 每个异步状�?| 状态变更轮�?+ 超时测试 |
+| WebSocket模式 | 每个实时推�?| 消息接收 + 重连 + 断线 |
 | 事件驱动 | 每个事件类型 | 顺序 + 幂等 + 丢失恢复 |
-| 完整E2E | 每个主流程 | 从下单到完成的完整链路 |
-| 错误恢复 | 每个故障点 | 超时、断线、重复、死信 |
+| 完整E2E | 每个主流�?| 从下单到完成的完整链�?|
+| 错误恢复 | 每个故障�?| 超时、断线、重复、死�?|
 
 ## Test Report Template
 
@@ -423,15 +423,15 @@ export async function waitForMessage(
 **执行时间**: [timestamp]
 **执行结果**: [PASS/FAIL]
 
-## 测试结果汇总
+## 测试结果汇�?
 
-| 测试类型 | 总数 | 通过 | 失败 | 通过率 |
+| 测试类型 | 总数 | 通过 | 失败 | 通过�?|
 |---------|------|------|------|--------|
 | 单元测试 | [N] | [N] | [0] | 100% |
 | 模块集成测试 | [N] | [N] | [N] | [X%] |
 | 场景测试 | [N] | [N] | [N] | [X%] |
 
-## 失败的测试
+## 失败的测�?
 
 ### [Test Name]
 **类型**: [单元/集成/场景]
@@ -476,7 +476,7 @@ export async function waitForMessage(
 [new test or verification steps]
 
 ### 验证结果
-[ ] 修复已验证
+[ ] 修复已验�?
 [ ] 回归测试通过
 ```
 
@@ -484,55 +484,55 @@ export async function waitForMessage(
 
 # Stage4 四步合并流程
 
-> Stage4 Coordinator 主导的模块合并流程
+> Stage4 Coordinator 主导的模块合并流�?
 
 ```
 Step 1: 模块分组
-  └── 按原子表组（atomic_group）分组，同组模块一起合并
-  ↓
+  └── 按原子表组（atomic_group）分组，同组模块一起合�?
+  �?
 Step 2: 契约校验
-  └── 验证 api-contract.yaml ↔ 实际实现的一致性
+  └── 验证 api-contract.yaml �?实际实现的一致�?
   └── 运行 npm run mock:verify
-  ↓
+  �?
 Step 3: Merge + Migrate
-  └── 合并各模块代码到主分支
-  └── 执行 Drizzle Migration（Stage4 首次迁移）
+  └── 合并各模块代码到主分�?
+  └── 执行 Drizzle Migration（Stage4 首次迁移�?
   └── Stage3 开发期间用 db:push，Stage4 merge 后用 migrate
-  ↓
+  �?
 Step 4: 集成测试
   └── 运行全量测试套件
-  └── Happy Path 通过率 100% + Exception Path ≥80%
-  └── 检查 race-condition-warnings.md
+  └── Happy Path 通过�?100% + Exception Path �?0%
+  └── 检�?race-condition-warnings.md
 ```
 
 ## 切换策略
 
-按模块逐个切换 Mock → Real：
+按模块逐个切换 Mock �?Real�?
 
 ```typescript
-// src/api/config.ts — 切换示例
+// src/api/config.ts �?切换示例
 moduleBaseURL: {
-  auth: 'http://localhost:3000/api',     // ✅ 已切换到真实后端
-  user: 'http://localhost:3000/api',     // ✅ 已切换
-  product: 'http://localhost:3001/api',  // ⏳ 仍使用 Mock
-  trace: 'http://localhost:3001/api',    // ⏳ 仍使用 Mock
+  auth: 'http://localhost:3000/api',     // �?已切换到真实后端
+  user: 'http://localhost:3000/api',     // �?已切�?
+  product: 'http://localhost:3001/api',  // �?仍使�?Mock
+  trace: 'http://localhost:3001/api',    // �?仍使�?Mock
 }
 ```
 
-切换节奏：每个模块后端 DONE + CR 通过后，前端对应页面即可切换。
+切换节奏：每个模块后�?DONE + CR 通过后，前端对应页面即可切换�?
 
 ## 回滚协议
 
 ```
-切换后发现 Bug
-  ↓
+切换后发�?Bug
+  �?
 标记该模块为 BLOCKED
-  ↓
-回退 baseURL 到 Mock 服务器
-  ↓
+  �?
+回退 baseURL �?Mock 服务�?
+  �?
 Debug Agent 接收修复任务
-  ↓
-修复验证通过 → 再次切换到 Real
+  �?
+修复验证通过 �?再次切换�?Real
 ```
 
 ---
@@ -543,9 +543,9 @@ Debug Agent 接收修复任务
 
 | PRD标准 | 对应测试 | 执行结果 |
 |---------|----------|----------|
-| 用户可登录 | auth.test.ts | ✅ PASS |
-| 可创建产品 | product.test.ts | ✅ PASS |
-| 溯源码正确生成 | trace.test.ts | ❌ FAIL |
+| 用户可登�?| auth.test.ts | �?PASS |
+| 可创建产�?| product.test.ts | �?PASS |
+| 溯源码正确生�?| trace.test.ts | �?FAIL |
 
 ## Final Acceptance Check
 
@@ -599,12 +599,12 @@ Debug Agent 接收修复任务
 
 # Gotchas
 
-- **CORS** — Backend must allow frontend origin
-- **Auth token format** — Ensure Bearer token matches backend expectation
-- **Response timing** — Real API may be slower than mock, handle loading states
-- **Null handling** — Real backend may return null where mock returns empty
-- **Date formats** — Backend may use different date format than mock
-- **四步合并** — Stage4 Coordinator 主导：模块分组 → 契约校验 → Merge → migrate → 集成测试
-- **通过率阈值** — Happy Path 100%（不通过不能 DONE）；Exception Path ≥80%（允许已知问题记录）
-- **逐模块切换** — 按模块逐个切换 Mock→Real，不要一次性全切。在 `api.config.ts` 中按模块映射 baseURL
-- **回滚协议** — 切换后发现问题 → 标记该模块 BLOCKED → 回退到 Mock → Debug Agent 修复 → 再次切换
+- **CORS** �?Backend must allow frontend origin
+- **Auth token format** �?Ensure Bearer token matches backend expectation
+- **Response timing** �?Real API may be slower than mock, handle loading states
+- **Null handling** �?Real backend may return null where mock returns empty
+- **Date formats** �?Backend may use different date format than mock
+- **四步合并** �?Stage4 Coordinator 主导：模块分�?�?契约校验 �?Merge �?migrate �?集成测试
+- **通过率阈�?* �?Happy Path 100%（不通过不能 DONE）；Exception Path �?0%（允许已知问题记录）
+- **逐模块切�?* �?按模块逐个切换 Mock→Real，不要一次性全切。在 `api.config.ts` 中按模块映射 baseURL
+- **回滚协议** �?切换后发现问�?�?标记该模�?BLOCKED �?回退�?Mock �?Debug Agent 修复 �?再次切换

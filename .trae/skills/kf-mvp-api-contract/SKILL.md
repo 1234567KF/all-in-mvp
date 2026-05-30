@@ -8,7 +8,7 @@ description: >-
 metadata:
   pattern: tool-wrapper + reviewer
   domain: mvp-stage2
-recommended_model: pro
+recommended_model: deepseek-v4-pro
 graph:
   dependencies:
     - target: kf-mvp-arch-expert
@@ -17,7 +17,7 @@ graph:
       type: semantic
 ---
 
-# MVP API Contract Designer — API契约设计技能
+# MVP API Contract Designer �?API契约设计技�?
 
 > **Core Belief**: API contract is the single source of truth for frontend-backend synchronization. A well-designed contract enables parallel development without constant coordination.
 
@@ -35,10 +35,10 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-1. **Contract first** — Define interfaces before implementation
-2. **Consistency** — Same patterns across all endpoints
-3. **Completeness** — All error cases documented
-4. **Type safety** — DTOs typed from day one
+1. **Contract first** �?Define interfaces before implementation
+2. **Consistency** �?Same patterns across all endpoints
+3. **Completeness** �?All error cases documented
+4. **Type safety** �?DTOs typed from day one
 
 ---
 
@@ -138,25 +138,25 @@ interface UserResponseDto {
 
 ---
 
-# Mock-后端一致性验证 (MUST — 迭代2核心修复)
+# Mock-后端一致性验�?(MUST �?迭代2核心修复)
 
-**问题**：之前前端用 Mock 开发，后端用真实 API，两者行为不一致导致联调时大量 bug。
+**问题**：之前前端用 Mock 开发，后端用真�?API，两者行为不一致导致联调时大量 bug�?
 
-**解决方案**：API 契约设计完成后，MUST 生成 **一致性验证测试**，确保 Mock 和真实后端行为完全一致。
+**解决方案**：API 契约设计完成后，MUST 生成 **一致性验证测�?*，确�?Mock 和真实后端行为完全一致�?
 
-## 一致性验证清单
+## 一致性验证清�?
 
-| 验证项 | Mock | 真实后端 | 验证方式 |
+| 验证�?| Mock | 真实后端 | 验证方式 |
 |--------|------|---------|---------|
 | 响应格式 | `{success, data/error}` | `{success, data/error}` | 结构对比 |
 | HTTP状态码 | 200/201/400/401/404/409 | 相同 | 状态码对比 |
-| Error Code | `INVALID_CREDENTIALS` | `INVALID_CREDENTIALS` | 字符串完全匹配 |
-| 字段类型 | `id: number` | `id: number` | TypeScript类型检查 |
-| 分页参数 | `page=1&limit=10` | `page=1&limit=10` | 默认值对比 |
-| CORS头 | `Access-Control-Allow-Origin` | 相同 | 响应头对比 |
-| 延迟范围 | 100-500ms | 真实网络 | 可配置 |
+| Error Code | `INVALID_CREDENTIALS` | `INVALID_CREDENTIALS` | 字符串完全匹�?|
+| 字段类型 | `id: number` | `id: number` | TypeScript类型检�?|
+| 分页参数 | `page=1&limit=10` | `page=1&limit=10` | 默认值对�?|
+| CORS�?| `Access-Control-Allow-Origin` | 相同 | 响应头对�?|
+| 延迟范围 | 100-500ms | 真实网络 | 可配�?|
 
-## 自动化验证脚本
+## 自动化验证脚�?
 
 ```typescript
 // tests/contract-consistency.test.ts
@@ -185,11 +185,11 @@ describe('API Contract Consistency', () => {
       const mockJson = await mockRes.json();
       const realJson = await realRes.json();
 
-      // 1. 响应结构必须一致
+      // 1. 响应结构必须一�?
       expect(mockJson).toHaveProperty('success');
       expect(realJson).toHaveProperty('success');
 
-      // 2. Error 结构必须一致
+      // 2. Error 结构必须一�?
       if (!mockJson.success) {
         expect(mockJson.error).toHaveProperty('code');
         expect(mockJson.error).toHaveProperty('message');
@@ -198,7 +198,7 @@ describe('API Contract Consistency', () => {
         expect(mockJson.error.code).toBe(realJson.error.code); // MUST 完全匹配
       }
 
-      // 3. HTTP 状态码必须一致
+      // 3. HTTP 状态码必须一�?
       expect(mockRes.status).toBe(realRes.status);
     });
   });
@@ -355,8 +355,8 @@ components:
 
 # Gotchas
 
-- **Envelope is law** — Always wrap in { success, data/error }
-- **ISO dates** — Always use ISO 8601 date strings, not timestamps
-- **Soft delete in list** — GET should exclude deleted items
-- **Partial update** — PUT should accept partial data
-- **Null vs undefined** — Use null for "explicitly empty", undefined for "not provided"
+- **Envelope is law** �?Always wrap in { success, data/error }
+- **ISO dates** �?Always use ISO 8601 date strings, not timestamps
+- **Soft delete in list** �?GET should exclude deleted items
+- **Partial update** �?PUT should accept partial data
+- **Null vs undefined** �?Use null for "explicitly empty", undefined for "not provided"

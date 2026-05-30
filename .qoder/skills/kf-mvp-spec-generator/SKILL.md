@@ -2,13 +2,13 @@
 name: kf-mvp-spec-generator
 description: >-
   Load when user asks to generate technical specification, convert PRD to spec,
-  or create API contracts. Triggers: 规格文档, 技术规格, spec生成, 规格生成,
+  or create API contracts. Triggers: 规格文档, 技术规�? spec生成, 规格生成,
   generate spec, API契约, api contract. This is an alias/enhanced version
   of kf-mvp-arch-expert with additional spec generation patterns.
 metadata:
   pattern: generator + tool-wrapper
   domain: mvp-stage2
-recommended_model: pro
+recommended_model: kimi-for-coding
 graph:
   dependencies:
     - target: kf-mvp-prd-generator
@@ -26,7 +26,7 @@ graph:
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP Spec Generator — 技术规格生成技能
+# MVP Spec Generator �?技术规格生成技�?
 
 > **Core Belief**: Spec-first is not documentation-first. The spec is a design artifact that enables code generation. A good spec makes implementation mechanical.
 
@@ -38,10 +38,10 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 Derived from Kiro IDE Spec Document Generation best practices:
 
-1. **Spec is a design tool** — Not documentation, but a specification that enables generation
-2. **Complete before code** — All decisions made in spec, code is mechanical implementation
-3. **Single source of truth** — Spec is authoritative for both frontend and backend
-4. **Testable specifications** — Every spec item should have corresponding test cases
+1. **Spec is a design tool** �?Not documentation, but a specification that enables generation
+2. **Complete before code** �?All decisions made in spec, code is mechanical implementation
+3. **Single source of truth** �?Spec is authoritative for both frontend and backend
+4. **Testable specifications** �?Every spec item should have corresponding test cases
 
 ---
 
@@ -87,8 +87,8 @@ Derived from Kiro IDE Spec Document Generation best practices:
 
 | 规则ID | 描述 | 涉及实体 | 约束类型 |
 |--------|------|----------|----------|
-| BR-001 | 溯源码格式：公司码+日期+流水号 | TraceCode | 格式 |
-| BR-002 | 用户角色只能是 admin/user/brand | User | 枚举 |
+| BR-001 | 溯源码格式：公司�?日期+流水�?| TraceCode | 格式 |
+| BR-002 | 用户角色只能�?admin/user/brand | User | 枚举 |
 | BR-003 | 产品必须关联类目 | Product | 必填 |
 ```
 
@@ -204,7 +204,7 @@ components:
 
   responses:
     Unauthorized:
-      description: 未授权
+      description: 未授�?
       content:
         application/json:
           schema:
@@ -327,8 +327,8 @@ stateDiagram-v2
 
 # Gotchas
 
-- **Spec is source of truth** — Once locked, changes require formal process
-- **Naming consistency** — Use same terms across all artifacts
-- **Completeness** — Every entity must have all properties listed
-- **Testability** — Every spec item must have corresponding test
-- **Iteration** — Spec evolves with PRD understanding
+- **Spec is source of truth** �?Once locked, changes require formal process
+- **Naming consistency** �?Use same terms across all artifacts
+- **Completeness** �?Every entity must have all properties listed
+- **Testability** �?Every spec item must have corresponding test
+- **Iteration** �?Spec evolves with PRD understanding

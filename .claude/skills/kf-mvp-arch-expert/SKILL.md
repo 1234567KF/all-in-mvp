@@ -3,12 +3,12 @@ name: kf-mvp-arch-expert
 description: >-
   Load when user asks to create architecture spec, design database schema,
   or define API contracts. Triggers: 架构设计, spec, schema, 接口契约,
-  数据库设计, API设计, 架构专家, 生成spec, 技术规格. Also load when
+  数据库设�? API设计, 架构专家, 生成spec, 技术规�? Also load when
   PRD is ready and needs conversion to technical specifications.
 metadata:
   pattern: generator + tool-wrapper
   domain: mvp-stage2
-recommended_model: pro
+recommended_model: kimi-for-coding
 graph:
   dependencies:
     - target: kf-mvp-prd-generator
@@ -24,7 +24,7 @@ graph:
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP Architecture Expert — 架构专家技能
+# MVP Architecture Expert �?架构专家技�?
 
 > **Core Belief**: Schema and API contract are the ONLY synchronization point between frontend and backend. They must be rock-solid before any parallel development begins.
 
@@ -34,12 +34,12 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-Derived from MVP Whitepaper Section 2.1 — 架构专家:
+Derived from MVP Whitepaper Section 2.1 �?架构专家:
 
-1. **MVP fixed stack** — Hono + Drizzle + SQLite/Turso (unless explicitly specified otherwise)
-2. **Schema is global** — One unified schema shared by all modules
-3. **API contract is law** — Once locked, no changes without formal process
-4. **Ignore non-functional requirements** — Performance, security are future iterations
+1. **MVP fixed stack** �?Hono + Drizzle + SQLite/Turso (unless explicitly specified otherwise)
+2. **Schema is global** �?One unified schema shared by all modules
+3. **API contract is law** �?Once locked, no changes without formal process
+4. **Ignore non-functional requirements** �?Performance, security are future iterations
 
 ---
 
@@ -77,7 +77,7 @@ API contract defining:
 **Ask if not specified**:
 ```
 技术栈是什么？
-- MVP标准栈: Hono + Drizzle + SQLite/Turso
+- MVP标准�? Hono + Drizzle + SQLite/Turso
 - 或指定其他技术栈
 ```
 
@@ -89,15 +89,15 @@ API contract defining:
 
 ## Schema Design Principles
 
-1. **Analyze PRD ER section** — Extract entities and relationships
-2. **Design global schema** — All modules share the same schema
+1. **Analyze PRD ER section** �?Extract entities and relationships
+2. **Design global schema** �?All modules share the same schema
 3. **Follow naming conventions**:
    - Tables: `snake_case` plural (`users`, `products`, `trace_codes`)
    - Columns: `snake_case` (`user_id`, `created_at`)
    - Primary keys: `id` (integer auto-increment) or `uuid`
    - Foreign keys: `{table_singular}_id` (`user_id`, `product_id`)
-4. **Soft delete convention** — Add `deleted_at TIMESTAMP NULL` for soft delete tables
-5. **Audit fields** — Add `created_at`, `updated_at` to all tables
+4. **Soft delete convention** �?Add `deleted_at TIMESTAMP NULL` for soft delete tables
+5. **Audit fields** �?Add `created_at`, `updated_at` to all tables
 
 ## Schema Output Template
 
@@ -142,7 +142,7 @@ CREATE TABLE products (
 -- ... additional tables
 ```
 
-> **原子表组**：`-- @atomic_group: <name>` 标注可独立锁定的表组，Coordinator 据此决定哪些模块可并行开发和锁定。同一 atomic_group 内的表在模块拆分时应分配给同一业务模块。
+> **原子表组**：`-- @atomic_group: <name>` 标注可独立锁定的表组，Coordinator 据此决定哪些模块可并行开发和锁定。同一 atomic_group 内的表在模块拆分时应分配给同一业务模块�?
 
 ## Drizzle Schema Alternative
 
@@ -169,11 +169,11 @@ export const users = sqliteTable('users', {
 ## API Design Principles
 
 1. **RESTful conventions**:
-   - `GET /resources` — List
-   - `GET /resources/:id` — Get one
-   - `POST /resources` — Create
-   - `PUT /resources/:id` — Update
-   - `DELETE /resources/:id` — Delete (soft delete if applicable)
+   - `GET /resources` �?List
+   - `GET /resources/:id` �?Get one
+   - `POST /resources` �?Create
+   - `PUT /resources/:id` �?Update
+   - `DELETE /resources/:id` �?Delete (soft delete if applicable)
 
 2. **Naming conventions**:
    - Routes: `/api/{resource}` or `/api/{resource}/{action}`
@@ -191,12 +191,12 @@ export const users = sqliteTable('users', {
 4. **Error codes**:
    | Code | Meaning |
    |------|---------|
-   | 400 | Bad Request — invalid input |
-   | 401 | Unauthorized — not logged in |
-   | 403 | Forbidden — no permission |
-   | 404 | Not Found — resource doesn't exist |
-   | 409 | Conflict — duplicate or state conflict |
-   | 500 | Internal Error — server error |
+   | 400 | Bad Request �?invalid input |
+   | 401 | Unauthorized �?not logged in |
+   | 403 | Forbidden �?no permission |
+   | 404 | Not Found �?resource doesn't exist |
+   | 409 | Conflict �?duplicate or state conflict |
+   | 500 | Internal Error �?server error |
 
 ## API Contract YAML Template
 
@@ -289,7 +289,7 @@ components:
 
   responses:
     Unauthorized:
-      description: 未授权
+      description: 未授�?
       content:
         application/json:
           schema:
@@ -318,13 +318,13 @@ components:
 
 > **Version**: 1.0  
 > **Based on PRD**: [PRD file path]  
-> **Status**: DRAFT → LOCKED
+> **Status**: DRAFT �?LOCKED
 
 <!--
 # @version: 1.0
 # @last_modified: [ISO datetime]
 # @modified_by: architect-agent
-# @change: 初始技术规格
+# @change: 初始技术规�?
 # @grill_round: 0
 -->
 
@@ -332,31 +332,31 @@ components:
 
 ## 1. 技术栈
 
-| 组件 | 技术 | 说明 |
+| 组件 | 技�?| 说明 |
 |------|------|------|
-| 运行时 | Node.js 18+ | |
+| 运行�?| Node.js 18+ | |
 | Web框架 | Hono | 轻量高性能 |
 | ORM | Drizzle | 类型安全 |
-| 数据库 | SQLite/Turso | MVP最优选择 |
+| 数据�?| SQLite/Turso | MVP最优选择 |
 | 前端 | Vue 3 + Vite | |
 
 ## 2. 架构概览
 
 ```
-┌─────────────────────────────────────────────────┐
-│                   Frontend                       │
-│              Vue 3 + Composition API            │
-└─────────────────────┬───────────────────────────┘
-                      │ HTTP
-┌─────────────────────▼───────────────────────────┐
-│                   Backend                        │
-│              Hono + Drizzle                     │
-└─────────────────────┬───────────────────────────┘
-                      │ SQL
-┌─────────────────────▼───────────────────────────┐
-│                   Database                       │
-│              SQLite / Turso                     │
-└─────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────�?
+�?                  Frontend                       �?
+�?             Vue 3 + Composition API            �?
+└─────────────────────┬───────────────────────────�?
+                      �?HTTP
+┌─────────────────────▼───────────────────────────�?
+�?                  Backend                        �?
+�?             Hono + Drizzle                     �?
+└─────────────────────┬───────────────────────────�?
+                      �?SQL
+┌─────────────────────▼───────────────────────────�?
+�?                  Database                       �?
+�?             SQLite / Turso                     �?
+└─────────────────────────────────────────────────�?
 ```
 
 ## 3. 模块组织
@@ -364,78 +364,78 @@ components:
 ```
 src/
 ├── modules/
-│   ├── auth/           # 认证与权限
-│   │   ├── routes.ts
-│   │   ├── service.ts
-│   │   └── types.ts
-│   ├── users/         # 用户管理
-│   ├── products/       # 产品管理
-│   ├── trace/          # 溯源管理
-│   └── template/       # 模板管理
+�?  ├── auth/           # 认证与权�?
+�?  �?  ├── routes.ts
+�?  �?  ├── service.ts
+�?  �?  └── types.ts
+�?  ├── users/         # 用户管理
+�?  ├── products/       # 产品管理
+�?  ├── trace/          # 溯源管理
+�?  └── template/       # 模板管理
 ├── schema.ts           # 全局Schema
 └── index.ts           # 入口文件
 ```
 
-## 4. 数据流
+## 4. 数据�?
 
 ### 认证流程
-1. 用户登录 → POST /api/auth/login
-2. 服务端验证 → 返回JWT token
-3. 后续请求携带Token → Authorization: Bearer {token}
-4. 中间件验证Token → 解析用户信息
+1. 用户登录 �?POST /api/auth/login
+2. 服务端验�?�?返回JWT token
+3. 后续请求携带Token �?Authorization: Bearer {token}
+4. 中间件验证Token �?解析用户信息
 
 ### 业务请求流程
-1. 前端发送请求
-2. 路由匹配 → 中间件处理（认证、日志）
+1. 前端发送请�?
+2. 路由匹配 �?中间件处理（认证、日志）
 3. Service处理业务逻辑
-4. Schema操作数据库
+4. Schema操作数据�?
 5. 返回Response
 
 ## 5. 安全考虑
 
 - 密码使用bcrypt哈希存储
-- JWT token有过期时间
+- JWT token有过期时�?
 - SQL注入防护（Drizzle参数化查询）
 - XSS防护（前端转义）
 
 ---
 
-## 附录：变更记录
+## 附录：变更记�?
 
-| 版本 | 日期 | 变更内容 | 作者 |
+| 版本 | 日期 | 变更内容 | 作�?|
 |------|------|---------|------|
 | 1.0 | [日期] | 初始版本 | [作者] |
 ```
 
 ---
 
-# DRAFT → LOCKED 过渡流程
+# DRAFT �?LOCKED 过渡流程
 
 产出物状态分为两个阶段：
 
-| 状态 | 文件名 | 含义 | 谁可以使用 |
+| 状�?| 文件�?| 含义 | 谁可以使�?|
 |------|--------|------|-----------|
-| **DRAFT（初版）** | `spec.md` / `schema.sql` / `api-contract.yaml` | 产出完成，未经 ↺ 循环校验 | 仅 grill-with-docs 审查 Agent |
-| **LOCKED（锁定版）** | `spec.locked.md` / `schema.locked.sql` / `api-contract.locked.yaml` | ↺ 循环通过，后续 Agent 以此为唯一基准 | Stage2 ③ 所有并行 Agent |
+| **DRAFT（初版）** | `spec.md` / `schema.sql` / `api-contract.yaml` | 产出完成，未�?�?循环校验 | �?grill-with-docs 审查 Agent |
+| **LOCKED（锁定版�?* | `spec.locked.md` / `schema.locked.sql` / `api-contract.locked.yaml` | �?循环通过，后�?Agent 以此为唯一基准 | Stage2 �?所有并�?Agent |
 
-**过渡流程**：
+**过渡流程**�?
 
 ```
-本 Agent 产出（DRAFT）
-  ↓
+�?Agent 产出（DRAFT�?
+  �?
 grill-with-docs 审查（↺ 循环 1-3 轮）
-  ↓ 通过
-重命名为 .locked 版本 + 文件头写入 <!-- STATUS: LOCKED -->
-  ↓
-Coordinator 识别 LOCKED 状态 → 调度 Stage2 ③ 并行任务
+  �?通过
+重命名为 .locked 版本 + 文件头写�?<!-- STATUS: LOCKED -->
+  �?
+Coordinator 识别 LOCKED 状�?�?调度 Stage2 �?并行任务
 ```
 
-**锁定后修改**（需人类授权）：
+**锁定后修�?*（需人类授权）：
 ```
-人类授权 → 重命名为 .draft.md → 修改 → 重新走 ↺ 循环 → 恢复 .locked.md
+人类授权 �?重命名为 .draft.md �?修改 �?重新�?�?循环 �?恢复 .locked.md
 ```
 
-**文件头锁定声明**：
+**文件头锁定声�?*�?
 ```markdown
 <!-- STATUS: LOCKED -->
 <!-- LOCKED_AT: 2026-05-24T10:00:00Z -->
@@ -471,7 +471,7 @@ Before final output, verify:
 - Mark output as DRAFT until reviewed
 - Annotate atomic groups in schema (`-- @atomic_group: <name>`)
 - Include version metadata (`# @version`, `# @last_modified`, `# @grill_round`) in all output headers
-- Output in DRAFT state — LOCKED is grill-with-docs's responsibility
+- Output in DRAFT state �?LOCKED is grill-with-docs's responsibility
 
 **MUST NOT DO:**
 - Add performance optimizations (future iteration)
@@ -483,8 +483,8 @@ Before final output, verify:
 
 # Gotchas
 
-- **Schema is global** — All modules share ONE schema.ts file, not separate files
-- **Soft delete everywhere** — Unless specified, all business tables should support soft delete
-- **Lock before parallel** — This output must pass grill-with-docs review before Stage3 begins
-- **Foreign key order** — Tables with FK must be created after the tables they reference
-- **Migration files** — Generate Drizzle migration files for production deployment
+- **Schema is global** �?All modules share ONE schema.ts file, not separate files
+- **Soft delete everywhere** �?Unless specified, all business tables should support soft delete
+- **Lock before parallel** �?This output must pass grill-with-docs review before Stage3 begins
+- **Foreign key order** �?Tables with FK must be created after the tables they reference
+- **Migration files** �?Generate Drizzle migration files for production deployment

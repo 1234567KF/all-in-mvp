@@ -8,7 +8,7 @@ description: >-
 metadata:
   pattern: tool-wrapper
   domain: mvp-stage3
-recommended_model: pro
+recommended_model: qwen-3.7-Max
 graph:
   dependencies:
     - target: kf-mvp-security
@@ -17,7 +17,7 @@ graph:
       type: semantic
 ---
 
-# MVP Auth Implementation — 认证实现技能
+# MVP Auth Implementation �?认证实现技�?
 
 > **Core Belief**: Authentication is the gatekeeper of your system. A single flaw can compromise everything. Every implementation detail matters. Don't roll your own crypto.
 
@@ -25,7 +25,7 @@ graph:
 
 **Default Tech Stack** (enforced unless user explicitly overrides):
 - Framework: Hono (JWT via `hono/jwt`)
-- Password: bcryptjs (NOT argon2 — keep dependencies minimal for MVP)
+- Password: bcryptjs (NOT argon2 �?keep dependencies minimal for MVP)
 - Database: SQLite (user table in Drizzle schema)
 - Token storage: localStorage (frontend) + Authorization header
 
@@ -38,31 +38,31 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 # Auth Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      Client                              │
-│  ┌─────────────────────────────────────────────────┐   │
-│  │ 1. Login Request (email + password)             │   │
-│  │ 2. Store Token (localStorage/Session)            │   │
-│  │ 3. Attach Token (Authorization header)           │   │
-│  └─────────────────────────────────────────────────┘   │
-└───────────────────────┬─────────────────────────────────┘
-                        │ HTTPS
-┌───────────────────────▼─────────────────────────────────┐
-│                      Backend                              │
-│  ┌──────────────────────────────────────────────────┐    │
-│  │  Middleware Layer                                  │    │
-│  │  ┌────────────┐  ┌────────────┐  ┌───────────┐   │    │
-│  │  │ CORS       │  │ Auth       │  │ Rate Limit│   │    │
-│  │  └────────────┘  └────────────┘  └───────────┘   │    │
-│  └──────────────────────────────────────────────────┘    │
-│  ┌──────────────────────────────────────────────────┐    │
-│  │  Auth Routes                                      │    │
-│  │  POST /api/auth/login                             │    │
-│  │  POST /api/auth/register                         │    │
-│  │  POST /api/auth/logout                           │    │
-│  │  GET  /api/auth/me                               │    │
-│  └──────────────────────────────────────────────────┘    │
-└──────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────�?
+�?                     Client                              �?
+�? ┌─────────────────────────────────────────────────�?  �?
+�? �?1. Login Request (email + password)             �?  �?
+�? �?2. Store Token (localStorage/Session)            �?  �?
+�? �?3. Attach Token (Authorization header)           �?  �?
+�? └─────────────────────────────────────────────────�?  �?
+└───────────────────────┬─────────────────────────────────�?
+                        �?HTTPS
+┌───────────────────────▼─────────────────────────────────�?
+�?                     Backend                              �?
+�? ┌──────────────────────────────────────────────────�?   �?
+�? �? Middleware Layer                                  �?   �?
+�? �? ┌────────────�? ┌────────────�? ┌───────────�?  �?   �?
+�? �? �?CORS       �? �?Auth       �? �?Rate Limit�?  �?   �?
+�? �? └────────────�? └────────────�? └───────────�?  �?   �?
+�? └──────────────────────────────────────────────────�?   �?
+�? ┌──────────────────────────────────────────────────�?   �?
+�? �? Auth Routes                                      �?   �?
+�? �? POST /api/auth/login                             �?   �?
+�? �? POST /api/auth/register                         �?   �?
+�? �? POST /api/auth/logout                           �?   �?
+�? �? GET  /api/auth/me                               �?   �?
+�? └──────────────────────────────────────────────────�?   �?
+└──────────────────────────────────────────────────────────�?
 ```
 
 ---
@@ -325,11 +325,11 @@ export function requireOwnership(getResourceUserId: (id: number) => Promise<numb
 
 ---
 
-# Data-Level Permission Testing (MUST — 迭代4核心修复)
+# Data-Level Permission Testing (MUST �?迭代4核心修复)
 
-**问题**：ERP系统有复杂的数据权限（行级/列级），不同角色/部门/组织只能看到部分数据。之前数据权限bug只在人工测试时发现（如：普通用户看到了其他部门的数据）。
+**问题**：ERP系统有复杂的数据权限（行�?列级），不同角色/部门/组织只能看到部分数据。之前数据权限bug只在人工测试时发现（如：普通用户看到了其他部门的数据）�?
 
-**解决方案**：MUST 编写 **数据权限测试**，覆盖行级过滤 + 列级脱敏 + 跨组织隔离。
+**解决方案**：MUST 编写 **数据权限测试**，覆盖行级过�?+ 列级脱敏 + 跨组织隔离�?
 
 ## 数据权限测试模板
 
@@ -340,8 +340,8 @@ import { Hono } from 'hono';
 import { authMiddleware, requireRole } from './middleware';
 import { getDataPermissionFilter, applyColumnMasking } from './data-permission';
 
-describe('Data Permission — ERP Row/Column Level', () => {
-  // 行级权限测试：不同角色/部门看到不同数据
+describe('Data Permission �?ERP Row/Column Level', () => {
+  // 行级权限测试：不同角�?部门看到不同数据
   describe('Row-Level Filtering', () => {
     it('user should ONLY see data in their organization', async () => {
       const user = { id: 1, role: 'user', orgId: 100 };
@@ -350,7 +350,7 @@ describe('Data Permission — ERP Row/Column Level', () => {
       // MUST: WHERE organization_id = 100
       expect(filter).toEqual({ organizationId: 100 });
       
-      // 验证查询结果不包含其他组织数据
+      // 验证查询结果不包含其他组织数�?
       const results = await db.select().from(orders).where(eq(orders.organizationId, user.orgId));
       const otherOrgData = results.filter(r => r.organizationId !== user.orgId);
       expect(otherOrgData).toEqual([]); // MUST 为空
@@ -373,7 +373,7 @@ describe('Data Permission — ERP Row/Column Level', () => {
     });
   });
 
-  // 列级权限测试：敏感字段脱敏
+  // 列级权限测试：敏感字段脱�?
   describe('Column-Level Masking', () => {
     it('user should NOT see salary column', async () => {
       const user = { id: 1, role: 'user' };
@@ -382,7 +382,7 @@ describe('Data Permission — ERP Row/Column Level', () => {
       
       expect(masked.salary).toBe('****'); // MUST 脱敏
       expect(masked.ssn).toBe('****');     // MUST 脱敏
-      expect(masked.name).toBe('John');    // 非敏感字段正常
+      expect(masked.name).toBe('John');    // 非敏感字段正�?
     });
 
     it('manager should see salary but NOT ssn', async () => {
@@ -399,7 +399,7 @@ describe('Data Permission — ERP Row/Column Level', () => {
       const rawData = { id: 1, name: 'John', salary: 50000, ssn: '123-45-6789' };
       const masked = applyColumnMasking(rawData, 'employees', user.role);
       
-      expect(masked).toEqual(rawData); // 完全无脱敏
+      expect(masked).toEqual(rawData); // 完全无脱�?
     });
   });
 
@@ -414,7 +414,7 @@ describe('Data Permission — ERP Row/Column Level', () => {
         
         if (!order[0]) return c.json({ error: 'Not found' }, 404);
         
-        // MUST: 检查数据权限
+        // MUST: 检查数据权�?
         if (order[0].organizationId !== user.orgId && user.role !== 'admin') {
           return c.json({ error: { code: 'FORBIDDEN' } }, 403);
         }
@@ -422,17 +422,17 @@ describe('Data Permission — ERP Row/Column Level', () => {
         return c.json({ data: order[0] });
       });
 
-      // 用户属于 org 100，尝试访问 org 200 的数据
+      // 用户属于 org 100，尝试访�?org 200 的数�?
       const token = await getTestToken({ role: 'user', orgId: 100 });
       const res = await app.request('/api/orders/999', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      expect(res.status).toBe(403); // MUST 被阻断
+      expect(res.status).toBe(403); // MUST 被阻�?
     });
 
     it('should NOT leak data through list endpoint with crafted params', async () => {
-      // 测试通过构造参数绕过过滤
+      // 测试通过构造参数绕过过�?
       const token = await getTestToken({ role: 'user', orgId: 100 });
       
       // 尝试通过 query param 指定 orgId
@@ -528,15 +528,15 @@ export function applyColumnMasking(data: any, table: string, role: string): any 
 }
 ```
 
-## 数据权限测试覆盖率要求
+## 数据权限测试覆盖率要�?
 
-| 测试类型 | 最低数量 | 说明 |
+| 测试类型 | 最低数�?| 说明 |
 |---------|---------|------|
-| 行级过滤 | 每个角色 × 每个表 | 不同角色对同一表的数据范围 |
-| 列级脱敏 | 每个敏感字段 × 每个角色 | 敏感字段对不同角色的可见性 |
-| 跨组织隔离 | 每个API端点 | 通过ID直接访问其他组织数据 |
-| 绕过尝试 | 每个过滤点 | query param、body、header注入 |
-| API权限矩阵 | 每个端点 × 每个角色 | 完整的权限矩阵验证 |
+| 行级过滤 | 每个角色 × 每个�?| 不同角色对同一表的数据范围 |
+| 列级脱敏 | 每个敏感字段 × 每个角色 | 敏感字段对不同角色的可见�?|
+| 跨组织隔�?| 每个API端点 | 通过ID直接访问其他组织数据 |
+| 绕过尝试 | 每个过滤�?| query param、body、header注入 |
+| API权限矩阵 | 每个端点 × 每个角色 | 完整的权限矩阵验�?|
 
 ---
 
@@ -558,8 +558,8 @@ export function applyColumnMasking(data: any, table: string, role: string): any 
 
 # Gotchas
 
-- **Token storage** — httpOnly cookies more secure than localStorage
-- **Password hashing** — Never implement your own
-- **Token expiration** — Short enough to limit damage, long enough to not annoy
-- **Refresh tokens** — Consider for long sessions
-- **Logout** — Implement token blacklisting or short expiry
+- **Token storage** �?httpOnly cookies more secure than localStorage
+- **Password hashing** �?Never implement your own
+- **Token expiration** �?Short enough to limit damage, long enough to not annoy
+- **Refresh tokens** �?Consider for long sessions
+- **Logout** �?Implement token blacklisting or short expiry

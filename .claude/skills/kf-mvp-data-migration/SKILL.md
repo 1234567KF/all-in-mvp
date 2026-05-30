@@ -2,13 +2,13 @@
 name: kf-mvp-data-migration
 description: >-
   Load when user asks for database migration, data transformation, or schema
-  updates. Triggers: 数据库迁移, 数据迁移, schema更新, migration,
+  updates. Triggers: 数据库迁�? 数据迁移, schema更新, migration,
   drizzle migrate, 数据转换, data transform. Also load when updating database
   schema or migrating data between versions.
 metadata:
   pattern: tool-wrapper
   domain: mvp-stage4
-recommended_model: pro
+recommended_model: minimax-m2.7
 graph:
   dependencies:
     - target: kf-mvp-schema-design
@@ -26,7 +26,7 @@ graph:
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP Data Migration — 数据迁移技能
+# MVP Data Migration �?数据迁移技�?
 
 > **Core Belief**: Data migrations are dangerous. Do them wrong, and you lose data. Do them right, and users never notice. Zero downtime is the goal.
 
@@ -36,10 +36,10 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-1. **Backup first** — Always have a rollback point
-2. **Incremental changes** — Small steps are safer
-3. **Zero downtime** — Users shouldn't notice migrations
-4. **Test on real data** — Staging ≠ production
+1. **Backup first** �?Always have a rollback point
+2. **Incremental changes** �?Small steps are safer
+3. **Zero downtime** �?Users shouldn't notice migrations
+4. **Test on real data** �?Staging �?production
 
 ---
 
@@ -205,11 +205,11 @@ export async function down(db: Database) {
 
 ---
 
-# Migration Testing (MUST — 迭代9核心修复)
+# Migration Testing (MUST �?迭代9核心修复)
 
-**问题**：CRM系统的数据迁移（客户数据、订单历史）经常在迁移后发现数据丢失或格式错误，之前迁移测试只在人工抽查时进行，覆盖率不足。
+**问题**：CRM系统的数据迁移（客户数据、订单历史）经常在迁移后发现数据丢失或格式错误，之前迁移测试只在人工抽查时进行，覆盖率不足�?
 
-**解决方案**：MUST 编写 **迁移测试**，覆盖数据完整性、格式转换、回滚验证。
+**解决方案**：MUST 编写 **迁移测试**，覆盖数据完整性、格式转换、回滚验证�?
 
 ## 迁移测试模板
 
@@ -219,7 +219,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { createTestDb, getTestDb } from '../helpers';
 
-describe('Migration 001 — Add Customer Tags (CRM)', () => {
+describe('Migration 001 �?Add Customer Tags (CRM)', () => {
   let db: ReturnType<typeof getTestDb>;
 
   beforeAll(async () => {
@@ -232,7 +232,7 @@ describe('Migration 001 — Add Customer Tags (CRM)', () => {
     ]);
   });
 
-  // 测试1：迁移前数据完整性
+  // 测试1：迁移前数据完整�?
   describe('Pre-Migration Data Integrity', () => {
     it('should have all customer records before migration', async () => {
       const count = await db.select({ count: sql`count(*)` }).from(customers);
@@ -246,7 +246,7 @@ describe('Migration 001 — Add Customer Tags (CRM)', () => {
     });
   });
 
-  // 测试2：迁移执行
+  // 测试2：迁移执�?
   describe('Migration Execution', () => {
     it('should apply migration without errors', async () => {
       await expect(migrate(db, { migrationsFolder: './drizzle' }))
@@ -265,16 +265,16 @@ describe('Migration 001 — Add Customer Tags (CRM)', () => {
     });
   });
 
-  // 测试3：数据转换验证
+  // 测试3：数据转换验�?
   describe('Data Transformation', () => {
     it('should convert category to tags correctly', async () => {
       const alice = await db.select().from(customers).where(eq(customers.id, 1)).limit(1);
-      expect(alice[0].tags).toContain('VIP'); // category:VIP → tags包含VIP
+      expect(alice[0].tags).toContain('VIP'); // category:VIP �?tags包含VIP
     });
 
     it('should handle null category gracefully', async () => {
       const charlie = await db.select().from(customers).where(eq(customers.id, 3)).limit(1);
-      expect(charlie[0].tags).toEqual([]); // null → 空数组
+      expect(charlie[0].tags).toEqual([]); // null �?空数�?
     });
 
     it('should not create duplicate tags', async () => {
@@ -285,7 +285,7 @@ describe('Migration 001 — Add Customer Tags (CRM)', () => {
     });
   });
 
-  // 测试4：回滚验证
+  // 测试4：回滚验�?
   describe('Rollback Verification', () => {
     it('should restore original schema on rollback', async () => {
       // 执行回滚
@@ -301,7 +301,7 @@ describe('Migration 001 — Add Customer Tags (CRM)', () => {
     });
   });
 
-  // 测试5：边界情况
+  // 测试5：边界情�?
   describe('Edge Cases', () => {
     it('should handle empty table migration', async () => {
       const emptyDb = createTestDb({ schema: 'pre-migration' });
@@ -311,7 +311,7 @@ describe('Migration 001 — Add Customer Tags (CRM)', () => {
 
     it('should handle large dataset migration', async () => {
       const largeDb = createTestDb({ schema: 'pre-migration' });
-      // 插入10000条记录
+      // 插入10000条记�?
       const batch = Array.from({ length: 10000 }, (_, i) => ({
         name: `User${i}`,
         email: `user${i}@example.com`,
@@ -329,15 +329,15 @@ describe('Migration 001 — Add Customer Tags (CRM)', () => {
 });
 ```
 
-## 迁移测试覆盖率要求
+## 迁移测试覆盖率要�?
 
-| 测试类型 | 最低数量 | 说明 |
+| 测试类型 | 最低数�?| 说明 |
 |---------|---------|------|
-| 数据完整性 | 每个迁移 | 迁移前后记录数一致 |
-| 格式转换 | 每个转换逻辑 | 旧格式→新格式正确性 |
-| 回滚验证 | 每个迁移 | 回滚后schema和数据恢复 |
-| 幂等性 | 每个迁移 | 重复执行不产生副作用 |
-| 性能 | 大数据量迁移 | 大表迁移时间可接受 |
+| 数据完整�?| 每个迁移 | 迁移前后记录数一�?|
+| 格式转换 | 每个转换逻辑 | 旧格式→新格式正确�?|
+| 回滚验证 | 每个迁移 | 回滚后schema和数据恢�?|
+| 幂等�?| 每个迁移 | 重复执行不产生副作用 |
+| 性能 | 大数据量迁移 | 大表迁移时间可接�?|
 | 边界 | 空表/大表 | 极端情况处理 |
 
 # Constraints
@@ -358,8 +358,8 @@ describe('Migration 001 — Add Customer Tags (CRM)', () => {
 
 # Gotchas
 
-- **Migration locks** — Some DB operations lock the table
-- **Large table migrations** — Process in batches to avoid memory issues
-- **Index creation time** — Indexes on large tables take time
-- **Time zones** — Always use UTC for timestamp storage
-- **String lengths** — Verify new column lengths match application expectations
+- **Migration locks** �?Some DB operations lock the table
+- **Large table migrations** �?Process in batches to avoid memory issues
+- **Index creation time** �?Indexes on large tables take time
+- **Time zones** �?Always use UTC for timestamp storage
+- **String lengths** �?Verify new column lengths match application expectations

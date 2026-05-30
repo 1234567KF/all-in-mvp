@@ -8,7 +8,7 @@ description: >-
 metadata:
   pattern: generator
   domain: mvp-stage2
-recommended_model: pro
+recommended_model: mino-v2.5-pro
 graph:
   dependencies:
     - target: kf-mvp-arch-expert
@@ -17,7 +17,7 @@ graph:
       type: semantic
 ---
 
-# MVP Mock Service — Mock服务生成技能
+# MVP Mock Service �?Mock服务生成技�?
 
 > **Core Belief**: Frontend should never wait for backend. Mock first, develop in parallel, swap when real API is ready.
 
@@ -35,35 +35,35 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-1. **Mock is based on contract** — api-contract.yaml is the only source of truth
-2. **Realistic responses** — Mock data should look real (seed data, variations)
-3. **Same framework as backend** — Use Hono for mock server (not Express) to ensure behavior consistency
-4. **Failure simulation** — Can simulate error cases for frontend error handling
-5. **Shared seed data** — Mock and real backend use same seed data source
+1. **Mock is based on contract** �?api-contract.yaml is the only source of truth
+2. **Realistic responses** �?Mock data should look real (seed data, variations)
+3. **Same framework as backend** �?Use Hono for mock server (not Express) to ensure behavior consistency
+4. **Failure simulation** �?Can simulate error cases for frontend error handling
+5. **Shared seed data** �?Mock and real backend use same seed data source
 
 ---
 
 # Output Artifacts
 
-> **模块组织原则**：Mock 文件按业务模块组织，与 biz-expert 的 `<module>.md` 定义一一对应。每个模块一个 route 文件 + 一个 data 文件。
+> **模块组织原则**：Mock 文件按业务模块组织，�?biz-expert �?`<module>.md` 定义一一对应。每个模块一�?route 文件 + 一�?data 文件�?
 
 ```
 mocks/
 ├── server.ts              # Mock server entry
 ├── routes/
-│   ├── auth.ts           # Auth mock routes（对应 auth 模块）
-│   ├── users.ts          # Users mock routes（对应 user 模块）
-│   ├── products.ts       # Products mock routes（对应 product 模块）
-│   └── ...（每个 <module>.md 对应一个 route 文件）
+�?  ├── auth.ts           # Auth mock routes（对�?auth 模块�?
+�?  ├── users.ts          # Users mock routes（对�?user 模块�?
+�?  ├── products.ts       # Products mock routes（对�?product 模块�?
+�?  └── ...（每�?<module>.md 对应一�?route 文件�?
 ├── data/
-│   ├── users.json       # Seed data（与 routes/users.ts 对应）
-│   ├── products.json     # Seed data（与 routes/products.ts 对应）
-│   └── ...
+�?  ├── users.json       # Seed data（与 routes/users.ts 对应�?
+�?  ├── products.json     # Seed data（与 routes/products.ts 对应�?
+�?  └── ...
 └── utils/
     └── delay.ts          # Simulate network latency
 ```
 
-> **模块对应规则**：biz-expert 定义的每个 `<module>.md` 中的接口清单 → `mocks/routes/<module>.ts`，数据表 → `mocks/data/<module>.json`。新增模块时同步新增对应 mock 文件。
+> **模块对应规则**：biz-expert 定义的每�?`<module>.md` 中的接口清单 �?`mocks/routes/<module>.ts`，数据表 �?`mocks/data/<module>.json`。新增模块时同步新增对应 mock 文件�?
 
 ---
 
@@ -370,7 +370,7 @@ let {module}s = [...seedData];
 1. 安装依赖:
    npm install
 
-2. 启动Mock服务器:
+2. 启动Mock服务�?
    npm run mock
 
 3. 前端配置:
@@ -419,36 +419,36 @@ let {module}s = [...seedData];
 
 # Gotchas
 
-- **Port conflict** — Default mock port 3001; change if conflicts
-- **CORS required** — Mock server must enable CORS for browser access
-- **Latency is intentional** — Don't remove delay; it helps frontend test loading states
-- **Data is ephemeral** — Mock data resets on server restart; use for dev only
-- **Token has no real validation** — Any "Bearer mock-token" works for protected routes
-- **Contract drift** — Run `npm run mock:verify` before each Stage4 integration; drift > 24h triggers BLOCKED
-- **Module alignment** — Each biz-expert `<module>.md` requires exactly 1 mock route file + 1 mock data file
+- **Port conflict** �?Default mock port 3001; change if conflicts
+- **CORS required** �?Mock server must enable CORS for browser access
+- **Latency is intentional** �?Don't remove delay; it helps frontend test loading states
+- **Data is ephemeral** �?Mock data resets on server restart; use for dev only
+- **Token has no real validation** �?Any "Bearer mock-token" works for protected routes
+- **Contract drift** �?Run `npm run mock:verify` before each Stage4 integration; drift > 24h triggers BLOCKED
+- **Module alignment** �?Each biz-expert `<module>.md` requires exactly 1 mock route file + 1 mock data file
 
 ---
 
 # Mock-实现变更同步协议
 
-> 契约锁定后如 API 仍需变更，Mock 必须同步更新以保证前端始终有可用的开发环境。
+> 契约锁定后如 API 仍需变更，Mock 必须同步更新以保证前端始终有可用的开发环境�?
 
 ## 变更触发流程
 
 ```
-开发 Agent 发现 api-contract.yaml 不合理
-  ↓
-提交变更申请 → change-request.md
-  ↓
-Coordinator 暂缓该模块（BLOCKED = contract_change_pending）
-  ↓
+开�?Agent 发现 api-contract.yaml 不合�?
+  �?
+提交变更申请 �?change-request.md
+  �?
+Coordinator 暂缓该模块（BLOCKED = contract_change_pending�?
+  �?
 人类审查（小变更 < 3 接口可自动批准）
-  ↓ 批准
+  �?批准
 更新 api-contract.yaml
-  ↓
-Mock Agent 同步更新 → 受影响前端 Agent 收到通知
-  ↓
-前端对应页面标记「需重新联调」
+  �?
+Mock Agent 同步更新 �?受影响前�?Agent 收到通知
+  �?
+前端对应页面标记「需重新联调�?
 ```
 
 ## change-request.md 模板
@@ -458,32 +458,32 @@ Mock Agent 同步更新 → 受影响前端 Agent 收到通知
 
 **申请模块**: [module name]
 **申请时间**: [ISO datetime]
-**影响接口数**: [N]
+**影响接口�?*: [N]
 **变更级别**: 微小 / 中等 / 重大
 
 ## 变更描述
-[当前契约的问题 + 建议的修正]
+[当前契约的问�?+ 建议的修正]
 
-## 影响的接口清单
+## 影响的接口清�?
 | 方法 | 路径 | 变更类型 | 说明 |
 |------|------|---------|------|
 | POST | /api/xxx | 新增字段 | ... |
 
-## 影响的前端页面
+## 影响的前端页�?
 [Coordinator 自动分析输出]
 ```
 
 ## Coordinator 自动分析
 
-收到 change-request 后，Coordinator 自动：
+收到 change-request 后，Coordinator 自动�?
 1. 读取变更接口列表
-2. 扫描所有前端页面引用的 API（通过 `api.config.ts` 映射）
-3. 输出受影响页面清单
-4. 暂缓受影响模块的开发
+2. 扫描所有前端页面引用的 API（通过 `api.config.ts` 映射�?
+3. 输出受影响页面清�?
+4. 暂缓受影响模块的开�?
 
 ## 同步后的 Mock 验证
 
-变更同步完成后，必须重新运行 `npm run mock:verify`，确认 Mock 与更新后的契约一致。
+变更同步完成后，必须重新运行 `npm run mock:verify`，确�?Mock 与更新后的契约一致�?
 
 ---
 
@@ -581,7 +581,7 @@ if (driftIssues.length > 0) {
   );
   console.log(`⚠️  ${driftIssues.length} endpoints have Mock drift`);
 } else {
-  console.log('✅ All mock endpoints match contract');
+  console.log('�?All mock endpoints match contract');
 }
 ```
 

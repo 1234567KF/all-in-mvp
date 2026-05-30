@@ -2,13 +2,13 @@
 name: kf-mvp-devops
 description: >-
   Load when user asks for MVP deployment, CI/CD setup, or simple hosting
-  configuration. Triggers: 部署, CI/CD, 持续集成, 自动化部署, deployment,
+  configuration. Triggers: 部署, CI/CD, 持续集成, 自动化部�? deployment,
   cicd, github actions, docker, 环境配置. NOT for: production Kubernetes
   setup, multi-region deployment, or enterprise infrastructure.
 metadata:
   pattern: tool-wrapper
   domain: mvp-stage4
-recommended_model: pro
+recommended_model: minimax-m2.7
 graph:
   dependencies:
     - target: kf-mvp-integration
@@ -17,7 +17,7 @@ graph:
       type: semantic
 ---
 
-# MVP DevOps — 部署与运维技能
+# MVP DevOps �?部署与运维技�?
 
 > **Core Belief**: Deployment should be boring. If shipping is exciting, your process needs work. Automate everything, deploy with confidence.
 
@@ -37,10 +37,10 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-1. **Automate everything** — Manual deployments are error-prone
-2. **Reproducible builds** — Same artifact, every time
-3. **Zero-downtime deploy** — Users shouldn't notice deployments
-4. **Fast feedback** — CI should catch issues before production
+1. **Automate everything** �?Manual deployments are error-prone
+2. **Reproducible builds** �?Same artifact, every time
+3. **Zero-downtime deploy** �?Users shouldn't notice deployments
+4. **Fast feedback** �?CI should catch issues before production
 
 ---
 
@@ -51,9 +51,9 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 ├── Dockerfile           # Container definition
 ├── docker-compose.yml  # Local dev environment
 ├── .github/
-│   └── workflows/
-│       ├── ci.yml      # CI pipeline
-│       └── deploy.yml  # Deploy pipeline
+�?  └── workflows/
+�?      ├── ci.yml      # CI pipeline
+�?      └── deploy.yml  # Deploy pipeline
 ├── .env.example        # Environment template
 └── scripts/
     ├── migrate.ts      # DB migration
@@ -297,8 +297,8 @@ LOG_LEVEL=info
 
 # Gotchas
 
-- **Secrets** — Store in GitHub Secrets or platform secrets manager
-- **Migration timing** — Run migrations before starting new app version
-- **Health check** — Implement /health endpoint returning 200 when ready
-- **Graceful shutdown** — Handle SIGTERM, drain connections
-- **Rollback** — Keep previous working image tagged for quick rollback
+- **Secrets** �?Store in GitHub Secrets or platform secrets manager
+- **Migration timing** �?Run migrations before starting new app version
+- **Health check** �?Implement /health endpoint returning 200 when ready
+- **Graceful shutdown** �?Handle SIGTERM, drain connections
+- **Rollback** �?Keep previous working image tagged for quick rollback
