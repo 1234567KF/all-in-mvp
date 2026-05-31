@@ -12,7 +12,9 @@
         "CLAUDE_FLOW_HOOKS_ENABLED": "true",
         "CLAUDECODENOFLICKER": "1",
         "CLAUDE_CODE_ALWAYS_THINKING": "0",
-            "CLAUDE_CODE_STREAM_DELAY": "0"
+        "CLAUDE_CODE_STREAM_DELAY": "0",
+        "CLAUDE_CODE_WORKFLOWS": "1",
+        "DISABLE_GROWTHBOOK": "1"
     },
     "model": "deepseek-v4-flash",
     "modelPreferences": {
