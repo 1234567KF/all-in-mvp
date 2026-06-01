@@ -2,13 +2,13 @@
 name: kf-mvp-onboarding
 description: >-
   Load when user asks for onboarding guide, project setup, or development
-  environment configuration. Triggers: 新人 onboarding, 项目初始化, 开发环境,
-  setup, 环境配置, onboarding guide, 开发环境配置. Also load when new
+  environment configuration. Triggers: 新人 onboarding, 项目初始�? 开发环�?
+  setup, 环境配置, onboarding guide, 开发环境配�? Also load when new
   team members join or setting up new machines.
 metadata:
   pattern: generator
   domain: mvp-stage4
-recommended_model: pro
+recommended_model: mino-v2.5-pro
 graph:
   dependencies:
     - target: kf-mvp-arch-expert
@@ -26,7 +26,7 @@ graph:
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP Onboarding — 项目入门技能
+# MVP Onboarding �?项目入门技�?
 
 > **Core Belief**: New developer experience sets the tone for everything. If it takes more than 30 minutes to run the app, something is wrong. First impressions matter.
 
@@ -36,23 +36,23 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-1. **30-minute rule** — Developer should run the app in 30 minutes
-2. **Zero ambiguity** — Every step should work, no guessing
-3. **Verify as you go** — Confirm each step works
-4. **Help is available** — Point to who to ask for help
+1. **30-minute rule** �?Developer should run the app in 30 minutes
+2. **Zero ambiguity** �?Every step should work, no guessing
+3. **Verify as you go** �?Confirm each step works
+4. **Help is available** �?Point to who to ask for help
 
 ---
 
 # Quick Start Guide (README.md Excerpt)
 
 ```markdown
-# 快速开始
+# 快速开�?
 
 ## 前置要求
 
 - Node.js 18+
 - Git
-- SQLite (可选，用于本地数据库)
+- SQLite (可选，用于本地数据�?
 
 ## 步骤 1: 克隆代码
 
@@ -112,10 +112,10 @@ npm test
 
 ## 常见问题
 
-### Q: 数据库错误
+### Q: 数据库错�?
 A: 删除 `data/mvp.db` 然后重新运行 `npm run db:push`
 
-### Q: 端口被占用
+### Q: 端口被占�?
 A: 修改 `.env` 中的 `PORT=3001`
 ```
 
@@ -133,17 +133,17 @@ echo "🚀 Setting up development environment..."
 
 # Check Node version
 if ! command -v node &> /dev/null; then
-    echo "❌ Node.js is not installed"
+    echo "�?Node.js is not installed"
     exit 1
 fi
 
 NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
 if [ "$NODE_VERSION" -lt 18 ]; then
-    echo "❌ Node.js 18+ required, found v$NODE_VERSION"
+    echo "�?Node.js 18+ required, found v$NODE_VERSION"
     exit 1
 fi
 
-echo "✅ Node.js version OK"
+echo "�?Node.js version OK"
 
 # Install dependencies
 echo "📦 Installing dependencies..."
@@ -155,14 +155,14 @@ if [ ! -f .env ]; then
     cp .env.example .env
     echo "⚠️  Please update .env with your configuration"
 else
-    echo "✅ .env already exists"
+    echo "�?.env already exists"
 fi
 
 # Initialize database
-echo "🗄️  Initializing database..."
+echo "🗄�? Initializing database..."
 npm run db:push
 
-echo "✅ Setup complete!"
+echo "�?Setup complete!"
 echo ""
 echo "Next steps:"
 echo "  1. Update .env if needed"
@@ -179,34 +179,34 @@ echo "  3. Visit: http://localhost:3000"
 
 ## 技术栈
 
-| 层级 | 技术 | 说明 |
+| 层级 | 技�?| 说明 |
 |------|------|------|
-| 前端 | Vue 3 + Vite | 组件化开发 |
+| 前端 | Vue 3 + Vite | 组件化开�?|
 | 后端 | Hono + Drizzle | 轻量高性能 |
-| 数据库 | SQLite/Turso | 嵌入式数据库 |
-| 认证 | JWT | 无状态认证 |
+| 数据�?| SQLite/Turso | 嵌入式数据库 |
+| 认证 | JWT | 无状态认�?|
 
 ## 目录结构
 
 ```
 project/
 ├── src/
-│   ├── modules/          # 业务模块
-│   │   ├── auth/         # 认证
-│   │   ├── users/        # 用户
-│   │   └── products/     # 产品
-│   ├── schema.ts         # 数据库Schema
-│   └── index.ts          # 入口文件
+�?  ├── modules/          # 业务模块
+�?  �?  ├── auth/         # 认证
+�?  �?  ├── users/        # 用户
+�?  �?  └── products/     # 产品
+�?  ├── schema.ts         # 数据库Schema
+�?  └── index.ts          # 入口文件
 ├── integration-tests/    # 集成测试
 ├── mocks/               # Mock服务
 └── docs/                # 文档
 ```
 
-## 数据流
+## 数据�?
 
 ```
-浏览器 → Hono路由 → Service → Drizzle → SQLite
-         ↓
+浏览�?�?Hono路由 �?Service �?Drizzle �?SQLite
+         �?
       Middleware
       (认证/日志/错误处理)
 ```
@@ -227,7 +227,7 @@ project/
 # Development Workflow
 
 ```markdown
-# 开发流程
+# 开发流�?
 
 ## 1. 创建功能分支
 
@@ -235,9 +235,9 @@ project/
 git checkout -b feature/your-feature-name
 ```
 
-## 2. 开发步骤
+## 2. 开发步�?
 
-1. 写测试 (TDD)
+1. 写测�?(TDD)
 2. 实现功能
 3. 重构代码
 4. 确保测试通过
@@ -250,7 +250,7 @@ git commit -m "feat: add new feature"
 ```
 
 Commit类型:
-- feat: 新功能
+- feat: 新功�?
 - fix: 修复bug
 - docs: 文档更新
 - refactor: 重构
@@ -263,11 +263,11 @@ Commit类型:
 git push origin feature/your-feature-name
 ```
 
-在GitHub创建Pull Request，等待Review。
+在GitHub创建Pull Request，等待Review�?
 
 ## 5. 合并到main
 
-代码Review通过后，合并到main分支。
+代码Review通过后，合并到main分支�?
 ```
 
 ---
@@ -286,10 +286,10 @@ git push origin feature/your-feature-name
 - 产品经理: @pm
 - 值班: #daily-standup
 
-## 遇到问题？
+## 遇到问题�?
 1. 查阅文档
 2. 搜索内部Slack
-3. 问同事
+3. 问同�?
 4. 创建Issue
 ```
 
@@ -338,8 +338,8 @@ git push origin feature/your-feature-name
 
 # Gotchas
 
-- **Node version** — Use nvm for version management
-- **Database path** — Use relative paths for portability
-- **Port conflicts** — Document common ports and alternatives
-- **VPN** — Some environments need VPN for internal services
-- **Time zones** — Always use UTC in code, localize in UI
+- **Node version** �?Use nvm for version management
+- **Database path** �?Use relative paths for portability
+- **Port conflicts** �?Document common ports and alternatives
+- **VPN** �?Some environments need VPN for internal services
+- **Time zones** �?Always use UTC in code, localize in UI

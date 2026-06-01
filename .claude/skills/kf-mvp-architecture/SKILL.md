@@ -8,7 +8,7 @@ description: >-
 metadata:
   pattern: reviewer + tool-wrapper
   domain: mvp-stage2
-recommended_model: pro
+recommended_model: deepseek-v4-pro
 graph:
   dependencies:
     - target: kf-mvp-arch-expert
@@ -24,7 +24,7 @@ graph:
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP Architecture Review — 架构审查技能
+# MVP Architecture Review �?架构审查技�?
 
 > **Core Belief**: Architecture decisions are long-lasting and expensive to reverse. Make them deliberately, document them clearly, and review them periodically. The best architecture is the simplest one that works.
 
@@ -34,7 +34,7 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Architecture Review Dimensions
 
-## 1. 模块化 (Modularity)
+## 1. 模块�?(Modularity)
 | Check | Weight | Description |
 |-------|--------|-------------|
 | Clear boundaries | 20% | Modules have clear responsibilities |
@@ -43,7 +43,7 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 | Dependency direction | 20% | Dependencies follow rules |
 | Testability | 20% | Modules can be tested independently |
 
-## 2. 可扩展性 (Scalability)
+## 2. 可扩展�?(Scalability)
 | Check | Weight | Description |
 |-------|--------|-------------|
 | Horizontal scaling | 25% | Can scale by adding instances |
@@ -59,7 +59,7 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 | Resource efficiency | 25% | No waste |
 | Caching strategy | 25% | Appropriate caching |
 
-## 4. 安全性 (Security)
+## 4. 安全�?(Security)
 | Check | Weight | Description |
 |-------|--------|-------------|
 | Auth/AuthZ | 25% | Proper access control |
@@ -67,7 +67,7 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 | Input validation | 25% | All input sanitized |
 | Audit trail | 25% | Actions logged |
 
-## 5. 可维护性 (Maintainability)
+## 5. 可维护�?(Maintainability)
 | Check | Weight | Description |
 |-------|--------|-------------|
 | Code clarity | 25% | Easy to understand |
@@ -123,15 +123,15 @@ SQLite provides:
 ## Pattern 1: Layered Architecture
 
 ```
-┌────────────────────┐
-│   Presentation     │   (Routes, Handlers)
-├────────────────────┤
-│   Application     │   (Services, Use Cases)
-├────────────────────┤
-│   Domain          │   (Entities, Business Rules)
-├────────────────────┤
-│   Infrastructure  │   (DB, External Services)
-└────────────────────┘
+┌────────────────────�?
+�?  Presentation     �?  (Routes, Handlers)
+├────────────────────�?
+�?  Application     �?  (Services, Use Cases)
+├────────────────────�?
+�?  Domain          �?  (Entities, Business Rules)
+├────────────────────�?
+�?  Infrastructure  �?  (DB, External Services)
+└────────────────────�?
 ```
 
 ## Pattern 2: Module-Based Architecture
@@ -139,15 +139,15 @@ SQLite provides:
 ```
 src/
 ├── modules/
-│   ├── auth/         # Self-contained module
-│   │   ├── routes.ts
-│   │   ├── service.ts
-│   │   └── types.ts
-│   ├── users/
-│   └── products/
+�?  ├── auth/         # Self-contained module
+�?  �?  ├── routes.ts
+�?  �?  ├── service.ts
+�?  �?  └── types.ts
+�?  ├── users/
+�?  └── products/
 ├── shared/           # Shared utilities
-│   ├── db/
-│   └── utils/
+�?  ├── db/
+�?  └── utils/
 └── index.ts
 ```
 
@@ -239,8 +239,8 @@ src/
 
 # Gotchas
 
-- **Simplicity** — MVP should be simple; complexity is technical debt
-- **Trade-offs** — Every decision has pros and cons; document them
-- **Future-proofing** — Don't over-engineer; leave migration paths
-- **Review frequency** — Architecture decisions age; review periodically
-- **Documentation** — Undocumented decisions are lost decisions
+- **Simplicity** �?MVP should be simple; complexity is technical debt
+- **Trade-offs** �?Every decision has pros and cons; document them
+- **Future-proofing** �?Don't over-engineer; leave migration paths
+- **Review frequency** �?Architecture decisions age; review periodically
+- **Documentation** �?Undocumented decisions are lost decisions

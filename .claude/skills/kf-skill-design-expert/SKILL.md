@@ -8,7 +8,7 @@ description: >-
 metadata:
   pattern: inversion + tool-wrapper + reviewer
   domain: skill-design
-recommended_model: pro
+recommended_model: deepseek-v4-pro
 graph:
   dependencies:
     - target: kf-add-skill

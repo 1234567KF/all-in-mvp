@@ -8,7 +8,7 @@ description: >-
 metadata:
   pattern: tool-wrapper
   domain: mvp-stage3
-recommended_model: pro
+recommended_model: deepseek-v4-pro
 graph:
   dependencies:
     - target: kf-mvp-backend-tdd
@@ -24,7 +24,7 @@ graph:
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP TDD Helper â€” TDDè¾…åŠ©æŠ€èƒ½
+# MVP TDD Helper â€?TDDè¾…åŠ©æŠ€èƒ?
 
 > **Core Belief**: TDD is not about testing, it's about design. Tests are the first consumer of your code. If it's hard to test, your design needs work.
 
@@ -34,10 +34,10 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-1. **Red first** â€” Write the smallest possible failing test
-2. **Minimal implementation** â€” Just enough to pass the test
-3. **Refactor for clarity** â€” Clean up while keeping tests green
-4. **Test behavior, not implementation** â€” Tests should survive refactoring
+1. **Red first** â€?Write the smallest possible failing test
+2. **Minimal implementation** â€?Just enough to pass the test
+3. **Refactor for clarity** â€?Clean up while keeping tests green
+4. **Test behavior, not implementation** â€?Tests should survive refactoring
 
 ---
 
@@ -338,8 +338,8 @@ it('should find user by id', () => {
 
 # Gotchas
 
-- **One assertion** â€” Multiple assertions in one test = harder to debug failure
-- **Test isolation** â€” Each test must run independently, any order
-- **Mock external dependencies** â€” API calls, DB, file system
-- **Async testing** â€” Use async/await or .then(), never forget to await
-- **Floating promises** â€” Always return or await async operations
+- **One assertion** â€?Multiple assertions in one test = harder to debug failure
+- **Test isolation** â€?Each test must run independently, any order
+- **Mock external dependencies** â€?API calls, DB, file system
+- **Async testing** â€?Use async/await or .then(), never forget to await
+- **Floating promises** â€?Always return or await async operations

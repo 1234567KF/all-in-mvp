@@ -2,14 +2,14 @@
 name: kf-mvp-schema-design
 description: >-
   Load when user asks to design database schema, create tables, or define
-  Drizzle ORM schema for MVP projects. Triggers: 数据库设计, schema, 表设计,
-  数据库优化, database design, create table, drizzle, ORM, sqlite.
+  Drizzle ORM schema for MVP projects. Triggers: 数据库设�? schema, 表设�?
+  数据库优�? database design, create table, drizzle, ORM, sqlite.
   NOT for: production database tuning, migration from other databases, or
   NoSQL schema design.
 metadata:
   pattern: tool-wrapper
   domain: mvp-stage2
-recommended_model: pro
+recommended_model: qwen-3.7-Max
 graph:
   dependencies:
     - target: kf-mvp-arch-expert
@@ -18,7 +18,7 @@ graph:
       type: semantic
 ---
 
-# MVP Schema Designer — 数据库设计技能
+# MVP Schema Designer �?数据库设计技�?
 
 > **Core Belief**: Database schema is the foundation of the entire system. A well-designed schema prevents 90% of integration issues. Design once, query anywhere.
 
@@ -35,11 +35,11 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-1. **SQLite for MVP** — Single file, zero config. Switch to MySQL/PostgreSQL later by changing Drizzle driver only
-2. **Drizzle ORM** — Type-safe, SQL-like syntax. Schema is TypeScript code, not SQL
-3. **Soft delete default** — Almost all business tables need `deleted_at`
-4. **Audit trail** — `created_at` and `updated_at` on every table
-5. **Foreign key integrity** — Enforced at application level (SQLite FK support)
+1. **SQLite for MVP** �?Single file, zero config. Switch to MySQL/PostgreSQL later by changing Drizzle driver only
+2. **Drizzle ORM** �?Type-safe, SQL-like syntax. Schema is TypeScript code, not SQL
+3. **Soft delete default** �?Almost all business tables need `deleted_at`
+4. **Audit trail** �?`created_at` and `updated_at` on every table
+5. **Foreign key integrity** �?Enforced at application level (SQLite FK support)
 
 ---
 
@@ -51,13 +51,13 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 ## Columns
 - **Primary Key**: `id` (integer auto-increment)
-- **Foreign Key**: `{table_singular}_id` → `user_id`, `product_id`
+- **Foreign Key**: `{table_singular}_id` �?`user_id`, `product_id`
 - **Timestamps**: `created_at`, `updated_at`
 - **Soft Delete**: `deleted_at`
 - **Audit**: `created_by`, `updated_by`
 
 ## Indexes
-- **Prefix**: `idx_{table}_{columns}` → `idx_users_email`
+- **Prefix**: `idx_{table}_{columns}` �?`idx_users_email`
 
 ---
 
@@ -179,11 +179,11 @@ const now = () => new Date().toISOString();
 
 | Situation | Add Index? |
 |-----------|------------|
-| Column in WHERE clause | ✅ Yes |
-| Column in JOIN condition | ✅ Yes |
-| Column in ORDER BY | ✅ Yes |
-| Column with UNIQUE constraint | ✅ Yes (automatic) |
-| Column with low selectivity | ❌ No |
+| Column in WHERE clause | �?Yes |
+| Column in JOIN condition | �?Yes |
+| Column in ORDER BY | �?Yes |
+| Column with UNIQUE constraint | �?Yes (automatic) |
+| Column with low selectivity | �?No |
 
 ## Composite Index
 
@@ -219,13 +219,13 @@ CREATE INDEX idx_users_org_deleted ON users(organization_id, deleted_at);
 
 ---
 
-# Data Consistency Testing (MUST — 迭代14核心修复)
+# Data Consistency Testing (MUST �?迭代14核心修复)
 
-**问题**：溯源系统的数据一致性（外键约束、级联删除、触发器）经常在操作后才发现问题（如：删除产品后溯源码 orphaned、关联数据不一致）。
+**问题**：溯源系统的数据一致性（外键约束、级联删除、触发器）经常在操作后才发现问题（如：删除产品后溯源�?orphaned、关联数据不一致）�?
 
-**解决方案**：MUST 编写 **数据一致性测试**，覆盖外键约束、级联操作、触发器、约束验证。
+**解决方案**：MUST 编写 **数据一致性测�?*，覆盖外键约束、级联操作、触发器、约束验证�?
 
-## 数据一致性测试模板
+## 数据一致性测试模�?
 
 ```typescript
 // tests/schema/consistency.test.ts
@@ -239,7 +239,7 @@ describe('Traceability Data Consistency', () => {
     db = getTestDb();
   });
 
-  // 测试1：外键约束
+  // 测试1：外键约�?
   describe('Foreign Key Constraints', () => {
     it('should prevent creating trace code without product', async () => {
       await expect(
@@ -253,13 +253,13 @@ describe('Traceability Data Consistency', () => {
     it('should cascade delete trace codes when product deleted', async () => {
       // 创建产品
       const product = await db.insert(products).values({ name: 'Test' }).returning();
-      // 创建溯源码
+      // 创建溯源�?
       await db.insert(traceCodes).values({ code: 'TRACE-001', productId: product[0].id });
 
       // 删除产品
       await db.delete(products).where(eq(products.id, product[0].id));
 
-      // MUST: 溯源码也被删除
+      // MUST: 溯源码也被删�?
       const codes = await db.select().from(traceCodes)
         .where(eq(traceCodes.productId, product[0].id));
       expect(codes).toHaveLength(0);
@@ -306,7 +306,7 @@ describe('Traceability Data Consistency', () => {
       const product = await db.insert(products).values({ name: 'Test' }).returning();
       const originalUpdatedAt = product[0].updatedAt;
 
-      // 等待1秒
+      // 等待1�?
       await new Promise(r => setTimeout(r, 1000));
 
       // 更新产品
@@ -317,7 +317,7 @@ describe('Traceability Data Consistency', () => {
       const updated = await db.select().from(products)
         .where(eq(products.id, product[0].id)).limit(1);
 
-      // MUST: updated_at被自动更新
+      // MUST: updated_at被自动更�?
       expect(new Date(updated[0].updatedAt).getTime())
         .toBeGreaterThan(new Date(originalUpdatedAt).getTime());
     });
@@ -367,13 +367,13 @@ describe('Traceability Data Consistency', () => {
 
 ## 数据一致性测试覆盖率要求
 
-| 测试类型 | 最低数量 | 说明 |
+| 测试类型 | 最低数�?| 说明 |
 |---------|---------|------|
-| 外键约束 | 每个外键关系 | 插入违反、级联删除 |
-| 唯一约束 | 每个唯一索引 | 重复插入被拒绝 |
-| CHECK约束 | 每个CHECK | 边界值、无效值 |
-| 触发器 | 每个触发器 | 触发条件、副作用 |
-| Orphan检测 | 每个关联表 | 无主记录检测 |
+| 外键约束 | 每个外键关系 | 插入违反、级联删�?|
+| 唯一约束 | 每个唯一索引 | 重复插入被拒�?|
+| CHECK约束 | 每个CHECK | 边界值、无效�?|
+| 触发�?| 每个触发�?| 触发条件、副作用 |
+| Orphan检�?| 每个关联�?| 无主记录检�?|
 
 # Constraints
 
@@ -393,8 +393,8 @@ describe('Traceability Data Consistency', () => {
 
 # Gotchas
 
-- **Soft delete everywhere** — Unless specified, all business tables need deleted_at
-- **Audit fields** — created_at/updated_at auto-populated on INSERT/UPDATE
-- **Cascade behavior** — Drizzle doesn't auto-cascade deletes, handle in application
-- **Index order** — Composite index order matters; put most selective first
-- **UUID vs Auto-increment** — Use auto-increment for MVP; UUID for distributed systems
+- **Soft delete everywhere** �?Unless specified, all business tables need deleted_at
+- **Audit fields** �?created_at/updated_at auto-populated on INSERT/UPDATE
+- **Cascade behavior** �?Drizzle doesn't auto-cascade deletes, handle in application
+- **Index order** �?Composite index order matters; put most selective first
+- **UUID vs Auto-increment** �?Use auto-increment for MVP; UUID for distributed systems

@@ -8,7 +8,7 @@ description: >-
 metadata:
   pattern: inversion + pipeline
   domain: mvp-stage2
-recommended_model: pro
+recommended_model: kimi-for-coding
 graph:
   dependencies:
     - target: kf-mvp-prd-generator
@@ -26,7 +26,7 @@ graph:
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP Business Domain Expert — 业务领域专家技能
+# MVP Business Domain Expert �?业务领域专家技�?
 
 > **Core Belief**: Module boundaries define developer autonomy. Clear boundaries = parallel development without conflicts. Ambiguous boundaries = endless coordination overhead.
 
@@ -36,12 +36,12 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-Derived from MVP Whitepaper Section 2.2 — 业务领域专家:
+Derived from MVP Whitepaper Section 2.2 �?业务领域专家:
 
-1. **Module first** — Define module boundaries before any code is written
-2. **Dependency is king** — The dependency graph determines execution order
-3. **Acceptance criteria = contract** — Clear criteria prevent scope creep
-4. **Domain alignment** — Each module belongs to a domain (认证/业务核心/工具与配置)
+1. **Module first** �?Define module boundaries before any code is written
+2. **Dependency is king** �?The dependency graph determines execution order
+3. **Acceptance criteria = contract** �?Clear criteria prevent scope creep
+4. **Domain alignment** �?Each module belongs to a domain (认证/业务核心/工具与配�?
 
 ---
 
@@ -81,18 +81,18 @@ Per-module specification defining:
 
 ## Module Discovery Process
 
-1. **Extract entities from PRD** — List all business entities
-2. **Group by domain** — Categorize into 认证与权限 / 业务核心 / 工具与配置
-3. **Identify module candidates** — Each major entity often = one module
-4. **Define module responsibilities** — Clear boundary: what this module does / doesn't do
+1. **Extract entities from PRD** �?List all business entities
+2. **Group by domain** �?Categorize into 认证与权�?/ 业务核心 / 工具与配�?
+3. **Identify module candidates** �?Each major entity often = one module
+4. **Define module responsibilities** �?Clear boundary: what this module does / doesn't do
 
 ## Domain Classification
 
 | Domain | Description | Example Modules |
 |--------|-------------|-----------------|
-| 认证与权限 | Authentication, authorization, user management | auth, users, roles, organizations |
+| 认证与权�?| Authentication, authorization, user management | auth, users, roles, organizations |
 | 业务核心 | Core business logic and operations | products, categories, orders, inventory |
-| 工具与配置 | Utility features and configuration | templates, trace codes, reports |
+| 工具与配�?| Utility features and configuration | templates, trace codes, reports |
 
 ## Module Naming Convention
 
@@ -102,22 +102,22 @@ Per-module specification defining:
 
 ## Module Granularity Standard（模块粒度标准）
 
-> 每个模块必须满足以下规模约束，超标即拆，不足即合：
+> 每个模块必须满足以下规模约束，超标即拆，不足即合�?
 
-| 维度 | 最小值 | 最大值 | 超标处理 |
+| 维度 | 最小�?| 最大�?| 超标处理 |
 |------|--------|--------|----------|
-| **API 端点** | 3 个 | 15 个 | 超过 15 个端点 → 按子域拆分为 2 个模块 |
-| **数据库表** | 1 个（可归属 atomic_group） | 3 个 | 超过 3 张表 → 评估是否跨 atomic_group，是则拆分 |
-| **代码行数（预估）** | 150 行 | 800 行 | 超过 800 行 → 拆分为独立子模块 |
-| **业务规则数** | 1 条 | 8 条 | 超过 8 条 → 考虑拆分或标记为复杂模块（需额外审查） |
+| **API 端点** | 3 �?| 15 �?| 超过 15 个端�?�?按子域拆分为 2 个模�?|
+| **数据库表** | 1 个（可归�?atomic_group�?| 3 �?| 超过 3 张表 �?评估是否�?atomic_group，是则拆�?|
+| **代码行数（预估）** | 150 �?| 800 �?| 超过 800 �?�?拆分为独立子模块 |
+| **业务规则�?* | 1 �?| 8 �?| 超过 8 �?�?考虑拆分或标记为复杂模块（需额外审查�?|
 
-**拆分示例**：
-- ❌ `product` 模块 18 个 API → 拆分为 `product-catalog`（查询/展示）+ `product-inventory`（库存/入库）
-- ✅ `auth` 模块 5 个 API + 1 张表 + 300 行 → 符合标准
+**拆分示例**�?
+- �?`product` 模块 18 �?API �?拆分�?`product-catalog`（查�?展示�? `product-inventory`（库�?入库�?
+- �?`auth` 模块 5 �?API + 1 张表 + 300 �?�?符合标准
 
-**合并示例**：
-- ❌ `config-theme`（2 API）+ `config-lang`（2 API） → 合并为 `config` 模块（4 API + 1 表）
-- ✅ `util` 类模块无独立 API → 不独立成模块，作为 shared 工具函数
+**合并示例**�?
+- �?`config-theme`�? API�? `config-lang`�? API�?�?合并�?`config` 模块�? API + 1 表）
+- �?`util` 类模块无独立 API �?不独立成模块，作�?shared 工具函数
 
 ## Module Output Template
 
@@ -134,7 +134,7 @@ Per-module specification defining:
 
 > **Version**: 1.0  
 > **Based on PRD**: [PRD path]  
-> **Status**: DRAFT → LOCKED
+> **Status**: DRAFT �?LOCKED
 
 ---
 
@@ -144,16 +144,16 @@ Per-module specification defining:
 [清晰描述这个模块负责什么]
 
 ### 1.2 边界定义
-**本模块负责**:
+**本模块负�?*:
 - [功能A]
 - [功能B]
 
 **本模块不负责**:
-- [功能X] (由 [其他模块] 负责)
-- [功能Y] (由 [其他模块] 负责)
+- [功能X] (�?[其他模块] 负责)
+- [功能Y] (�?[其他模块] 负责)
 
 ### 1.3 领域分类
-[认证与权限 / 业务核心 / 工具与配置]
+[认证与权�?/ 业务核心 / 工具与配置]
 
 ---
 
@@ -162,17 +162,17 @@ Per-module specification defining:
 ### 2.1 被依赖的模块
 [这个模块是其他模块依赖的基础吗？]
 
-### 2.2 依赖的模块
+### 2.2 依赖的模�?
 [这个模块需要其他模块提供什么？]
 
 | 依赖模块 | 依赖原因 | 接口使用 |
 |----------|----------|----------|
 | [模块A] | [原因] | [使用哪些接口] |
 
-### 2.3 依赖图位置
+### 2.3 依赖图位�?
 ```
-[模块名] → 依赖 → [被依赖模块]
-被依赖 ← [依赖模块] ← [当前模块]
+[模块名] �?依赖 �?[被依赖模块]
+被依�?�?[依赖模块] �?[当前模块]
 ```
 
 ---
@@ -183,11 +183,11 @@ Per-module specification defining:
 
 | 方法 | 路径 | 功能 | 认证 | 权限 |
 |------|------|------|------|------|
-| GET | /api/[module] | 获取列表 | 是 | [角色] |
-| GET | /api/[module]/:id | 获取详情 | 是 | [角色] |
-| POST | /api/[module] | 创建 | 是 | [角色] |
-| PUT | /api/[module]/:id | 更新 | 是 | [角色] |
-| DELETE | /api/[module]/:id | 删除 | 是 | [角色] |
+| GET | /api/[module] | 获取列表 | �?| [角色] |
+| GET | /api/[module]/:id | 获取详情 | �?| [角色] |
+| POST | /api/[module] | 创建 | �?| [角色] |
+| PUT | /api/[module]/:id | 更新 | �?| [角色] |
+| DELETE | /api/[module]/:id | 删除 | �?| [角色] |
 
 ### 3.2 DTO定义
 
@@ -209,20 +209,20 @@ interface Update[Module]Dto {
 
 ## 4. 数据库表
 
-### 4.1 表结构
+### 4.1 表结�?
 
-| 字段名 | 类型 | 约束 | 说明 |
+| 字段�?| 类型 | 约束 | 说明 |
 |--------|------|------|------|
 | id | INTEGER | PK, AUTO | 主键 |
 | [field1] | TEXT | NOT NULL | [说明] |
 | [field2] | INTEGER | FK | [说明] |
 | created_at | DATETIME | NOT NULL | 创建时间 |
 | updated_at | DATETIME | NOT NULL | 更新时间 |
-| deleted_at | DATETIME | NULL | 软删除时间 |
+| deleted_at | DATETIME | NULL | 软删除时�?|
 
 ### 4.2 索引
 
-| 索引名 | 字段 | 类型 | 说明 |
+| 索引�?| 字段 | 类型 | 说明 |
 |--------|------|------|------|
 | idx_[module]_[field] | [field] | | |
 
@@ -232,7 +232,7 @@ interface Update[Module]Dto {
 
 ### 5.1 Happy Path
 
-| 测试场景 | 输入 | 预期输出 | 验证点 |
+| 测试场景 | 输入 | 预期输出 | 验证�?|
 |----------|------|----------|--------|
 | [场景1] | [输入] | [输出] | [验证点] |
 | [场景2] | [输入] | [输出] | [验证点] |
@@ -245,9 +245,9 @@ interface Update[Module]Dto {
 | [异常场景2] | [未授权请求] | [错误响应] | 401 |
 | [异常场景3] | [无权操作] | [错误响应] | 403 |
 
-### 5.3 边界值测试
+### 5.3 边界值测�?
 
-| 测试场景 | 输入值 | 预期结果 |
+| 测试场景 | 输入�?| 预期结果 |
 |----------|--------|----------|
 | [边界1] | [值] | [结果] |
 | [边界2] | [值] | [结果] |
@@ -259,28 +259,28 @@ interface Update[Module]Dto {
 ```
 integration-tests/
 ├── modules/
-│   └── [module].test.ts   # 单模块API测试
+�?  └── [module].test.ts   # 单模块API测试
 └── scenarios/
-    └── [scenario].test.ts  # 跨模块场景测试
+    └── [scenario].test.ts  # 跨模块场景测�?
 ```
 
 ---
 
-## 7. 开发顺序
+## 7. 开发顺�?
 
 | 顺序 | 模块 | 原因 |
 |------|------|------|
-| 1 | [基础模块] | 被其他模块依赖 |
+| 1 | [基础模块] | 被其他模块依�?|
 | 2 | [中间模块] | 依赖基础模块 |
 | 3 | [顶层模块] | 依赖多个模块 |
 
 ---
 
-**状态**:
+**状�?*:
 - [ ] 职责边界清晰
 - [ ] 依赖关系明确
 - [ ] 接口定义完整
-- [ ] 验收标准可测试
+- [ ] 验收标准可测�?
 ```
 
 ---
@@ -298,18 +298,18 @@ integration-tests/
 
 ## 模块清单
 
-| 模块名 | 领域 | 优先级 | 依赖模块 | 开发顺序 |
+| 模块�?| 领域 | 优先�?| 依赖模块 | 开发顺�?|
 |--------|------|--------|----------|----------|
-| user | 认证与权限 | 1 | - | 1 |
-| organization | 认证与权限 | 1 | - | 1 |
+| user | 认证与权�?| 1 | - | 1 |
+| organization | 认证与权�?| 1 | - | 1 |
 | product | 业务核心 | 2 | user, organization | 2 |
 | category | 业务核心 | 2 | - | 2 |
-| template | 工具与配置 | 3 | user | 3 |
-| trace | 工具与配置 | 3 | product, template | 4 |
+| template | 工具与配�?| 3 | user | 3 |
+| trace | 工具与配�?| 3 | product, template | 4 |
 
 ---
 
-## 依赖图
+## 依赖�?
 
 ```mermaid
 graph LR
@@ -331,28 +331,28 @@ graph LR
 
 ---
 
-## 并行度
+## 并行�?
 
-- 后端: 最多 3 Agent 并行
-- 前端: 最多 3 Agent 并行
-- 测试: 最多 2 Agent 并行
+- 后端: 最�?3 Agent 并行
+- 前端: 最�?3 Agent 并行
+- 测试: 最�?2 Agent 并行
 
 ---
 
 ## 注意事项
 
-- [模块名] 模块由 [Agent] 优先负责
+- [模块名] 模块�?[Agent] 优先负责
 - [模块名] 模块涉及复杂状态机，需特别注意
-- [模块名] 模块有外部依赖，需先搭建 Mock
+- [模块名] 模块有外部依赖，需先搭�?Mock
 ```
 
 ---
 
-# Stage 3: Complex Business Rule Validation (MUST — 迭代7核心修复)
+# Stage 3: Complex Business Rule Validation (MUST �?迭代7核心修复)
 
-**问题**：溯源/供应链等系统有复杂的业务规则（链式验证、批次追踪、多层级关联），之前规则漏洞只在人工测试时发现（如：伪造溯源码通过验证、批次关联断裂）。
+**问题**：溯�?供应链等系统有复杂的业务规则（链式验证、批次追踪、多层级关联），之前规则漏洞只在人工测试时发现（如：伪造溯源码通过验证、批次关联断裂）�?
 
-**解决方案**：MUST 在模块定义阶段就编写 **业务规则验证测试**，覆盖链式完整性、规则冲突、异常链路。
+**解决方案**：MUST 在模块定义阶段就编写 **业务规则验证测试**，覆盖链式完整性、规则冲突、异常链路�?
 
 ## 业务规则测试模板（溯源系统示例）
 
@@ -361,10 +361,10 @@ graph LR
 import { describe, it, expect } from 'vitest';
 import { TraceValidator } from './validator';
 
-describe('Trace Business Rules — Complex Validation', () => {
+describe('Trace Business Rules �?Complex Validation', () => {
   const validator = new TraceValidator();
 
-  // 规则1：链式完整性验证
+  // 规则1：链式完整性验�?
   describe('Chain Integrity', () => {
     it('should validate complete production chain', () => {
       const chain = [
@@ -419,22 +419,22 @@ describe('Trace Business Rules — Complex Validation', () => {
         { stage: 'C', code: 'C-001', timestamp: '2024-01-03', prev: 'B-001' },
         { stage: 'D', code: 'D-001', timestamp: '2024-01-04', prev: 'C-001' },
         { stage: 'E', code: 'E-001', timestamp: '2024-01-05', prev: 'D-001' },
-        // 循环引用：F指向B，形成循环
+        // 循环引用：F指向B，形成循�?
         { stage: 'F', code: 'F-001', timestamp: '2024-01-06', prev: 'B-001' },
       ];
       
-      // 虽然链式上能连起来，但存在循环
+      // 虽然链式上能连起来，但存在循�?
       const result = validator.validateChain(chain);
       expect(result.hasCycle).toBe(true);
     });
   });
 
-  // 规则2：批次关联验证
+  // 规则2：批次关联验�?
   describe('Batch Association', () => {
     it('should validate batch quantity consistency', () => {
-      // 原料批次：100kg
+      // 原料批次�?00kg
       const rawBatch = { code: 'RAW-B001', quantity: 100, unit: 'kg' };
-      // 产出批次：原料100kg → 产品A 80kg + 产品B 15kg = 95kg（允许5%损耗）
+      // 产出批次：原�?00kg �?产品A 80kg + 产品B 15kg = 95kg（允�?%损耗）
       const productBatches = [
         { code: 'PRO-A001', quantity: 80, unit: 'kg', sourceBatch: 'RAW-B001' },
         { code: 'PRO-B001', quantity: 15, unit: 'kg', sourceBatch: 'RAW-B001' },
@@ -443,7 +443,7 @@ describe('Trace Business Rules — Complex Validation', () => {
       const result = validator.validateBatchQuantity(rawBatch, productBatches);
       expect(result.valid).toBe(true);
       expect(result.totalOutput).toBe(95);
-      expect(result.lossRate).toBe(0.05); // 5%损耗
+      expect(result.lossRate).toBe(0.05); // 5%损�?
     });
 
     it('should detect excessive loss rate', () => {
@@ -454,12 +454,12 @@ describe('Trace Business Rules — Complex Validation', () => {
       
       const result = validator.validateBatchQuantity(rawBatch, productBatches);
       expect(result.valid).toBe(false);
-      expect(result.lossRate).toBe(0.50); // 50%损耗，超过阈值
+      expect(result.lossRate).toBe(0.50); // 50%损耗，超过阈�?
       expect(result.error).toContain('Loss rate exceeds maximum allowed');
     });
 
     it('should validate multi-level batch tracing', () => {
-      // 3级溯源：原料 → 半成品 → 成品
+      // 3级溯源：原料 �?半成�?�?成品
       const levels = [
         { level: 0, code: 'RAW-001', children: ['SEMI-001', 'SEMI-002'] },
         { level: 1, code: 'SEMI-001', children: ['FINAL-001'] },
@@ -473,30 +473,30 @@ describe('Trace Business Rules — Complex Validation', () => {
     });
   });
 
-  // 规则3：防伪验证
+  // 规则3：防伪验�?
   describe('Anti-Counterfeit', () => {
     it('should reject reused trace code', () => {
       const code = 'TRACE-001';
       
-      // 第一次验证
+      // 第一次验�?
       const first = validator.verify(code, { consumerId: 1 });
       expect(first.valid).toBe(true);
       expect(first.firstScan).toBe(true);
       
       // 第二次验证（不同消费者）
       const second = validator.verify(code, { consumerId: 2 });
-      expect(second.valid).toBe(true); // 码本身有效
-      expect(second.firstScan).toBe(false); // 但不是首次
-      expect(second.firstConsumerId).toBe(1); // 记录首次消费者
+      expect(second.valid).toBe(true); // 码本身有�?
+      expect(second.firstScan).toBe(false); // 但不是首�?
+      expect(second.firstConsumerId).toBe(1); // 记录首次消费�?
     });
 
     it('should reject invalid trace code format', () => {
       const invalidCodes = [
-        '',           // 空
+        '',           // �?
         'ABC',        // 太短
         'TRACE-001-EXTRA-LONG-CODE-THAT-EXCEEDS-LIMIT', // 太长
         'TRACE@001',  // 非法字符
-        'TRACE-000',  // 序号不合法
+        'TRACE-000',  // 序号不合�?
       ];
       
       for (const code of invalidCodes) {
@@ -507,24 +507,24 @@ describe('Trace Business Rules — Complex Validation', () => {
     });
 
     it('should detect counterfeit by checksum', () => {
-      // 合法码：前缀 + 序号 + 校验位
+      // 合法码：前缀 + 序号 + 校验�?
       const validCode = 'TRACE-001-7'; // 7是校验位
-      const invalidCode = 'TRACE-001-8'; // 校验位错误
+      const invalidCode = 'TRACE-001-8'; // 校验位错�?
       
       expect(validator.verify(validCode, { consumerId: 1 }).valid).toBe(true);
       expect(validator.verify(invalidCode, { consumerId: 1 }).valid).toBe(false);
     });
   });
 
-  // 规则4：业务规则冲突检测
+  // 规则4：业务规则冲突检�?
   describe('Rule Conflict Detection', () => {
     it('should detect expired product in active batch', () => {
       const batch = {
         code: 'BATCH-001',
         status: 'ACTIVE',
         products: [
-          { code: 'PRO-001', expiryDate: '2023-12-31' }, // 已过期
-          { code: 'PRO-002', expiryDate: '2025-12-31' }, // 未过期
+          { code: 'PRO-001', expiryDate: '2023-12-31' }, // 已过�?
+          { code: 'PRO-002', expiryDate: '2025-12-31' }, // 未过�?
         ],
       };
       
@@ -539,9 +539,9 @@ describe('Trace Business Rules — Complex Validation', () => {
     });
 
     it('should detect quantity mismatch across modules', () => {
-      // 库存模块记录100件
+      // 库存模块记录100�?
       const inventory = { productId: 1, quantity: 100 };
-      // 溯源模块记录该批次只有80件
+      // 溯源模块记录该批次只�?0�?
       const trace = { batchCode: 'B001', productId: 1, quantity: 80 };
       
       const result = validator.crossModuleValidate(inventory, trace);
@@ -552,28 +552,28 @@ describe('Trace Business Rules — Complex Validation', () => {
 });
 ```
 
-## 业务规则验证检查清单
+## 业务规则验证检查清�?
 
 | 规则类型 | 检查项 | 测试方法 |
 |---------|--------|---------|
-| 链式完整性 | 每个节点的前驱必须存在 | 遍历验证 + 断链检测 |
-| 时间一致性 | 后节点时间 ≥ 前节点时间 | 时间戳比较 |
-| 循环检测 | 链中不能存在循环引用 | 图遍历算法 |
-| 数量守恒 | 产出总量 ≤ 原料总量 × (1 + 损耗阈值) | 数学计算 |
-| 层级深度 | 溯源层级不能超过最大限制 | 树深度计算 |
-| 防伪校验 | 码格式 + 校验位 + 重复扫描 | 正则 + 算法 + 数据库 |
-| 规则冲突 | 同一实体不能同时满足互斥状态 | 状态矩阵检查 |
-| 跨模块一致 | 不同模块对同一实体的记录必须一致 | 交叉验证 |
+| 链式完整�?| 每个节点的前驱必须存�?| 遍历验证 + 断链检�?|
+| 时间一致�?| 后节点时�?�?前节点时�?| 时间戳比�?|
+| 循环检�?| 链中不能存在循环引用 | 图遍历算�?|
+| 数量守恒 | 产出总量 �?原料总量 × (1 + 损耗阈�? | 数学计算 |
+| 层级深度 | 溯源层级不能超过最大限�?| 树深度计�?|
+| 防伪校验 | 码格�?+ 校验�?+ 重复扫描 | 正则 + 算法 + 数据�?|
+| 规则冲突 | 同一实体不能同时满足互斥状�?| 状态矩阵检�?|
+| 跨模块一�?| 不同模块对同一实体的记录必须一�?| 交叉验证 |
 
-## 复杂规则测试覆盖率要求
+## 复杂规则测试覆盖率要�?
 
-| 测试类型 | 最低数量 | 说明 |
+| 测试类型 | 最低数�?| 说明 |
 |---------|---------|------|
-| 链式完整性 | 每个业务流程链 | 完整链 + 断链 + 循环链 |
-| 批次关联 | 每个批次转换 | 数量守恒 + 层级深度 + 多对多 |
-| 防伪验证 | 每种码类型 | 格式 + 校验 + 重复 + 伪造 |
+| 链式完整�?| 每个业务流程�?| 完整�?+ 断链 + 循环�?|
+| 批次关联 | 每个批次转换 | 数量守恒 + 层级深度 + 多对�?|
+| 防伪验证 | 每种码类�?| 格式 + 校验 + 重复 + 伪�?|
 | 规则冲突 | 每对互斥规则 | 同时触发两个互斥规则 |
-| 跨模块一致 | 每个共享实体 | 库存vs溯源、订单vs财务等 |
+| 跨模块一�?| 每个共享实体 | 库存vs溯源、订单vs财务�?|
 
 ---
 
@@ -595,8 +595,8 @@ describe('Trace Business Rules — Complex Validation', () => {
 
 # Gotchas
 
-- **Cohesion principle** — If a module does too many things, split it. If too little, merge.
-- **Dependency direction** — Dependencies point FROM what needs something TO what provides it: "product depends on user"
-- **Domain affinity** — Modules in same domain can be developed in parallel
-- **Priority != order** — Priority affects business value; order affects dependencies
-- **Cross-module = special** — If a feature crosses multiple modules, it's a scenario test (③b-2), not a module test
+- **Cohesion principle** �?If a module does too many things, split it. If too little, merge.
+- **Dependency direction** �?Dependencies point FROM what needs something TO what provides it: "product depends on user"
+- **Domain affinity** �?Modules in same domain can be developed in parallel
+- **Priority != order** �?Priority affects business value; order affects dependencies
+- **Cross-module = special** �?If a feature crosses multiple modules, it's a scenario test (③b-2), not a module test

@@ -3,12 +3,12 @@ name: kf-mvp-caching
 description: >-
   Load when user asks for caching strategies, cache implementation, or cache
   optimization. Triggers: 缓存, caching, 缓存策略, cache optimization,
-  Redis, 性能优化, memory cache, 缓存层. Also load when implementing
+  Redis, 性能优化, memory cache, 缓存�? Also load when implementing
   caching layers or solving performance issues.
 metadata:
   pattern: tool-wrapper
   domain: mvp-stage4
-recommended_model: pro
+recommended_model: deepseek-v4-pro
 graph:
   dependencies:
     - target: kf-mvp-performance
@@ -26,7 +26,7 @@ graph:
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP Caching — 缓存策略技能
+# MVP Caching �?缓存策略技�?
 
 > **Core Belief**: Caching is not a feature, it's an optimization. Cache at the right layer, with the right TTL, and invalidate deliberately. Caching bugs are worse than no caching.
 
@@ -37,23 +37,23 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 # Caching Layers
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Browser Cache                                          │
-│  - Static assets                                       │
-│  - Cache-Control headers                              │
-├─────────────────────────────────────────────────────────┤
-│  CDN (CloudFlare, etc.)                               │
-│  - Static content                                     │
-│  - API responses (if configured)                     │
-├─────────────────────────────────────────────────────────┤
-│  Application Cache (in-memory)                        │
-│  - User sessions                                      │
-│  - Frequently accessed data                          │
-├─────────────────────────────────────────────────────────┤
-│  Database Query Cache                                  │
-│  - Query results                                      │
-│  - Prepared statements                                │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────�?
+�? Browser Cache                                          �?
+�? - Static assets                                       �?
+�? - Cache-Control headers                              �?
+├─────────────────────────────────────────────────────────�?
+�? CDN (CloudFlare, etc.)                               �?
+�? - Static content                                     �?
+�? - API responses (if configured)                     �?
+├─────────────────────────────────────────────────────────�?
+�? Application Cache (in-memory)                        �?
+�? - User sessions                                      �?
+�? - Frequently accessed data                          �?
+├─────────────────────────────────────────────────────────�?
+�? Database Query Cache                                  �?
+�? - Query results                                      �?
+�? - Prepared statements                                �?
+└─────────────────────────────────────────────────────────�?
 ```
 
 ---
@@ -279,8 +279,8 @@ async function deleteOrganization(id: number) {
 
 # Gotchas
 
-- **TTL** — Too short = no benefit, too long = stale data
-- **Invalidation** — Harder than caching; plan upfront
-- **Cold cache** — First request always slower; consider warm-up
-- **Memory** — In-memory cache limited by RAM
-- **Serialization** — Cache adds JSON parse/encode overhead
+- **TTL** �?Too short = no benefit, too long = stale data
+- **Invalidation** �?Harder than caching; plan upfront
+- **Cold cache** �?First request always slower; consider warm-up
+- **Memory** �?In-memory cache limited by RAM
+- **Serialization** �?Cache adds JSON parse/encode overhead

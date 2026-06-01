@@ -2,13 +2,13 @@
 name: kf-mvp-code-review
 description: >-
   Load when user asks to review code, check code quality, verify implementation,
-  or audit module against contract. Triggers: 代码审查, review, 检查代码,
-  code review, 审查实现, 验证契约, 合规检查. Also load when backend
+  or audit module against contract. Triggers: 代码审查, review, 检查代�?
+  code review, 审查实现, 验证契约, 合规检�? Also load when backend
   TDD agent triggers review.
 metadata:
   pattern: reviewer
   domain: mvp-stage3
-recommended_model: pro
+recommended_model: deepseek-v4-pro
 graph:
   dependencies:
     - target: kf-mvp-arch-expert
@@ -28,7 +28,7 @@ graph:
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP Code Reviewer — 代码审查技能
+# MVP Code Reviewer �?代码审查技�?
 
 > **Core Belief**: Code review is not nitpicking. It's the last line of defense before defects reach production. Every review must verify: contract compliance, schema consistency, exception coverage.
 
@@ -38,18 +38,18 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-Derived from MVP Whitepaper Section 3.1 — Code Review:
+Derived from MVP Whitepaper Section 3.1 �?Code Review:
 
-1. **Contract is law** — Implementation must match api-contract.yaml
-2. **Schema consistency** — All database operations must use global schema
-3. **Exception coverage** — Every interface must handle error cases
-4. **Four severity levels** — ERROR / WARNING / INFO / PASS
+1. **Contract is law** �?Implementation must match api-contract.yaml
+2. **Schema consistency** �?All database operations must use global schema
+3. **Exception coverage** �?Every interface must handle error cases
+4. **Four severity levels** �?ERROR / WARNING / INFO / PASS
 
 ---
 
 # Four Review Dimensions
 
-## Dimension 1: 接口契约一致性 (API Contract Compliance)
+## Dimension 1: 接口契约一致�?(API Contract Compliance)
 
 **Question**: Does implementation match api-contract.yaml exactly?
 
@@ -68,7 +68,7 @@ Derived from MVP Whitepaper Section 3.1 — Code Review:
 
 ---
 
-## Dimension 2: Schema定义一致性 (Schema Consistency)
+## Dimension 2: Schema定义一致�?(Schema Consistency)
 
 **Question**: Do database operations use global schema correctly?
 
@@ -109,7 +109,7 @@ Derived from MVP Whitepaper Section 3.1 — Code Review:
 
 ---
 
-## Dimension 4: 代码风格与最佳实践 (Code Quality)
+## Dimension 4: 代码风格与最佳实�?(Code Quality)
 
 **Question**: Is code following project conventions?
 
@@ -127,16 +127,16 @@ Derived from MVP Whitepaper Section 3.1 — Code Review:
 
 ---
 
-## TDD 循环中的 Review 触发条件（白皮书 Section 6.3）
+## TDD 循环中的 Review 触发条件（白皮书 Section 6.3�?
 
 | 场景 | 是否触发 Review | 说明 |
 |------|----------------|------|
-| 新功能 Red 阶段 | 否 | 测试失败是预期行为 |
-| Green 阶段测试仍失败 | **是** | 实现逻辑有问题，立即 Review |
-| Refactor 后测试失败 | **是** | 重构破坏了行为，Review + 回滚或修复 |
-| 新增异常路径测试 | 否 | 正常 TDD 流程 |
-| 模块间接口调用 | **是** | 需验证契约一致性，Review 接口 DTO |
-| 新增代码未覆盖异常路径 | **是** | 补充测试，Review 缺失覆盖点 |
+| 新功�?Red 阶段 | �?| 测试失败是预期行�?|
+| Green 阶段测试仍失�?| **�?* | 实现逻辑有问题，立即 Review |
+| Refactor 后测试失�?| **�?* | 重构破坏了行为，Review + 回滚或修�?|
+| 新增异常路径测试 | �?| 正常 TDD 流程 |
+| 模块间接口调�?| **�?* | 需验证契约一致性，Review 接口 DTO |
+| 新增代码未覆盖异常路�?| **�?* | 补充测试，Review 缺失覆盖�?|
 
 ---
 
@@ -163,16 +163,16 @@ Derived from MVP Whitepaper Section 3.1 — Code Review:
 
 **Output**:
 ```markdown
-## 接口契约一致性检查
+## 接口契约一致性检�?
 
-| 契约路径 | 实现路径 | 方法 | DTO | 状态 |
+| 契约路径 | 实现路径 | 方法 | DTO | 状�?|
 |---------|---------|------|-----|------|
-| POST /api/user | ✅ 存在 | ✅ | ✅ | ✅ |
-| GET /api/user/:id | ✅ 存在 | ✅ | ✅ | ✅ |
-| PUT /api/user/:id | ❌ 缺失 | - | - | ❌ |
+| POST /api/user | �?存在 | �?| �?| �?|
+| GET /api/user/:id | �?存在 | �?| �?| �?|
+| PUT /api/user/:id | �?缺失 | - | - | �?|
 
 **问题清单**:
-- [ ] ERROR: PUT /api/user/:id 未实现
+- [ ] ERROR: PUT /api/user/:id 未实�?
 - [ ] WARNING: CreateUserDto缺少 email 字段校验
 ```
 
@@ -188,16 +188,16 @@ Derived from MVP Whitepaper Section 3.1 — Code Review:
 
 **Output**:
 ```markdown
-## Schema定义一致性检查
+## Schema定义一致性检�?
 
-| 表名 | 操作 | 字段 | Schema | 状态 |
+| 表名 | 操作 | 字段 | Schema | 状�?|
 |------|------|------|--------|------|
-| users | INSERT | email | TEXT NOT NULL | ✅ |
-| users | INSERT | role | TEXT DEFAULT 'user' | ✅ |
+| users | INSERT | email | TEXT NOT NULL | �?|
+| users | INSERT | role | TEXT DEFAULT 'user' | �?|
 | users | SELECT | * | WHERE deleted_at | ⚠️ 缺少WHERE |
 
 **问题清单**:
-- [ ] WARNING: users SELECT缺少软删除条件
+- [ ] WARNING: users SELECT缺少软删除条�?
 - [ ] ERROR: products INSERT缺少必填字段 category_id
 ```
 
@@ -213,17 +213,17 @@ Derived from MVP Whitepaper Section 3.1 — Code Review:
 
 **Output**:
 ```markdown
-## 异常路径覆盖检查
+## 异常路径覆盖检�?
 
-| 端点 | 异常类型 | 处理状态 | 测试覆盖 |
+| 端点 | 异常类型 | 处理状�?| 测试覆盖 |
 |------|----------|----------|----------|
-| POST /api/user | 邮箱已存在 | ✅ 409 | ✅ |
-| POST /api/user | 参数缺失 | ✅ 400 | ✅ |
-| GET /api/user/:id | 用户不存在 | ✅ 404 | ⚠️ 缺失 |
-| POST /api/user | 未认证 | ✅ 401 | ⚠️ 缺失 |
+| POST /api/user | 邮箱已存�?| �?409 | �?|
+| POST /api/user | 参数缺失 | �?400 | �?|
+| GET /api/user/:id | 用户不存�?| �?404 | ⚠️ 缺失 |
+| POST /api/user | 未认�?| �?401 | ⚠️ 缺失 |
 
 **问题清单**:
-- [ ] WARNING: GET /api/user/:id "用户不存在" 未覆盖测试
+- [ ] WARNING: GET /api/user/:id "用户不存�? 未覆盖测�?
 ```
 
 ---
@@ -238,14 +238,14 @@ Derived from MVP Whitepaper Section 3.1 — Code Review:
 
 **Output**:
 ```markdown
-## 代码质量检查
+## 代码质量检�?
 
-| 检查项 | 文件 | 状态 | 详情 |
+| 检查项 | 文件 | 状�?| 详情 |
 |--------|------|------|------|
 | 命名 | service.ts:45 | ⚠️ | userId应为user_id |
-| 硬编码 | routes.ts:23 | ❌ | 使用硬编码"admin"，应使用常量 |
-| SQL注入 | service.ts:67 | ✅ | 使用参数化查询 |
-| 函数大小 | service.ts:120 | ❌ | 函数超100行，建议拆分 |
+| 硬编�?| routes.ts:23 | �?| 使用硬编�?admin"，应使用常量 |
+| SQL注入 | service.ts:67 | �?| 使用参数化查�?|
+| 函数大小 | service.ts:120 | �?| 函数�?00行，建议拆分 |
 
 **问题清单**:
 - [ ] ERROR: routes.ts硬编码角色名
@@ -263,30 +263,30 @@ Derived from MVP Whitepaper Section 3.1 — Code Review:
 
 **模块**: [module]
 **审查时间**: [timestamp]
-**审查者**: kf-mvp-code-review
+**审查�?*: kf-mvp-code-review
 
-## 审查结果汇总
+## 审查结果汇�?
 
-| 维度 | 通过率 | 问题数 |
+| 维度 | 通过�?| 问题�?|
 |------|--------|--------|
-| 接口契约一致性 | 95% | 1 ERROR |
-| Schema一致性 | 90% | 1 WARNING |
+| 接口契约一致�?| 95% | 1 ERROR |
+| Schema一致�?| 90% | 1 WARNING |
 | 异常路径覆盖 | 80% | 2 WARNING |
 | 代码质量 | 75% | 2 ERROR |
 
 ## 问题详情
 
-### ERROR #1: PUT /api/user/:id 未实现
+### ERROR #1: PUT /api/user/:id 未实�?
 **文件**: src/modules/user/routes.ts
-**位置**: 第N行
-**问题**: 契约定义了更新接口但未实现
-**建议**: 实现更新逻辑或与业务确认是否需要
+**位置**: 第N�?
+**问题**: 契约定义了更新接口但未实�?
+**建议**: 实现更新逻辑或与业务确认是否需�?
 
-### WARNING #1: 软删除条件缺失
+### WARNING #1: 软删除条件缺�?
 **文件**: src/modules/user/service.ts
-**位置**: 第M行
+**位置**: 第M�?
 **问题**: SELECT查询未包含WHERE deleted_at IS NULL
-**建议**: 添加软删除条件
+**建议**: 添加软删除条�?
 
 ## 修复建议
 
@@ -298,41 +298,41 @@ Derived from MVP Whitepaper Section 3.1 — Code Review:
 
 | 结果 | 说明 |
 |------|------|
-| ✅ PASS | 无ERROR，所有WARNING已确认可接受 |
-| ⚠️ CONDITIONAL PASS | 有WARNING，需确认业务可接受 |
-| ❌ FAIL | 有ERROR，必须修复 |
+| �?PASS | 无ERROR，所有WARNING已确认可接受 |
+| ⚠️ CONDITIONAL PASS | 有WARNING，需确认业务可接�?|
+| �?FAIL | 有ERROR，必须修�?|
 
 **建议**:
-- [ ] 修复ERROR后重新审查
-- [ ] 确认WARNING的业务影响
+- [ ] 修复ERROR后重新审�?
+- [ ] 确认WARNING的业务影�?
 ```
 
 ---
 
 # Review 流转协议
 
-> CR 通过后 TDD Agent 方可写入 DONE 标记。打回后须重新走完整流程。
+> CR 通过�?TDD Agent 方可写入 DONE 标记。打回后须重新走完整流程�?
 
 ```
-TDD Agent 完成开发 → 提交 CR
-  ↓
+TDD Agent 完成开�?�?提交 CR
+  �?
 CR Agent 审查
-  ├── PASS → TDD Agent 写入 DONE 标记 → Coordinator 释放依赖模块
-  └── FAIL → TDD Agent 修复
-       ↓
-       删除 DONE 标记（如存在）
-       ↓
+  ├── PASS �?TDD Agent 写入 DONE 标记 �?Coordinator 释放依赖模块
+  └── FAIL �?TDD Agent 修复
+       �?
+       删除 DONE 标记（如存在�?
+       �?
        TDD 重新验证（确保修复不引入新问题）
-       ↓
+       �?
        重新提交 CR 复评
-       ↓
-       打回上限 3 轮 → 超过 → BLOCKED → 人类介入
+       �?
+       打回上限 3 �?�?超过 �?BLOCKED �?人类介入
 ```
 
-**DONE 标记写入前置条件**（全部满足才可写入）：
-1. ✅ 所有模块测试通过
-2. ✅ CR 终审 PASS
-3. ✅ 无已知 P0/P1 Bug
+**DONE 标记写入前置条件**（全部满足才可写入）�?
+1. �?所有模块测试通过
+2. �?CR 终审 PASS
+3. �?无已�?P0/P1 Bug
 
 ---
 
@@ -341,13 +341,13 @@ CR Agent 审查
 ## State 1: PASS
 
 ```
-## 审查结论: ✅ PASS
+## 审查结论: �?PASS
 
-所有维度检查通过：
-- ✅ 接口契约一致性
-- ✅ Schema一致性
-- ✅ 异常路径覆盖
-- ✅ 代码质量
+所有维度检查通过�?
+- �?接口契约一致�?
+- �?Schema一致�?
+- �?异常路径覆盖
+- �?代码质量
 
 **可进入下一阶段**
 ```
@@ -357,7 +357,7 @@ CR Agent 审查
 ```
 ## 审查结论: ⚠️ CONDITIONAL PASS
 
-存在WARNING，需确认：
+存在WARNING，需确认�?
 - [ ] WARNING #1: [描述] - 业务确认可接受？
 - [ ] WARNING #2: [描述] - 业务确认可接受？
 
@@ -367,13 +367,13 @@ CR Agent 审查
 ## State 3: FAIL
 
 ```
-## 审查结论: ❌ FAIL
+## 审查结论: �?FAIL
 
 存在ERROR，必须修复：
 - [ ] ERROR #1: [描述]
 - [ ] ERROR #2: [描述]
 
-**修复后重新提交审查**
+**修复后重新提交审�?*
 ```
 
 ---
@@ -396,11 +396,11 @@ CR Agent 审查
 
 # Gotchas
 
-- **Contract is source of truth** — If contract says 400, implementation must return 400, not 422
-- **Soft delete is automatic** — Unless specified, all SELECT must include `WHERE deleted_at IS NULL`
-- **Error message sanitization** — Never expose internal details (stack traces, SQL) in error responses
-- **Test coverage matters** — Implementation without tests is half-reviewed at best
-- **Review ≠ rewrite** — Suggest fixes, don't rewrite code unless explicitly asked
-- **终审（DONE 前强制触发）** — TDD Agent 所有测试通过后、写 DONE 标记前，必须触发 CR 终审
-- **流转协议** — Review → fix → 删除 DONE 标记 → TDD 重新验证 → 再写 DONE → 提交复评
-- **打回上限** — 同一模块 CR 打回最多 3 轮，超过 → 标记 BLOCKED → 人类介入
+- **Contract is source of truth** �?If contract says 400, implementation must return 400, not 422
+- **Soft delete is automatic** �?Unless specified, all SELECT must include `WHERE deleted_at IS NULL`
+- **Error message sanitization** �?Never expose internal details (stack traces, SQL) in error responses
+- **Test coverage matters** �?Implementation without tests is half-reviewed at best
+- **Review �?rewrite** �?Suggest fixes, don't rewrite code unless explicitly asked
+- **终审（DONE 前强制触发）** �?TDD Agent 所有测试通过后、写 DONE 标记前，必须触发 CR 终审
+- **流转协议** �?Review �?fix �?删除 DONE 标记 �?TDD 重新验证 �?再写 DONE �?提交复评
+- **打回上限** �?同一模块 CR 打回最�?3 轮，超过 �?标记 BLOCKED �?人类介入

@@ -8,7 +8,7 @@ description: >-
 metadata:
   pattern: tool-wrapper
   domain: mvp-stage3
-recommended_model: pro
+recommended_model: deepseek-v4-pro
 graph:
   dependencies:
     - target: kf-mvp-api-contract
@@ -26,7 +26,7 @@ graph:
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP Error Handling — 错误处理技能
+# MVP Error Handling �?错误处理技�?
 
 > **Core Belief**: Errors are part of the API contract. How you communicate errors determines how quickly clients can recover. Design errors like you design success responses.
 
@@ -36,10 +36,10 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-1. **Consistent format** — Same error structure everywhere
-2. **Actionable messages** — Tell clients what to do
-3. **Never expose internals** — Sanitize error messages
-4. **Log context** — Log errors with request context
+1. **Consistent format** �?Same error structure everywhere
+2. **Actionable messages** �?Tell clients what to do
+3. **Never expose internals** �?Sanitize error messages
+4. **Log context** �?Log errors with request context
 
 ---
 
@@ -272,11 +272,11 @@ async function apiRequest<T>(url: string, options?: RequestInit): Promise<T> {
 
 ---
 
-# Error Recovery & Rollback Testing (MUST — 迭代11核心修复)
+# Error Recovery & Rollback Testing (MUST �?迭代11核心修复)
 
-**问题**：ERP系统的复杂业务操作（转账、库存调整、订单处理）经常在部分失败后导致数据不一致，之前错误恢复只在人工测试时验证，自动化测试未覆盖回滚逻辑。
+**问题**：ERP系统的复杂业务操作（转账、库存调整、订单处理）经常在部分失败后导致数据不一致，之前错误恢复只在人工测试时验证，自动化测试未覆盖回滚逻辑�?
 
-**解决方案**：MUST 编写 **错误恢复测试** 和 **事务回滚测试**，确保部分失败时数据一致性。
+**解决方案**：MUST 编写 **错误恢复测试** �?**事务回滚测试**，确保部分失败时数据一致性�?
 
 ## 事务回滚测试模板
 
@@ -286,23 +286,23 @@ import { describe, it, expect } from 'vitest';
 import { getTestDb } from '@/tests/helpers';
 import { getTransferService } from './service';
 
-describe('ERP Transfer — Error Recovery & Rollback', () => {
+describe('ERP Transfer �?Error Recovery & Rollback', () => {
   it('should rollback both accounts on transfer failure', async () => {
     const db = getTestDb();
     const service = getTransferService(db);
     
-    // 初始化：账户A有1000，账户B有500
+    // 初始化：账户A�?000，账户B�?00
     await db.insert(accounts).values([
       { id: 1, balance: 1000 },
       { id: 2, balance: 500 },
     ]);
     
-    // 模拟转账过程中断（如：第二步失败）
+    // 模拟转账过程中断（如：第二步失败�?
     const mockDb = {
       ...db,
       transaction: async (fn: any) => {
-        await fn(db); // 执行第一步
-        throw new Error('Simulated network error'); // 第二步失败
+        await fn(db); // 执行第一�?
+        throw new Error('Simulated network error'); // 第二步失�?
       }
     };
     
@@ -320,7 +320,7 @@ describe('ERP Transfer — Error Recovery & Rollback', () => {
   it('should handle partial inventory adjustment rollback', async () => {
     const db = getTestDb();
     
-    // 初始化：仓库A有100件，仓库B有50件
+    // 初始化：仓库A�?00件，仓库B�?0�?
     await db.insert(inventory).values([
       { id: 1, warehouse: 'A', productId: 1, quantity: 100 },
       { id: 2, warehouse: 'B', productId: 1, quantity: 50 },
@@ -328,19 +328,19 @@ describe('ERP Transfer — Error Recovery & Rollback', () => {
     
     try {
       await db.transaction(async (tx) => {
-        // 第一步：从A出库30件
+        // 第一步：从A出库30�?
         await tx.update(inventory)
           .set({ quantity: sql`${inventory.quantity} - 30` })
           .where(eq(inventory.id, 1));
         
-        // 第二步：向B入库30件（模拟失败）
+        // 第二步：向B入库30件（模拟失败�?
         throw new Error('Warehouse B is locked');
       });
     } catch (e) {
       // expected
     }
     
-    // MUST：A仓库数量回滚到100
+    // MUST：A仓库数量回滚�?00
     const whA = await db.select().from(inventory).where(eq(inventory.id, 1)).limit(1);
     expect(whA[0].quantity).toBe(100);
   });
@@ -348,7 +348,7 @@ describe('ERP Transfer — Error Recovery & Rollback', () => {
   it('should maintain order-item consistency on failure', async () => {
     const db = getTestDb();
     
-    // 创建订单（包含2个商品）
+    // 创建订单（包�?个商品）
     const order = await db.insert(orders).values({ 
       customerId: 1, 
       status: 'PENDING',
@@ -357,7 +357,7 @@ describe('ERP Transfer — Error Recovery & Rollback', () => {
     
     try {
       await db.transaction(async (tx) => {
-        // 创建订单项1
+        // 创建订单�?
         await tx.insert(orderItems).values({ 
           orderId: order[0].id, 
           productId: 1, 
@@ -365,14 +365,14 @@ describe('ERP Transfer — Error Recovery & Rollback', () => {
           price: 100 
         });
         
-        // 创建订单项2（模拟失败）
+        // 创建订单�?（模拟失败）
         throw new Error('Product 2 out of stock');
       });
     } catch (e) {
       // expected
     }
     
-    // MUST：订单项未创建（事务回滚）
+    // MUST：订单项未创建（事务回滚�?
     const items = await db.select().from(orderItems)
       .where(eq(orderItems.orderId, order[0].id));
     expect(items).toHaveLength(0);
@@ -421,12 +421,12 @@ describe('Error Recovery Patterns', () => {
   it('should use circuit breaker after repeated failures', async () => {
     const breaker = new CircuitBreaker({ failureThreshold: 3, timeout: 5000 });
     
-    // 连续失败3次
+    // 连续失败3�?
     for (let i = 0; i < 3; i++) {
       try { await breaker.execute(() => { throw new Error('Fail'); }); } catch (e) {}
     }
     
-    // 第4次：断路器打开，直接拒绝
+    // �?次：断路器打开，直接拒�?
     await expect(breaker.execute(() => Promise.resolve({})))
       .rejects.toThrow('Circuit breaker is OPEN');
   });
@@ -441,7 +441,7 @@ describe('Error Recovery Patterns', () => {
     // 等待冷却
     await new Promise(r => setTimeout(r, 150));
     
-    // 恢复后应该可以执行
+    // 恢复后应该可以执�?
     const result = await breaker.execute(() => Promise.resolve({ success: true }));
     expect(result.success).toBe(true);
   });
@@ -450,13 +450,13 @@ describe('Error Recovery Patterns', () => {
 
 ## 错误恢复与回滚测试覆盖率要求
 
-| 测试类型 | 最低数量 | 说明 |
+| 测试类型 | 最低数�?| 说明 |
 |---------|---------|------|
-| 事务回滚 | 每个多步骤操作 | 部分失败后数据一致性 |
-| 重试机制 | 每个外部调用 | 瞬态错误恢复 |
-| 断路器 | 每个关键服务 | 防止级联故障 |
+| 事务回滚 | 每个多步骤操�?| 部分失败后数据一致�?|
+| 重试机制 | 每个外部调用 | 瞬态错误恢�?|
+| 断路�?| 每个关键服务 | 防止级联故障 |
 | 补偿事务 | 每个 Saga 流程 | 长事务的补偿操作 |
-| 死信队列 | 每个异步处理 | 失败消息的处理 |
+| 死信队列 | 每个异步处理 | 失败消息的处�?|
 
 # Constraints
 
@@ -476,8 +476,8 @@ describe('Error Recovery Patterns', () => {
 
 # Gotchas
 
-- **Error codes** — Use machine-readable codes, not just messages
-- **HTTP status** — Match status to error type
-- **Details** — Only include for validation errors
-- **Logging** — Log full error server-side, sanitize client-side
-- **Retry logic** — Handle 429 (rate limit) and 5xx (temporary) differently
+- **Error codes** �?Use machine-readable codes, not just messages
+- **HTTP status** �?Match status to error type
+- **Details** �?Only include for validation errors
+- **Logging** �?Log full error server-side, sanitize client-side
+- **Retry logic** �?Handle 429 (rate limit) and 5xx (temporary) differently

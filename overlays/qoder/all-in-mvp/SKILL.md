@@ -1,6 +1,11 @@
 ---
 name: all-in-mvp
 description: Qoder 特化版多Agent并行MVP开发流水线。Triggers: MVP, 原型开发, 多Agent并行开发, 全栈快速原型, multi-agent pipeline, 从需求到交付, 多Agent流水线, 并行开发, 快速验证产品, 原型系统, 并行工程. NOT for: single API endpoint, bug fixing, code refactoring, deployment, code review alone.
+metadata:
+  pattern: pipeline+inversion+reviewer+generator
+  stage-gates: true
+  max-parallel-agents: 3
+  based_on: MVP白皮书 v2.5.0
 ---
 
 # Parallel MVP Pipeline — Qoder 特化版
@@ -87,11 +92,21 @@ export PM_SESSION_NAME=<sessionName>
 
 | Agent 名称 | 角色 | Stage | 工具权限 |
 |------------|------|-------|---------|
+| `mvp-pm-agent` | 产品经理 | Stage 1 | Read, Write, Edit, Bash, Grep, Glob |
+| `mvp-architect` | 架构专家（①） | Stage 2 | Read, Write, Edit, Bash, Grep, Glob |
+| `mvp-domain-expert` | 业务领域专家（②） | Stage 2 | Read, Write, Edit, Bash, Grep, Glob |
+| `mvp-grill-review` | 拷问审查（↺） | Stage 2 | Read, Write, Edit, Bash, Grep, Glob |
+| `mvp-mock-service` | Mock 服务专家（③a） | Stage 2 | Read, Write, Edit, Bash, Grep, Glob |
+| `mvp-test-writer` | 测试用例编写专家（③b-1/③b-2） | Stage 2 | Read, Write, Edit, Bash, Grep, Glob |
+| `mvp-test-review` | 测试用例审查（③c） | Stage 2 | Read, Write, Edit, Bash, Grep, Glob |
+| `mvp-pipeline-coordinator` | Pipeline 调度器 | Stage 3 | Read, Write, Edit, Bash, Grep, Glob |
+| `mvp-pipeline-monitor` | Pipeline 监控（只读） | 全阶段 | Read, Bash, Grep, Glob |
 | `mvp-backend-tdd` | 后端 TDD 开发专家 | Stage 3 | Read, Write, Edit, Bash, Grep, Glob |
 | `mvp-frontend-dev` | 前端开发专家 | Stage 3 | Read, Write, Edit, Bash, Grep, Glob |
-| `mvp-mock-service` | Mock 服务搭建专家 | Stage 2 | Read, Write, Edit, Bash, Grep, Glob |
-| `mvp-test-writer` | 测试用例编写专家 | Stage 2 | Read, Write, Edit, Bash, Grep, Glob |
+| `mvp-code-reviewer` | 代码审查专家 | Stage 3 | Read, Write, Edit, Bash, Grep, Glob |
+| `mvp-stage4-coordinator` | Stage4 集成协调者 | Stage 4 | Read, Write, Edit, Bash, Grep, Glob |
 | `mvp-debug-fixer` | Bug 修复专家 | Stage 4 | Read, Write, Edit, Bash, Grep, Glob |
+| `mvp-retrospective-agent` | 复盘 Agent | Stage 5 | Read, Write, Edit, Bash, Grep, Glob |
 
 **Spawn 方式**：使用 Qoder 的 `Agent` 工具，指定 subagent_type 为对应 agent 名称。
 
@@ -109,6 +124,39 @@ Stage 2 完成后，生成 Pipeline Dashboard Canvas（`.canvas.tsx`），展示
 - 模块分配状态
 - 后端/前端/测试进度
 - 整体完成百分比和 ETA
+
+### 5. Qoder CLI 与 API 集成
+
+Qoder 提供 CLI 命令行工具和 HTTP API 接口，可用于外部流水线控制与状态查询：
+
+| 能力 | 接口 | 用途 |
+|------|------|------|
+| **CLI 调用技能** | `qoder skill <skill-name>` | 从外部触发技能执行（如 CI/CD 中自动启动流水线） |
+| **API 查询状态** | `GET /api/pipeline/status` | 查询当前 Pipeline 执行状态、模块进度、Agent 活跃数 |
+| **API 推送事件** | `POST /api/events` | 向 Pipeline Monitor 推送 Stage 开始/完成、门禁检查等事件 |
+| **API 获取报告** | `GET /api/reports/<stage>` | 获取各阶段审查报告、测试报告、复盘报告 |
+
+> Qoder API 的完整端点文档见 [Qoder API Reference]。以上为流水线常用的关键接口。
+
+### 6. Agent 上下文隔离策略
+
+Qoder Custom Subagent 机制天然提供强隔离——每个 spawn 的 subagent 拥有**独立上下文窗口**，不会污染主 Agent 的上下文：
+
+| 隔离维度 | 主 Agent 角色切换 | Spawn Subagent（推荐） |
+|---------|-----------------|---------------------|
+| 上下文空间 | 共享主 Agent 上下文 → 随 Stage 推进膨胀 | 独立上下文 → 始终轻量 |
+| 文件读写 | 直接操作，无隔离 | 通过工具调用，天然沙箱 |
+| 错误影响 | 角色切换错误可能污染后续 Stage | 错误隔离在 subagent 内，不影响主流程 |
+| 并行能力 | 单 Agent，无法并行 | 可同时 spawn 多个 subagent 并行 |
+| 用户交互 | 可自然进行对话式需求澄清 | 通过 prompt 预设交互逻辑，减少中断 |
+
+**推荐策略**：
+- **Stage 1（PM）**：优先主 Agent 角色切换（需要与用户进行需求澄清对话）。备选：spawn `mvp-pm-agent`（需求已明确时）
+- **Stage 2 ①②↺**：均可 spawn subagent（纯文件入/文件出，无需用户交互）
+- **Stage 2 ③a/③b/③c**：强制 spawn subagent（需并行）
+- **Stage 3**：强制 spawn subagent 或 Experts Mode（大规模并行）
+- **Stage 4**：主 Agent 担任 Coordinator + 按需 spawn `mvp-debug-fixer`、`mvp-stage4-coordinator`
+- **Stage 5**：spawn `mvp-retrospective-agent`（纯文件入/文件出）
 
 ---
 
@@ -221,6 +269,35 @@ spawn subagent 时输出：
 > | 工具 | Read, Write, Edit, Bash, Grep, Glob |
 ```
 
+### ③c 审查 Subagent 卡片
+
+spawn `mvp-test-review` 时输出：
+
+```markdown
+> **[Subagent] mvp-test-review — 测试用例静态审查**
+> | 字段 | 值 |
+> |------|-----|
+> | 输入 | `integration-tests/modules/` + `scenarios/` |
+> | 审查维度 | 文件存在性 / API路由 / 场景覆盖 / fixture类型 |
+> | 通过标准 | 无 ERROR 级别问题 |
+> | 工具 | Read, Write, Edit, Bash, Grep, Glob |
+```
+
+### Stage 5 复盘卡片
+
+Stage 5 启动时输出：
+
+```markdown
+> **[Stage 5] 流程复盘与经验沉淀**
+> | 字段 | 值 |
+> |------|-----|
+> | 状态 | IN_PROGRESS |
+> | 输入 | `pipeline-execution-log.md` + `pipeline-metrics.json` + Bug清单 |
+> | 产出 | `retrospective.md` + 可选白皮书修订提案 |
+> | 门禁 | 6项复盘内容完整 + 4项异常检查完成 |
+> | 预估 | 30-60min |
+```
+
 ---
 
 ## 门禁系统（硬约束）
@@ -239,15 +316,15 @@ spawn subagent 时输出：
 
 ---
 
-## Stage 1: 需求对齐（主 Agent 角色切换：产品经理）
+## Stage 1: 需求对齐（串行，产品经理 Agent）
 
 **前置条件**：用户需求已收集（如果模糊则先执行 Inversion 采集）。
 **产出物**：`PRD.md`
-**执行模式**：主 Agent 角色切换（无需 spawn subagent）
+**执行模式**：主 Agent 角色切换（需用户交互）或 Spawn `mvp-pm-agent` subagent（需求已明确时）
 
 ### 执行步骤
 
-1. 主 Agent 切换为「产品经理」角色，遵循以下原则：
+1. 主 Agent 切换为「产品经理」角色（或 spawn `mvp-pm-agent` subagent），遵循以下原则：
    - MECE（Mutually Exclusive, Collectively Exhaustive）
    - 每项功能需求必须有明确的验收标准
    - 术语定义必须在全文档中保持一致
@@ -266,30 +343,32 @@ spawn subagent 时输出：
 
 ---
 
-## Stage 2: 规划阶段（①→②→↺→③a∥③b-1∥③b-2）
+## Stage 2: 规划阶段（①→②→↺→③a∥③b-1∥③b-2→③c）
 
 **前置条件**：`PRD.md` 已存在并锁定。
 
-### 2.1 ① 架构专家（主 Agent 角色切换）
+### 2.1 ① 架构专家（推荐 Spawn `mvp-architect` subagent）
 
-1. 主 Agent 切换为「架构专家」角色
+1. **Spawn `mvp-architect` subagent**（推荐，上下文隔离）。备选：主 Agent 切换为「架构专家」角色
 2. 输入：`PRD.md`
 3. 产出：`spec.md`（架构设计）+ `schema.sql`（数据库 Schema）+ `api-contract.yaml`（接口契约）
 4. **技术栈绑定**：询问用户偏好的技术栈或使用默认（Hono + Drizzle + SQLite + Vue 3 + Vite）
 5. 产出物标记为【初版】
+6. **输出 Subagent 执行卡片**
 
-### 2.2 ② 业务领域专家（主 Agent 角色切换）
+### 2.2 ② 业务领域专家（推荐 Spawn `mvp-domain-expert` subagent）
 
-1. 主 Agent 切换为「业务领域专家」角色
+1. **Spawn `mvp-domain-expert` subagent**（推荐，上下文隔离）。备选：主 Agent 切换为「业务领域专家」角色
 2. 输入：`PRD.md` + `spec.md` + `schema.sql` + `api-contract.yaml`（均为【初版】）
 3. 产出：
    - `task.md` — 任务全景图（所有模块清单 + 依赖关系）
    - `modules/<module>.md` — 每个模块的详细定义（边界、接口、表、验收标准）
 4. 产出物标记为【初版】
+5. **输出 Subagent 执行卡片**
 
 ### 2.3 ↺ 拷问审查循环（grill review）
 
-1. 主 Agent 切换为「审查员」角色，或调用 `grill-with-docs` skill
+1. **Spawn `mvp-grill-review` subagent**（推荐，上下文隔离）。备选：主 Agent 切换为「审查员」角色，或调用 `grill-with-docs` skill
 2. 对照 `PRD.md`（基准），检查：
    - 需求覆盖完整性
    - 模块边界合理性
@@ -321,6 +400,16 @@ spawn subagent 时输出：
 3. 产出：`integration-tests/scenarios/<scenario>.test.ts`
 4. **此阶段只写用例，不执行**
 
+### 2.7 ③c 测试用例静态审查（串行收尾，spawn Custom Subagent）
+
+1. **Spawn `mvp-test-review` subagent**
+2. 输入：`integration-tests/modules/` + `integration-tests/scenarios/` + `<module>.md` + `PRD.md` + `api-contract.yaml` + `schema.sql`
+3. 产出：测试用例审查报告（`test-review-report.md`）
+4. 4 项检查：文件存在性、API 路由有效性、场景覆盖完整性、fixture 类型一致性
+5. **此阶段只审查用例结构，不执行测试**（执行在 Stage4）
+6. 通过标准：无 ERROR 级别问题。WARNING 可记录但通过。
+7. 发现问题 → ③b-1/③b-2 对应 Agent 修正 → 重新审查
+
 ### Stage 2 门禁
 
 **全部通过后才能进入 Stage 3：**
@@ -332,6 +421,7 @@ spawn subagent 时输出：
 - [ ] `mocks/` 已搭建并可运行
 - [ ] `integration-tests/modules/` 已产出
 - [ ] `integration-tests/scenarios/` 已产出
+- [ ] ③c 测试用例静态审查通过（无 ERROR）
 
 **门禁通过后**：
 - 输出 Stage 2 完成卡片
@@ -480,7 +570,7 @@ for i in {1..3}; do npx vitest run; done
 ## Stage 4: 集成与验收（串行收敛）
 
 **前置条件**：Stage 3 门禁全部通过。
-**执行模式**：主 Agent 角色切换 + spawn `mvp-debug-fixer` subagent（按需）
+**执行模式**：Spawn `mvp-stage4-coordinator` subagent（推荐）或 主 Agent 角色切换 + spawn `mvp-debug-fixer` subagent（按需）
 
 ### 4.1 后端模块合并
 
@@ -539,17 +629,44 @@ Spawn `mvp-debug-fixer` subagent，按需执行修复循环。
 
 ---
 
+## Stage 5: 流程复盘与经验沉淀（串行，1 Agent）
+
+**前置条件**：Stage 4 门禁全部通过，项目已交付。
+**执行模式**：Spawn `mvp-retrospective-agent` subagent
+
+### 执行步骤
+
+1. **Spawn `mvp-retrospective-agent` subagent**
+2. 输入：`pipeline-execution-log.md` + `pipeline-metrics.json` + Bug 清单 + 审查报告历史
+3. 产出：`retrospective.md` + 可选「白皮书修订提案」
+4. 6 项必须产出：
+   - 流程健康度评分（各 Stage 实际/预期耗时比值）
+   - Agent 效率分析（各角色产出质量、返工率）
+   - 契约偏差分析（spec.md 与实际实现的差异点）
+   - 模式提取（本次迭代验证有效的实践）
+   - 反模式记录（本次迭代暴露的流程缺陷）
+   - 白皮书修订建议（具体条款 + 修订理由）
+5. 异常模式识别（4 项检查）：
+   - 模块实际耗时 > 预期 2 倍 → 高风险模块类型
+   - Agent CR 打回率 > 30% → 需强化该角色 Skill
+   - 阶段实际耗时 > 预期 1.5 倍 → 瓶颈阶段
+   - Bug 某类占比 > 40% → 系统性缺陷来源
+
+---
+
 ## 并发模型速查
 
 | 阶段 | 并行度 | Qoder 执行方式 |
 |------|--------|---------------|
-| Stage1 | 串行 | 主 Agent 角色切换（PM） |
-| Stage2 ① ② | 串行 | 主 Agent 角色切换（架构师→领域专家） |
-| Stage2 ↺ | 串行循环 | 主 Agent 角色切换（审查员）或 grill-with-docs skill |
+| Stage1 | 串行 | Spawn `mvp-pm-agent` 或 主 Agent 角色切换（PM） |
+| Stage2 ① ② | 串行 | Spawn `mvp-architect` → `mvp-domain-expert` subagents（推荐） |
+| Stage2 ↺ | 串行循环 | Spawn `mvp-grill-review` subagent 或 grill-with-docs skill |
 | Stage2 ③a/③b | 并行 | Spawn `mvp-mock-service` + `mvp-test-writer` subagents |
-| Stage3 后端 | 最多 3 | Experts Mode 或 Spawn `mvp-backend-tdd` |
-| Stage3 前端 | 最多 3 | Experts Mode 或 Spawn `mvp-frontend-dev` |
-| Stage4 | 串行 | 主 Agent + Spawn `mvp-debug-fixer`（按需） |
+| Stage2 ③c | 串行 | Spawn `mvp-test-review` subagent |
+| Stage3 后端 | 最多 3 | Experts Mode 或 Spawn `mvp-backend-tdd` subagents |
+| Stage3 前端 | 最多 3 | Experts Mode 或 Spawn `mvp-frontend-dev` subagents |
+| Stage4 | 串行 | Spawn `mvp-stage4-coordinator` + 按需 `mvp-debug-fixer` |
+| Stage5 | 串行 | Spawn `mvp-retrospective-agent` |
 
 ---
 
@@ -603,6 +720,7 @@ Spawn `mvp-debug-fixer` subagent，按需执行修复循环。
 - **TDD 是强制流程**：先写测试（RED）→ 再写实现（GREEN）→ 最后重构（REFACTOR）。
 - **文件驱动通信**：Agent 之间通过 DONE/BLOCKED 标记通信。Coordinator 扫描文件系统判断进度。
 - **Qoder Subagent 工具有 Write/Edit 能力**：与 Browser subagent 不同，Custom Subagent 可以创建和修改文件。
+- **Agent 上下文隔离**：spawn subagent 拥有独立上下文窗口，不会污染主 Agent。串行阶段（Stage 1/2.1/2.2/2.3）也推荐 spawn subagent 而非角色切换，确保每个 Stage 输入干净、输出完整。
 - **Experts Mode 优先**：Stage 3 模块 ≥ 3 时优先使用 Experts Mode，自带 Canvas 面板和 Team Lead 调度。
 - **Agent 数量上限**：后端 3 个、前端 3 个、测试 2 个。超过上限的模块按批次排队。
 - **确定性分配**：同输入必须产生相同的模块拆分和分配结果。`task.md` 中模块的枚举顺序作为稳定排序依据。

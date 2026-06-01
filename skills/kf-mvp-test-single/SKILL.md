@@ -2,13 +2,13 @@
 name: kf-mvp-test-single
 description: >-
   Load when user asks to write unit tests, integration tests, or API tests for
-  a single module. Triggers: 单元测试, 集成测试, API测试, 写测试,
-  单模块测试, module test, integration test, 测试用例. Also load when
+  a single module. Triggers: 单元测试, 集成测试, API测试, 写测�?
+  单模块测�? module test, integration test, 测试用例. Also load when
   module implementation is ready and needs test coverage.
 metadata:
   pattern: generator + reviewer
   domain: mvp-stage2
-recommended_model: pro
+recommended_model: mino-v2.5-pro
 graph:
   dependencies:
     - target: kf-mvp-biz-expert
@@ -26,7 +26,7 @@ graph:
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP Single Module Test Writer — 单模块测试编写技能
+# MVP Single Module Test Writer �?单模块测试编写技�?
 
 > **Core Belief**: Tests are the living documentation of requirements. Every acceptance criterion must have a test that proves it works. Missing tests = missing requirements.
 
@@ -36,12 +36,12 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-Derived from MVP Whitepaper Section 2.5 — ③b-1 单模块测试:
+Derived from MVP Whitepaper Section 2.5 �?③b-1 单模块测�?
 
-1. **One module at a time** — Tests are isolated per module
-2. **Happy path + Exception path** — Cover both success and error cases
-3. **Acceptance criteria driven** — Every criterion has a test
-4. **Write only, do not execute** — Tests are prepared for Stage4 execution
+1. **One module at a time** �?Tests are isolated per module
+2. **Happy path + Exception path** �?Cover both success and error cases
+3. **Acceptance criteria driven** �?Every criterion has a test
+4. **Write only, do not execute** �?Tests are prepared for Stage4 execution
 
 ---
 
@@ -138,7 +138,7 @@ describe('[Module] API Integration Tests', () => {
 
 **Output**:
 ```markdown
-## 测试需求分析
+## 测试需求分�?
 
 **模块**: [module]
 **接口数量**: [N]
@@ -154,11 +154,11 @@ describe('[Module] API Integration Tests', () => {
 | DELETE | /api/[module]/:id | 删除 |
 
 **异常场景**:
-- [ ] 未认证 → 401
-- [ ] 无权限 → 403
-- [ ] 参数缺失 → 400
-- [ ] 资源不存在 → 404
-- [ ] 重复创建 → 409
+- [ ] 未认�?�?401
+- [ ] 无权�?�?403
+- [ ] 参数缺失 �?400
+- [ ] 资源不存�?�?404
+- [ ] 重复创建 �?409
 ```
 
 ---
@@ -426,27 +426,27 @@ Before finalizing, verify:
 
 # Gotchas
 
-- **Isolation is key** — Each test must be independent, run in any order
-- **Setup/Teardown** — Clean up data in beforeEach/afterEach
-- **Status codes** — 400 for validation, 401 for auth, 403 for permission, 404 for not found
-- **Error response format** — Always check `{ success: false, error: { code, message } }`
-- **Soft delete** — Tests should verify deleted items are not returned in list/detail
-- **Boundary with ③b-2** — 测试文件抬头看接口名（`POST /api/xxx`）→ ③b-1；抬头看角色旅程（"以某角色完成某事"）→ ③b-2
+- **Isolation is key** �?Each test must be independent, run in any order
+- **Setup/Teardown** �?Clean up data in beforeEach/afterEach
+- **Status codes** �?400 for validation, 401 for auth, 403 for permission, 404 for not found
+- **Error response format** �?Always check `{ success: false, error: { code, message } }`
+- **Soft delete** �?Tests should verify deleted items are not returned in list/detail
+- **Boundary with ③b-2** �?测试文件抬头看接口名（`POST /api/xxx`）→ ③b-1；抬头看角色旅程�?以某角色完成某事"）→ ③b-2
 
 ---
 
-# ③b-1 与 ③b-2 边界仲裁规则
+# ③b-1 �?③b-2 边界仲裁规则
 
 > 当测试应归属哪一方不明确时，按以下规则判定：
 
 | 判定条件 | 归属 | 原因 |
 |---------|------|------|
-| 测试只涉及单个模块的数据库读写 + 接口参数校验 | **③b-1（本项目）** | 单模块职责 |
-| 测试覆盖多模块协作但不涉及 PRD 定义的业务主流程 | **③b-1（本项目）** | 按模块拆分各自覆盖 |
-| 测试覆盖 PRD「业务主流程」中定义的完整用户旅程 | **③b-2** | 场景测试核心职责 |
-| 边界不清时（如单模块异常路径需要跨模块数据） | ③b-1 写骨架 + 标记 TODO，③b-2 在对应场景中补全 | 分工不阻塞 |
+| 测试只涉及单个模块的数据库读�?+ 接口参数校验 | **③b-1（本项目�?* | 单模块职�?|
+| 测试覆盖多模块协作但不涉�?PRD 定义的业务主流程 | **③b-1（本项目�?* | 按模块拆分各自覆�?|
+| 测试覆盖 PRD「业务主流程」中定义的完整用户旅�?| **③b-2** | 场景测试核心职责 |
+| 边界不清时（如单模块异常路径需要跨模块数据�?| ③b-1 写骨�?+ 标记 TODO，③b-2 在对应场景中补全 | 分工不阻�?|
 
-**协作模式**：边界不清时，本项目：
-1. 写测试骨架（定义接口 + 基本断言）
+**协作模式**：边界不清时，本项目�?
+1. 写测试骨架（定义接口 + 基本断言�?
 2. 标记 `// TODO: ③b-2 补全跨模块数据准备`
-3. 不阻塞 ③b-2 的流程，双方并行推进
+3. 不阻�?③b-2 的流程，双方并行推进

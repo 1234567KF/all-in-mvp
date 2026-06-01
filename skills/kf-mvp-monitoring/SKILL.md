@@ -8,7 +8,7 @@ description: >-
 metadata:
   pattern: tool-wrapper
   domain: mvp-stage4
-recommended_model: pro
+recommended_model: deepseek-v4-pro
 graph:
   dependencies:
     - target: kf-mvp-devops
@@ -26,7 +26,7 @@ graph:
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP Monitoring â€” ç›‘æŽ§ä¸Žå‘Šè­¦æŠ€èƒ½
+# MVP Monitoring â€?ç›‘æŽ§ä¸Žå‘Šè­¦æŠ€èƒ?
 
 > **Core Belief**: You can't fix what you can't see. Monitoring should catch issues before users do. Know what's broken before users tell you.
 
@@ -36,10 +36,10 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-1. **Three pillars** â€” Logs, metrics, traces
-2. **Proactive alerting** â€” Alert before users notice
-3. **Meaningful alerts** â€” No alert fatigue
-4. **Dashboards tell stories** â€” At a glance health status
+1. **Three pillars** â€?Logs, metrics, traces
+2. **Proactive alerting** â€?Alert before users notice
+3. **Meaningful alerts** â€?No alert fatigue
+4. **Dashboards tell stories** â€?At a glance health status
 
 ---
 
@@ -199,10 +199,10 @@ groups:
 
 | Metric | Value | Status |
 |--------|-------|--------|
-| Error Rate | 0.1% | âœ… |
-| p95 Latency | 85ms | âœ… |
-| Requests/sec | 45 | âœ… |
-| Active Users | 128 | âœ… |
+| Error Rate | 0.1% | âœ?|
+| p95 Latency | 85ms | âœ?|
+| Requests/sec | 45 | âœ?|
+| Active Users | 128 | âœ?|
 
 ## Recent Alerts
 
@@ -251,8 +251,8 @@ groups:
 
 # Gotchas
 
-- **Alert fatigue** â€” Only alert on actionable issues
-- **Log volume** â€” Rate limit in high-traffic scenarios
-- **PII** â€” Never log passwords, tokens, or personal data
-- **Retention** â€” Set log retention policies
-- **Sampling** â€” Sample in high-volume scenarios
+- **Alert fatigue** â€?Only alert on actionable issues
+- **Log volume** â€?Rate limit in high-traffic scenarios
+- **PII** â€?Never log passwords, tokens, or personal data
+- **Retention** â€?Set log retention policies
+- **Sampling** â€?Sample in high-volume scenarios

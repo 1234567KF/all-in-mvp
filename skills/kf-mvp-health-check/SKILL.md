@@ -2,12 +2,12 @@
 name: kf-mvp-health-check
 description: >-
   Load when user asks for code health check, quality metrics, or project health
-  status. Triggers: 健康检查, 代码质量, 质量指标, health check, quality metrics,
-  代码检查, vitals, lint, typecheck. Also load when evaluating project state.
+  status. Triggers: 健康检�? 代码质量, 质量指标, health check, quality metrics,
+  代码检�? vitals, lint, typecheck. Also load when evaluating project state.
 metadata:
   pattern: tool-wrapper
   domain: mvp-stage4
-recommended_model: pro
+recommended_model: minimax-m2.7
 graph:
   dependencies:
     - target: kf-mvp-backend-tdd
@@ -25,7 +25,7 @@ graph:
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP Health Check — 项目健康检查技能
+# MVP Health Check �?项目健康检查技�?
 
 > **Core Belief**: Code health is visible in metrics. A healthy codebase ships faster, has fewer bugs, and scales better. Measure what matters.
 
@@ -35,10 +35,10 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-1. **Measure what matters** — Coverage, type safety, lint errors
-2. **Trends over snapshots** — Health improves or degrades over time
-3. **Actionable metrics** — Each metric has a fix path
-4. **Automated checks** — Human review for issues computers can catch
+1. **Measure what matters** �?Coverage, type safety, lint errors
+2. **Trends over snapshots** �?Health improves or degrades over time
+3. **Actionable metrics** �?Each metric has a fix path
+4. **Automated checks** �?Human review for issues computers can catch
 
 ---
 
@@ -186,10 +186,10 @@ npm run test:coverage
 
 | Metric | Score | Status |
 |--------|-------|--------|
-| TypeScript | [XX%] | ✅/⚠️/❌ |
-| Lint | [XX%] | ✅/⚠️/❌ |
-| Tests | [XX%] | ✅/⚠️/❌ |
-| Coverage | [XX%] | ✅/⚠️/❌ |
+| TypeScript | [XX%] | �?⚠️/�?|
+| Lint | [XX%] | �?⚠️/�?|
+| Tests | [XX%] | �?⚠️/�?|
+| Coverage | [XX%] | �?⚠️/�?|
 
 ## Trends
 
@@ -272,11 +272,11 @@ npm run ci
 
 # Gotchas
 
-- **Strict mode** — Enable TypeScript strict mode from day one
-- **Coverage threshold** — Set before coverage drops, not after
-- **Lint warnings** — Treat warnings as errors in CI
-- **Test isolation** — Tests must run independently
-- **Trend tracking** — Compare scores week over week
+- **Strict mode** �?Enable TypeScript strict mode from day one
+- **Coverage threshold** �?Set before coverage drops, not after
+- **Lint warnings** �?Treat warnings as errors in CI
+- **Test isolation** �?Tests must run independently
+- **Trend tracking** �?Compare scores week over week
 
 ---
 
@@ -284,27 +284,27 @@ npm run ci
 
 > Executable checklist for each pipeline stage gate. All items must pass before proceeding to next stage.
 
-## Stage1 → Stage2 Gate
+## Stage1 �?Stage2 Gate
 
 - [ ] PRD file exists and size > 1KB
-- [ ] All 9 required chapters present (项目背景, 术语定义, 风险与约束, 业务主流程, ER关系, 功能需求, 复杂/核心专题, 核心实体状态图, 验收标准)
-- [ ] 明确的"不做"清单 populated
+- [ ] All 9 required chapters present (项目背景, 术语定义, 风险与约�? 业务主流�? ER关系, 功能需�? 复杂/核心专题, 核心实体状态图, 验收标准)
+- [ ] 明确�?不做"清单 populated
 - [ ] Each functional requirement maps to at least 1 integration test scenario
 - [ ] ER relationship consistency: all table/field references match across chapters
 - [ ] Terminology self-consistent (same concept = same term throughout)
-- [ ] Each business flow has ≥1 Happy Path + ≥1 Exception Path acceptance criteria
+- [ ] Each business flow has �? Happy Path + �? Exception Path acceptance criteria
 
-## Stage2 → Stage3 Gate
+## Stage2 �?Stage3 Gate
 
 - [ ] All Stage2 artifacts exist (spec.md, schema.sql, api-contract.yaml, task.md, all `<module>.md`)
-- [ ] MD5 hash of all artifacts matches the hash at ↺ lock moment
+- [ ] MD5 hash of all artifacts matches the hash at �?lock moment
 - [ ] YAML/JSON files parse without errors
 - [ ] Grill review report shows all 4 dimensions passed
 - [ ] Mock service running and all endpoints responding
 - [ ] Integration test files exist for all modules (modules/) and scenarios (scenarios/)
 - [ ] ③c static review shows 0 ERROR-level issues
 
-## Stage3 → Stage4 Gate
+## Stage3 �?Stage4 Gate
 
 - [ ] All module directories exist with DONE markers (non .tmp)
 - [ ] schema.sql syntax valid (SQLite dry-run passes)
@@ -313,11 +313,11 @@ npm run ci
 - [ ] No BLOCKED modules remaining (deferred DEFER modules OK)
 - [ ] Dependency graph shows no cycles
 
-## Stage4 → Delivery Gate
+## Stage4 �?Delivery Gate
 
 - [ ] Integration test report non-empty
 - [ ] Happy Path tests 100% pass
-- [ ] Exception Path tests ≥80% pass
+- [ ] Exception Path tests �?0% pass
 - [ ] 0 P0 bugs, 0 P1 bugs
 - [ ] All regression tests in regression/ pass
 - [ ] Migration files generated and verified
@@ -404,12 +404,12 @@ const results = await checkStage2Gate(process.cwd());
 const failed = results.filter(r => !r.passed);
 
 if (failed.length > 0) {
-  console.error(`❌ Stage2 Gate: ${failed.length} check(s) failed`);
+  console.error(`�?Stage2 Gate: ${failed.length} check(s) failed`);
   for (const f of failed) {
     console.error(`  - ${f.item}: ${f.detail}`);
   }
   process.exit(1);
 } else {
-  console.log('✅ Stage2 Gate: All checks passed');
+  console.log('�?Stage2 Gate: All checks passed');
 }
 ```

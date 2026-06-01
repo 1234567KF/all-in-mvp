@@ -8,7 +8,7 @@ description: >-
 metadata:
   pattern: pipeline + inversion
   domain: mvp-stage2
-recommended_model: pro
+recommended_model: kimi-for-coding
 graph:
   dependencies:
     - target: kf-mvp-prd-generator
@@ -28,7 +28,7 @@ graph:
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
-# MVP Task Splitter — 任务拆分技能
+# MVP Task Splitter �?任务拆分技�?
 
 > **Core Belief**: Good task decomposition makes parallel development possible. The key is finding the right granularity: atomic enough to parallelize, cohesive enough to be meaningful.
 
@@ -38,17 +38,17 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-1. **Atomic tasks** — Each task should be completable by one agent in one session
-2. **Clear dependencies** — Know what must complete before what can start
-3. **Testable** — Every task should have clear acceptance criteria
-4. **Measurable** — Progress should be trackable
+1. **Atomic tasks** �?Each task should be completable by one agent in one session
+2. **Clear dependencies** �?Know what must complete before what can start
+3. **Testable** �?Every task should have clear acceptance criteria
+4. **Measurable** �?Progress should be trackable
 
 ---
 
 # Task Decomposition Levels
 
 ## Level 1: Stage (宏观阶段)
-- Stage1: 需求对齐
+- Stage1: 需求对�?
 - Stage2: 计划
 - Stage3: 执行
 - Stage4: 集成
@@ -57,7 +57,7 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 - 架构设计
 - 业务拆分
 - 拷问审查
-- Mock开发
+- Mock开�?
 
 ## Level 3: Module (模块)
 - user模块
@@ -68,7 +68,7 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 - 实现用户登录接口
 - 编写用户模块单元测试
 
-## Level 5: Subtask (子任务)
+## Level 5: Subtask (子任�?
 - 实现JWT token验证
 - 实现密码加密存储
 
@@ -79,9 +79,9 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 ```markdown
 # Work Breakdown Structure
 
-## 1. 需求阶段
+## 1. 需求阶�?
 1.1 PRD生成
-  1.1.1 需求访谈
+  1.1.1 需求访�?
   1.1.2 PRD文档编写
   1.1.3 PRD评审
 
@@ -97,19 +97,19 @@ Load `references/mvp-tech-stack-default.md` for full specification.
   2.2.3 验收标准制定
   
 2.3 拷问审查
-  2.3.1 需求覆盖检查
-  2.3.2 边界一致性检查
+  2.3.1 需求覆盖检�?
+  2.3.2 边界一致性检�?
 
 ## 3. 执行阶段
-3.1 后端开发
+3.1 后端开�?
   3.1.1 [模块名]
     3.1.1.1 实现API接口
     3.1.1.2 编写单元测试
     3.1.1.3 代码审查
   
-3.2 前端开发
+3.2 前端开�?
   3.2.1 [页面名]
-    3.2.1.1 组件开发
+    3.2.1.1 组件开�?
     3.2.1.2 页面集成
 
 ## 4. 集成阶段
@@ -126,7 +126,7 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 ```markdown
 ## 核心业务实体
 
-| 实体 | 说明 | 优先级 |
+| 实体 | 说明 | 优先�?|
 |------|------|--------|
 | User | 系统用户 | P0 |
 | Organization | 组织 | P0 |
@@ -138,7 +138,7 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 ```markdown
 ## 模块分组
 
-### 认证与权限
+### 认证与权�?
 - auth (认证)
 - users (用户管理)
 - roles (角色管理)
@@ -149,7 +149,7 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 - categories (类目管理)
 - orders (订单管理)
 
-### 工具与配置
+### 工具与配�?
 - templates (模板管理)
 - trace (溯源管理)
 - codes (码段管理)
@@ -159,9 +159,9 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 ```markdown
 ## 依赖矩阵
 
-| 模块 | 依赖 | 被依赖 |
+| 模块 | 依赖 | 被依�?|
 |------|------|--------|
-| auth | - | 所有模块 |
+| auth | - | 所有模�?|
 | users | auth, org | product, order |
 | products | users, category | trace |
 | trace | product, template | - |
@@ -199,12 +199,12 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 ### 估计工时
 [X] hours
 
-### 执行者
+### 执行�?
 [Agent role]
 
-### 状态
-- [ ] 未开始
-- [ ] 进行中
+### 状�?
+- [ ] 未开�?
+- [ ] 进行�?
 - [ ] 完成
 ```
 
@@ -216,20 +216,20 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 # [Module] Module Specification
 
 ## 基本信息
-- **模块名**: [module]
-- **领域**: [认证与权限/业务核心/工具与配置]
-- **优先级**: P0/P1/P2
-- **开发顺序**: [N]
+- **模块�?*: [module]
+- **领域**: [认证与权�?业务核心/工具与配置]
+- **优先�?*: P0/P1/P2
+- **开发顺�?*: [N]
 
 ## 职责边界
 
-### 本模块负责
+### 本模块负�?
 - [ ] [功能A]
 - [ ] [功能B]
 
 ### 本模块不负责
-- [ ] [功能X] (由 [模块Y] 负责)
-- [ ] [功能Y] (由 [模块Z] 负责)
+- [ ] [功能X] (�?[模块Y] 负责)
+- [ ] [功能Y] (�?[模块Z] 负责)
 
 ## 依赖关系
 ```
@@ -266,7 +266,7 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 1. [ ] [AC1]
 2. [ ] [AC2]
 
-### 边界值
+### 边界�?
 1. [ ] [AC1]
 2. [ ] [AC2]
 ```
@@ -321,12 +321,12 @@ modules:
 
 ## Priority Matrix
 
-| 优先级 | 定义 | 示例 |
+| 优先�?| 定义 | 示例 |
 |--------|------|------|
-| P0 | 必须完成，否则其他工作无法进行 | 认证模块 |
-| P1 | 核心功能，影响用户体验 | CRUD模块 |
+| P0 | 必须完成，否则其他工作无法进�?| 认证模块 |
+| P1 | 核心功能，影响用户体�?| CRUD模块 |
 | P2 | 重要功能，可延迟 | 报表功能 |
-| P3 |Nice to have | 高级特性 |
+| P3 |Nice to have | 高级特�?|
 
 ## Scheduling Order
 
@@ -353,18 +353,18 @@ Round 5: P3 modules
 
 ## Executive Summary
 
-| 指标 | 数值 |
+| 指标 | 数�?|
 |------|------|
 | 总模块数 | [N] |
 | 总任务数 | [N] |
-| 关键路径长度 | [N] 轮 |
+| 关键路径长度 | [N] �?|
 | 最大并行度 | [N] agents |
 
 ---
 
 ## Module Summary
 
-| 模块 | 领域 | 优先级 | 依赖 | 开发顺序 |
+| 模块 | 领域 | 优先�?| 依赖 | 开发顺�?|
 |------|------|--------|------|----------|
 | [module1] | [domain] | P0 | - | 1 |
 | [module2] | [domain] | P1 | [module1] | 2 |
@@ -432,8 +432,8 @@ graph LR
 
 # Gotchas
 
-- **Module size** — Too large = hard to parallelize; too small = overhead
-- **Dependency direction** — "A depends on B" means B must complete first
-- **Priority vs Order** — Priority is business value; order is technical dependency
-- **Cross-module = scenario** — If task spans modules, it's a scenario test (③b-2)
-- **Domain affinity** — Same-domain modules can be developed in parallel
+- **Module size** �?Too large = hard to parallelize; too small = overhead
+- **Dependency direction** �?"A depends on B" means B must complete first
+- **Priority vs Order** �?Priority is business value; order is technical dependency
+- **Cross-module = scenario** �?If task spans modules, it's a scenario test (③b-2)
+- **Domain affinity** �?Same-domain modules can be developed in parallel
