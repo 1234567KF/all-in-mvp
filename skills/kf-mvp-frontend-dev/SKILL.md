@@ -31,7 +31,7 @@ graph:
 - State: Pinia 2.x
 - Routing: Vue Router 4.x
 - HTTP: Axios 1.x
-- UI Framework: 6选1 (Ant Design Vue / Element Plus / Arco Design / Vant / shadcn-vue / Tailwind CSS)
+- UI Framework: shadcn/vue（默认）/ 可选 Ant Design Vue / Element Plus / Arco Design / Vant / Tailwind CSS
 
 Load `references/mvp-tech-stack-default.md` for full specification.
 
@@ -59,8 +59,9 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 | HTTP | Axios | 1.6+ | |
 | UI | {{UI_FRAMEWORK}} | varies | Selected in Phase 0, locked |
 
-**UI Framework Selection** (from `references/mvp-tech-stack-default.md`):
-- Enterprise/B2B admin: Ant Design Vue (default) / Element Plus / Arco Design
+**UI Framework Selection** (from `references/mvp-tech-stack-default.md`, default: shadcn/vue):
+- Default (no special requirement): **shadcn/vue**
+- Enterprise/B2B admin: Ant Design Vue / Element Plus / Arco Design
 - Modern branded web: Tailwind CSS / shadcn-vue
 - H5 mobile: Vant
 
@@ -730,7 +731,7 @@ export default defineConfig({
 - **Error handling** — API errors throw, handle with try/catch
 - **Type safety** — Define DTO types before using in components
 - **UI Framework lock-in** — Once Phase 0 selects a UI framework (e.g., Ant Design Vue), ALL components MUST use that framework. Never mix Element Plus buttons with Ant Design tables
-- **Default stack** — If no UI framework specified, use Ant Design Vue for B2B/admin, Tailwind CSS for branded web
+- **Default stack** — If no UI framework specified, use **shadcn/vue** as the default
 - **MVP exemptions** — No SSR, no PWA, no complex state hydration. Keep it simple.
 - **Axios baseURL** — Always use env var `VITE_API_BASE_URL`, default to `/api`
 - **Mock env setup** — Development: `VITE_API_BASE_URL=http://localhost:3001/api`；Production: `/api`

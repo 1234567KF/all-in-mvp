@@ -140,7 +140,7 @@ QuickStep3: 轻量验收
 1. 用 `agents/architect.md` 创建架构 Agent
 2. 输入：`PRD.md`
 3. 产出：`spec.md`（架构设计）+ `schema.sql`（数据库 Schema）+ `api-contract.yaml`（接口契约）
-4. **技术栈绑定**：询问用户偏好的技术栈或使用默认（Hono + Drizzle + SQLite + Vue 3 + Vite）
+4. **技术栈绑定**：询问用户偏好的技术栈或使用默认（Hono + Drizzle + SQLite + Vue 3 + Vite + shadcn/vue）
 5. 产出物标记为【初版】
 
 ### 2.2 ② 业务领域专家（串行）
@@ -625,6 +625,7 @@ for i in {1..3}; do npx vitest run; done
 | **Drizzle ORM** | 数据库 ORM | 类型安全、Schema 即代码 |
 | **SQLite** | 数据库 | 零配置、原型阶段首选 |
 | **Vue 3 + Vite** | 前端框架 | 组合式 API、快速 HMR |
+| **shadcn/vue** | UI 组件库 | 默认 UI 框架，现代化设计 |
 | **Vitest** | 测试框架 | 与 Vite 共享配置、高性能 |
 | **OpenAPI 3.0** | 接口契约 | 标准化的 API 描述格式 |
 
