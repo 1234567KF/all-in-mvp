@@ -1026,6 +1026,28 @@ tests/visual/
 
 ---
 
+## 截图的真实用途：两类消费者
+
+> **截图的两类消费者**
+>
+> ```
+> 截图 ──┬── Playwright toHaveScreenshot() ── 自动化像素级对比（CI 无头也可执行）
+>        │                                      结果：PASS / VISUAL_REGRESSION
+>        │
+>        └── 人工肉眼审阅 ── 截图保存到 screenshots/ 目录
+>                                           用途：复盘、验收、Bug 报告附件
+> ```
+>
+> AI 不消费截图像素内容，也不依赖视觉识别来判定测试通过与否。所有可判定断言都通过以下方式完成：
+>
+> | 断言方式 | 示例 | AI 是否可验证 |
+> |:---------|:-----|:-------------:|
+> | DOM 元素存在性 | `expect(btn).toBeVisible()` | ✅ 是 |
+> | Computed Style | `toHaveCSS('color', 'rgb(59,130,246)')` | ✅ 是 |
+> | 响应数据结构 | `expect(res.data.name).toBe('...')` | ✅ 是 |
+> | 像素对比 | `toHaveScreenshot()` | ✅ Playwright 自动对比，不依赖 AI |
+> | 截图文件内容 | `screenshots/*.png` | ❌ AI 不消费 |
+
 ## 防线 3：DOM 结构快照（A11y Tree�?
 
 比像素对比更稳定，不受字体渲染影响，能发现结构性布局问题�?
@@ -1115,3 +1137,23 @@ visual_regression_passed: false  # 布局变更，需要人类确�?
 review_url: "http://localhost:5173/dashboard"
 human_action: "请打开 review_url 查看视觉效果，确认无误后删除此文件并创建 DONE"
 ```
+
+---
+
+## 视觉验证三道防线在 Pipeline 中的归属
+
+> **Pipeline 门禁中的防线分布**
+>
+> ```
+> Pipeline 门禁
+> ├── L1-L3 Vitest：无需视觉验证
+> ├── L4 有头 Playwright：
+> │   ├── 防线 1（Computed Style 断言）→ 测试代码中硬编码
+> │   └── 防线 2（像素快照）→ 生成基线 + 人工审阅
+> └── L5 无头 Playwright：
+>     ├── 防线 1（Computed Style 断言）→ 正常运行
+>     ├── 防线 2（像素快照）→ 与基线自动对比
+>     └── 防线 3（A11y Tree 快照）→ 结构回归检测
+> ```
+>
+> **关键原则**：无论有头还是无头，防线的**可判定性**不变。防线 1 和防线 3 在任何模式下都产生 AI 可验证的确定性数据。防线 2（像素快照）由 Playwright 自动对比，结果也是确定的 PASS/FAIL。
