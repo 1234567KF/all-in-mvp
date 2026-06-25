@@ -8,6 +8,11 @@ metadata:
   based_on: MVP白皮书 v2.5.0
   platform: claude-code
   workflow-ready: true
+  workflow-scripts:
+    - ".claude/workflows/stage1-prd.js"
+    - ".claude/workflows/stage2-planning.js"
+    - ".claude/workflows/stage3-execution.js"
+    - ".claude/workflows/stage4-integration.js"
 ---
 
 # Parallel MVP Pipeline — Claude Code Dynamic Workflow 版
@@ -31,16 +36,17 @@ metadata:
 
 ## Dynamic Workflow 执行模式（Claude Code 专有）
 
-> **核心变化**：主 Agent 不再手动逐个 spawn subagent。每个 Stage 触发一个 Workflow，Workflow 在对话外独立执行，主 Agent 只接收最终产出卡片。
+> **核心变化**：每个 Stage 对应一个独立的 Workflow 脚本（`.claude/workflows/*.js`），脚本自包含，prompt 内嵌，主 Agent 只需触发脚本并审查产出卡片。
 
 ### 主 Agent 角色转变
 
-| 之前（手动 spawn） | 现在（Workflow 驱动） |
+| 旧模式（手动 spawn） | 新模式（脚本驱动） |
 |-------------------|---------------------|
-| 主 Agent 手动 spawn pm-agent，等待结果 | 主 Agent 说 "Create a workflow: Stage1-PRD" |
-| 主 Agent 读取 task.md 依赖图，手动调度后端/前端 | Workflow 脚本自动读依赖图、fan-out 子任务 |
-| 主 Agent 上下文随每个 subagent 膨胀 | 编排在对话外，主 Agent 上下文始终干净 |
-| 中断后状态丢失 | Workflow 保存进度，断点续跑 |
+| 主 Agent 逐个角色扮演，切换 context | 主 Agent = 指挥官，触发 Workflow + 审查产出卡片 |
+| 子 Agent prompt 靠主 Agent 对话切换 | 子 Agent 在 Workflow 脚本内独立运行 |
+| 所有中间状态在主会话上下文累积 | 中间状态在 Workflow 内隔离，主会话始终干净 |
+| 中断后只能重来 | Workflow 支持 `resumeFromRunId` 断点续跑 |
+| 最大并行度靠主 Agent 手动管理 | Workflow 自动按依赖图 fan-out |
 
 ### Workflow 触发时机
 
@@ -50,29 +56,41 @@ metadata:
     ├── 轻量模式 → 主 Agent 直接执行 QuickStep1-3（不触发 Workflow）
     │
     └── 全量/增量模式 → 主 Agent 依次触发 Workflow：
-          Stage1-Workflow → Stage2-Workflow → Stage3-Workflow → Stage4-Workflow
+          Workflow({ scriptPath: '.claude/workflows/stage1-prd.js', args: {...} })
+          → Workflow({ scriptPath: '.claude/workflows/stage2-planning.js', args: {...} })
+          → Workflow({ scriptPath: '.claude/workflows/stage3-execution.js', args: {...} })
+          → Workflow({ scriptPath: '.claude/workflows/stage4-integration.js', args: {...} })
           每个 Workflow 完成后，主 Agent 审查产出卡片，确认门禁通过，再触发下一个
 ```
 
-### Workflow 与 Agent Prompt 的关系
+### Workflow 脚本架构
 
-**16 个 `agents/*.md` 文件保持不变**——它们是每个子任务的知识 prompt。Workflow 脚本引用它们：
+4 个脚本各自自包含，不依赖运行时读取 `agents/*.md` 文件（prompt 内嵌模板字符串）：
 
 ```
-Workflow("Stage2-Planning")
-  ├── 子任务①: 以 agents/architect.md 为 prompt，输入 PRD.md
-  ├── 子任务②: 以 agents/domain-expert.md 为 prompt，输入 ①的产出
-  ├── 子任务↺: 以 agents/grill-review.md 为 prompt，输入 ①②的产出（循环最多3轮）
-  ├── 子任务③a: 以 agents/mock-service.md 为 prompt（与③b并行）
-  ├── 子任务③b-1: 以 agents/single-module-test.md 为 prompt（最多2并行）
-  ├── 子任务③b-2: 以 agents/scenario-test.md 为 prompt（串行）
-  └── 子任务③c: 以 agents/test-review.md 为 prompt（等③a③b完）
+.claude/workflows/
+├── stage1-prd.js          ← PM Agent (pro) → PRD.md
+├── stage2-planning.js     ← Architect(pro) + Domain Expert(flash) + Grill(pro) + Mock/Test(flash)
+├── stage3-execution.js    ← Coordinator(flash) + Backend/Frontend(flash) + Code Reviewer(pro)
+└── stage4-integration.js  ← Stage4 Coord(pro) + Merge/Integration/Test(flash) + Debug(flash)
 ```
 
 ### 如何触发 Workflow
 
-**方式一（推荐）**：直接说
-> "Create a workflow to run Stage1 of the all-in-mvp pipeline. Use agents/pm-agent.md as the subagent prompt. Input: [用户需求]. Output: PRD.md"
+**方式一（推荐）**：直接调用脚本
+```javascript
+// Stage1: 需求对齐
+Workflow({ scriptPath: '.claude/workflows/stage1-prd.js', args: { userRequirement: '用户需求', context: '业务背景' } })
+
+// Stage2: 规划校验
+Workflow({ scriptPath: '.claude/workflows/stage2-planning.js', args: { prdPath: 'PRD.md' } })
+
+// Stage3: 并行开发
+Workflow({ scriptPath: '.claude/workflows/stage3-execution.js', args: { taskPath: 'task.md', modulesDir: 'modules/' } })
+
+// Stage4: 集成验收
+Workflow({ scriptPath: '.claude/workflows/stage4-integration.js', args: { srcDir: 'src/', mockDir: 'mocks/' } })
+```
 
 **方式二**：开启 ultracode 模式后直接描述任务
 > "Build a [项目描述] using the all-in-mvp pipeline"
@@ -163,19 +181,36 @@ QuickStep3: 轻量验收
 
 ---
 
-## Stage 1: 需求对齐 — Workflow("Stage1-PRD")
+## Stage 1: 需求对齐 — Workflow(`.claude/workflows/stage1-prd.js`)
 
 **前置条件**：用户需求已收集（如果模糊则先执行 Inversion 采集）。
-**产出物**：`PRD.md`
-**执行方式**：触发 Workflow（串行，单子任务）
+**产出物**：`PRD.md` + `decisions/stage1-prd-decisions.md`
+**执行方式**：触发 Workflow 脚本（串行，单子任务）
+**模型**：`deepseek-v4-pro`
 
-### Workflow 定义
+### 触发方式
+
+```javascript
+Workflow({
+  scriptPath: '.claude/workflows/stage1-prd.js',
+  args: {
+    userRequirement: '用户原始需求描述',
+    context: '可选业务背景'
+  }
+})
+```
+
+### 脚本内部流程
 
 ```
-Workflow("Stage1-PRD")
-  子任务: 以 agents/pm-agent.md 为 prompt
-  输入: 用户原始需求 + 业务背景
-  产出: PRD.md
+phase('需求理解')
+  → PM Agent (pro) 读取用户需求
+  → 产出理解确认清单 (CEP 卡片)
+  → [Human Gate] 用户确认 ✅/⚠️
+phase('PRD撰写')
+  → PM Agent (pro) 产出 PRD 草案（受 PRD_SCHEMA 约束）
+  → 主 Agent 审查 9 章节齐全性
+  → 标记 PRD.md 为【锁定版】
 ```
 
 ### PRD 必须包含
@@ -198,61 +233,57 @@ PRD 评审通过后锁定为 `PRD.md`。锁定的 PRD 是后续所有阶段的�
 
 ### 主 Agent 动作
 
-1. 触发 `Workflow("Stage1-PRD")`
+1. 触发 `Workflow({ scriptPath: '.claude/workflows/stage1-prd.js', args: { userRequirement, context } })`
 2. 等待 Workflow 完成
 3. 审查产出卡片，确认 9 个章节齐全
 4. 门禁通过 → 标记 PRD.md 为【锁定版】→ 进入 Stage2
 
 ---
 
-## Stage 2: 规划阶段 — Workflow("Stage2-Planning")
+## Stage 2: 规划阶段 — Workflow(`.claude/workflows/stage2-planning.js`)
 
 **前置条件**：`PRD.md` 已存在并锁定。
-**执行方式**：触发单次 Workflow（内部串行+并行混合）
+**执行方式**：触发 Workflow 脚本（内部串行+并行混合）
+**模型分配**：Architect/Grill → pro，其余 flash
 
-### Workflow 定义
+### 触发方式
+
+```javascript
+Workflow({
+  scriptPath: '.claude/workflows/stage2-planning.js',
+  args: { prdPath: 'PRD.md' }
+})
+```
+
+### 脚本内部流程
 
 ```
-Workflow("Stage2-Planning")
-  ├── ① 架构专家（串行）
-  │     以 agents/architect.md 为 prompt
-  │     输入: PRD.md
-  │     产出: spec.md + schema.sql + api-contract.yaml【初版】
-  │
-  ├── ② 业务领域专家（串行，等①完成）
-  │     以 agents/domain-expert.md 为 prompt
-  │     输入: PRD.md + ①的产出【初版】
-  │     产出: task.md + modules/<module>.md【初版】
-  │
-  ├── ↺ 拷问审查循环（串行，等②完成，最多3轮）
-  │     以 agents/grill-review.md 为 prompt
-  │     对照 PRD.md 双向校验 ①② 的产出
-  │     审查维度: 需求覆盖完整性 / 模块边界合理性 / 术语一致性 / 验收标准对齐
-  │     每轮发现不一致 → 修正 → 重新审查
-  │     全部通过 → 所有产出物升级为【锁定版】
-  │
-  ├── ③a Mock 服务（与③b并行）
-  │     以 agents/mock-service.md 为 prompt
-  │     输入: api-contract.yaml【锁定版】+ task.md【锁定版】
-  │     产出: mocks/
-  │
-  ├── ③b-1 单模块测试（最多2并行）
-  │     以 agents/single-module-test.md 为 prompt
-  │     按模块平分给2个子任务
-  │     产出: integration-tests/modules/<module>.test.ts
-  │     只写用例，不执行
-  │
-  ├── ③b-2 业务条线 E2E 测试（串行）
-  │     以 agents/scenario-test.md 为 prompt
-  │     输入: PRD.md【锁定版】+ task.md【锁定版】
-  │     产出: integration-tests/scenarios/<scenario>.test.ts
-  │     只写用例，不执行
-  │
-  └── ③c 测试用例静态审查（串行，等③a③b全部完成）
-        以 agents/test-review.md 为 prompt
-        产出: 测试用例审查报告
-        4项检查: 文件存在性/API路由有效性/场景覆盖完整性/fixture类型一致性
-        通过标准: 无 ERROR 级别问题
+// 串行段 — pipeline 模式
+阶段① Architect (pro)
+  → 输入: PRD.md
+  → MQAP: 理解确认清单 → CEP 卡片 → 产出
+  → 产出: spec.md + schema.sql + api-contract.yaml【初版】
+
+阶段② Domain Expert (flash)
+  → 输入: PRD.md + 阶段①产出【初版】
+  → MQAP: 理解确认清单 → CEP 卡片 → 产出
+  → 产出: task.md + modules/<module>.md【初版】
+
+阶段↺ Grill Review (pro) — 循环算法
+  → 输入: 阶段① + 阶段②产出
+  → 双向校验（需求覆盖 / 模块边界 / 术语一致性 / 验收标准）
+  → 循环: 发现不一致 → 修正(flash) → 重新审查
+  → 终止: 连续2轮零发现 或 6轮硬上限
+  → 通过 → 所有产出物升级为【锁定版】
+
+// barrier: 串行段全部通过后才进入并行段
+
+阶段③a Mock Service (flash) ────┐
+阶段③b-1 Unit Tests (flash, ≤2) ─┤ 并行
+阶段③b-2 E2E Tests (flash, 串行) ─┤
+阶段③c Test Review (flash) ────┘ 等③a+③b全完成
+  → 4项检查: 文件存在性 / API路由有效性 / 场景覆盖 / fixture一致性
+  → 通过标准: 无 ERROR
 ```
 
 ### 审查维度速查
@@ -279,49 +310,49 @@ Workflow("Stage2-Planning")
 
 ### 主 Agent 动作
 
-1. 触发 `Workflow("Stage2-Planning")`
-2. Workflow 内部自动处理串行/并行编排
+1. 触发 `Workflow({ scriptPath: '.claude/workflows/stage2-planning.js', args: { prdPath: 'PRD.md' } })`
+2. Workflow 脚本内部自动处理串行/并行编排
 3. 等待 Workflow 完成
 4. 审查产出卡片，逐项核对门禁清单
 5. 门禁全部通过 → 进入 Stage3
 
 ---
 
-## Stage 3: 执行阶段 — Workflow("Stage3-Execution")
+## Stage 3: 执行阶段 — Workflow(`.claude/workflows/stage3-execution.js`)
 
 **前置条件**：Stage 2 门禁全部通过。
-**执行方式**：触发单次 Workflow（大规模并行 fan-out）
+**执行方式**：触发 Workflow 脚本（大规模并行 fan-out）
+**模型分配**：Code Reviewer → pro，其余 flash
 
-### Workflow 定义
+### 触发方式
+
+```javascript
+Workflow({
+  scriptPath: '.claude/workflows/stage3-execution.js',
+  args: { taskPath: 'task.md', modulesDir: 'modules/' }
+})
+```
+
+### 脚本内部流程
 
 ```
-Workflow("Stage3-Execution")
-  │
-  ├── Coordinator 子任务（串行，先行）
-  │     以 agents/pipeline-coordinator.md 为 prompt
-  │     读取 task.md 依赖图
-  │     输出: 模块分配方案（哪些先做、哪些并行、哪些等依赖）
-  │
-  ├── 后端子任务组（按依赖图 fan-out，不限并行数）
-  │     以 agents/backend-tdd.md 为 prompt
-  │     每个模块一个子任务
-  │     遵循 Red→Green→Refactor 微循环
-  │     产出: src/modules/<module>/（routes + service + schema + types + test）
-  │     完成后在模块目录写入 DONE 标记
-  │
-  ├── 前端子任务组（与后端并行，基于 Mock）
-  │     以 agents/frontend-dev.md 为 prompt
-  │     每个页面一个子任务
-  │     所有 API 调用指向 Mock 服务
-  │     产出: src/views/ + src/components/ + src/composables/
-  │     完成后写入 DONE 或 VISUAL_PENDING 标记
-  │
-  ├── Code Review 子任务（按需触发，事件驱动）
-  │     以 agents/code-reviewer.md 为 prompt
-  │     当后端子任务测试未通过 或 新增代码未覆盖异常路径时触发
-  │
-  └── 测试补充子任务（事件驱动）
-        后端每完成一个新模块，补充该模块的边界测试
+// 第0步: Coordinator 先行
+Coordinator (flash)
+  → 读取 task.md 依赖图
+  → 输出: 模块分配方案（轮次表 + 依赖关系）
+
+// 主循环: 按依赖图分批 fan-out
+while 存在未完成模块:
+  1. 扫描状态 → 候选集 = 依赖已满足 ∩ 未分配
+  2. 并行分配候选集:
+     parallel(后端模块 → agent(BACKEND_DEV_PROMPT, flash))
+  3. 每模块完成后:
+     if 需要审查 → agent(CODE_REVIEW_PROMPT, pro)
+  4. 标记 DONE → 释放下游 → 下一轮
+
+// 前端并行开发（基于 Mock）
+parallel(页面模块 → agent(FRONTEND_DEV_PROMPT, flash))
+  前端 Agent 不可自标 DONE（涉及 CSS → VISUAL_PENDING）
 ```
 
 ### 文件状态标记（Agent 间通信协议）
@@ -430,9 +461,9 @@ for i in {1..3}; do npx vitest run; done
 
 ### 主 Agent 动作
 
-1. 触发 `Workflow("Stage3-Execution")`
-2. Workflow 内部：
-   - Coordinator 子任务运行 → 输出分配方案
+1. 触发 `Workflow({ scriptPath: '.claude/workflows/stage3-execution.js', args: { taskPath, modulesDir } })`
+2. Workflow 脚本内部：
+   - Coordinator 运行 → 输出分配方案
    - 按依赖图并行 fan-out 后端+前端子任务
    - 扫描 DONE/BLOCKED/VISUAL_PENDING 标记
    - 按需触发 Code Review
@@ -442,33 +473,50 @@ for i in {1..3}; do npx vitest run; done
 
 ---
 
-## Stage 4: 集成与验收 — Workflow("Stage4-Integration")
+## Stage 4: 集成与验收 — Workflow(`.claude/workflows/stage4-integration.js`)
 
 **前置条件**：Stage 3 门禁全部通过。
-**执行方式**：触发 Workflow（串行收敛）
+**执行方式**：触发 Workflow 脚本（串行收敛）
+**模型分配**：Stage4 Coordinator → pro，其余 flash
 
-### Workflow 定义
+### 触发方式
+
+```javascript
+Workflow({
+  scriptPath: '.claude/workflows/stage4-integration.js',
+  args: { srcDir: 'src/', mockDir: 'mocks/' }
+})
+```
+
+### 脚本内部流程
 
 ```
-Workflow("Stage4-Integration")
-  │
-  ├── 4.1 后端模块合并
-  │     以 agents/stage4-coordinator.md 为 prompt（合并阶段）
-  │     合并各模块路由到统一入口 → 验证全局 Schema 一致性 → 运行全量单元测试
-  │
-  ├── 4.2 前后端联调
-  │     前端切换 Mock → 真实后端 API
-  │     按模块逐个联调
-  │     记录接口不匹配问题到 integration-issues.md
-  │
-  ├── 4.3 集成测试执行
-  │     运行 integration-tests/modules/ + integration-tests/scenarios/
-  │     输出测试报告
-  │
-  └── 4.4 Bug 修复循环
-        以 agents/debug-fixer.md 为 prompt
-        按需触发修复子任务
-        回归测试验证
+阶段4.1 后端合并 (flash)
+  → 合并各模块路由到统一入口（app.ts/main.ts）
+  → 验证全局 Schema 一致性
+  → 运行全量单元测试
+  → 输出合并报告
+
+阶段4.2 前后端联调 (flash)
+  → 前端切换 Mock → 真实后端 API
+  → 按模块逐个联调
+  → 记录接口不匹配到 integration-issues.md
+  → 问题分类: 契约问题 / 实现问题 / 理解偏差 / Mock偏差
+
+阶段4.3 集成测试 (flash)
+  → 运行 integration-tests/modules/ + scenarios/
+  → 运行 L1-L5 全部测试层 + V1-V3 视觉检查
+  → 输出测试报告 + 覆盖率报告
+
+阶段4.4 Bug修复循环 (flash dev + pro reviewer)
+  → while 存在未修复 Bug && 轮次 < 3:
+      → agent(分析 Bug 列表, pro)
+      → agent(修复 Bug, flash)
+      → 回归测试验证
+  → 3 轮后仍有 Bug → 标记 BLOCKED
+
+→ 质量审计输出
+→ 交付归档 delivery/
 ```
 
 ### 联调问题分类
@@ -524,8 +572,8 @@ Workflow("Stage4-Integration")
 
 ### 主 Agent 动作
 
-1. 触发 `Workflow("Stage4-Integration")`
-2. Workflow 内部按 4.1→4.2→4.3→4.4 顺序执行
+1. 触发 `Workflow({ scriptPath: '.claude/workflows/stage4-integration.js', args: { srcDir, mockDir } })`
+2. Workflow 脚本内部按 4.1→4.2→4.3→4.4 顺序执行
 3. 主 Agent 审查最终测试报告 + 质量审计清单
 4. 确认无 P0/P1 Bug
 5. Stage4 门禁全部通过 → 交付
@@ -597,7 +645,7 @@ Workflow("Stage4-Integration")
 |------|--------|-----------------|
 | Stage1 | 串行 | 1 个子任务（PM） |
 | Stage2 ①→② | 串行 | 架构先 → 业务后 |
-| Stage2 ↺ | 串行循环 | grill 审查 → 修正 → 再审（最多3轮） |
+| Stage2 ↺ | 串行循环 | grill 审查 → 修正 → 再审（连续2轮零发现或6轮硬上限） |
 | Stage2 ③a/③b-1/③b-2 | 并行 | Mock + 两类测试 同时 fan-out |
 | Stage2 ③b-1 内部 | 最多 2 | 按模块平分 |
 | Stage2 ③c | 串行 | ③a/③b全部完成后方可启动 |
@@ -610,7 +658,7 @@ Workflow("Stage4-Integration")
 
 ## Gotchas
 
-- **先判定再执行**：进入流水线前先走「快速通道：简单任务判定」。简单任务用轻量模式（10-30min），不要对简单任务触发 Workflow。
+- **先判定再执行**：进入流水线前先走「快速通道：简单任务判定」。简单任务用轻量模式（10-30min），不要对简单任务触发 Workflow 脚本。
 - **轻量模式无门禁**：简单任务用户确认即通过，不要求 L1-L5 全层测试。
 - **Stage 不可跳过（全量/增量）**：门禁是硬约束。不要在 Stage2 还没锁定时就开始 Stage3 的开发，Schema 变更会导致所有模块返工。
 - **Schema 锁定后严禁修改**：如果必须变更，先通知所有依赖该表的 Agent，走变更评审后再修改。
@@ -618,15 +666,17 @@ Workflow("Stage4-Integration")
 - **Mock 与真实 API 必须一致**：两者基于同一 `api-contract.yaml` 生成。联调发现问题时更新契约文件，然后同步修改 Mock 和真实实现。
 - **TDD 是强制流程**：先写测试（RED）→ 再写实现（GREEN）→ 最后重构（REFACTOR）。不允许先写实现再补测试。
 - **文件驱动通信**：Agent 之间不直接发消息。Coordinator 通过扫描文件系统中的 DONE/BLOCKED 标记了解进度。产出物文件即状态信号。
-- **Workflow 自动伸缩并行度**：与手动 spawn 的固定上限不同，Workflow 按依赖图动态 fan-out。无依赖的模块可全部并行。
+- **Workflow 脚本自动伸缩并行度**：stage3-execution.js 按依赖图动态 fan-out，无硬上限。无依赖的模块可全部并行。
 - **确定性分配**：同输入必须产生相同的模块拆分和分配结果。`task.md` 中模块的枚举顺序作为稳定排序依据。
-- **DEFER vs BLOCKED**：DEFER 是主动推迟（不可/不值得本轮完成），BLOCKED 是被动等待（等待依赖/修复）。两者互斥。DEFER 会级联标记下游依赖模块。
-- **增量模式判定规则**：纯Bug修复（不改需求文档）→ 跳过 Stage1-3，直接 Stage4。非Bug变更 → 必须走完整增量流水线。判定红线：只要变更需要修改 PRD 文档中任何一个字，即触发完整流水线。
-- **LLM 无视觉能力 — 不能自标 DONE**：修改了 CSS/布局/动画的前端 Agent 必须标记 VISUAL_PENDING，等待人类视觉确认。Agent 自行判定"看起来没问题"是 P0 错误。
-- **toBeVisible() 不等于视觉正确**：必须用三道视觉防线（V1 computed style + V2 像素对比 + V3 布局完整性）。
-- **VISUAL_PENDING 不可跳过**：Workflow 将 VISUAL_PENDING 视为非完成状态，不释放下游依赖。
+- **DEFER vs BLOCKED**：DEFER 是主动推迟，BLOCKED 是被动等待。两者互斥。DEFER 会级联标记下游依赖模块。
+- **增量模式判定规则**：纯Bug修复（不改需求文档）→ 跳过 Stage1-3，直接 Stage4。非Bug变更 → 必须走完整增量流水线。
+- **LLM 无视觉能力 — 不能自标 DONE**：修改了 CSS/布局/动画的前端 Agent 必须标记 VISUAL_PENDING，等待人类视觉确认。
+- **VISUAL_PENDING 不可跳过**：Workflow 脚本将 VISUAL_PENDING 视为非完成状态，不释放下游依赖。
 - **视觉回归基线必须进 Git**：`tests/visual/*-snapshots/` 目录提交到版本控制。
-- **Workflow 消耗更多 token**：Dynamic Workflow 是强力工具，但 token 消耗比手动模式大。轻量任务不要触发 Workflow。
+- **Workflow 脚本消耗更多 token**：动态 Workflow 脚本比手动模式消耗更多 token。轻量任务不要触发脚本。
+- **脚本自包含原则**：4 个 `.claude/workflows/*.js` 脚本内嵌了压缩版 prompt，不依赖运行时读取 `agents/*.md`。修改 prompt 时需同步更新脚本和 agents/ 目录。
+- **模型分配显式指定**：每个 agent() 调用通过 `model` 参数显式指定（pro/flash），不依赖 settings.json 全局默认。未指定时 fallback 到 `deepseek-v4-flash`。
+- **Grill 循环保护**：stage2-planning.js 的 Grill 循环有 6 轮硬上限 + 重复问题检测，防止无限循环。连续2轮零发现即提前退出。
 
 ---
 
