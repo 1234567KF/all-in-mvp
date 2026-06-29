@@ -1,37 +1,111 @@
 {
-   
-    "verbose": true,
-    "attribution": {
-        "commit": "Co-Authored-By: claude-flow <ruv@ruv.net>",
-        "pr": "🤖 Generated with [claude-flow](https://github.com/ruvnet/claude-flow)"
-    },
-    "env": {
-        "CLAUDE_CODE_ATTRIBUTION_HEADER":0,
-        "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
-        "CLAUDE_FLOW_V3_ENABLED": "true",
-        "CLAUDE_FLOW_HOOKS_ENABLED": "true",
-        "CLAUDECODENOFLICKER": "1",
-        "CLAUDE_CODE_ALWAYS_THINKING": "0",
-        "CLAUDE_CODE_STREAM_DELAY": "0",
-        "CLAUDE_CODE_WORKFLOWS": "1",
-        "DISABLE_GROWTHBOOK": "1"
-    },
-    "hooks": {
-        "PreToolUse": [
-            { "matcher": "Bash", "hooks": [{ "type": "command", "command": "rtk hook claude" }] },
-            { "matcher": "Bash|bash", "hooks": [{ "type": "command", "command": "lean-ctx hook rewrite" }] },
-            { "matcher": "Read|read|ReadFile|read_file|View|view|Grep|grep|Search|search|ListFiles|list_files|ListDirectory|list_directory", "hooks": [{ "type": "command", "command": "lean-ctx hook redirect" }] }
-        ],
-        "SessionStart": [
-            { "hooks": [{ "type": "command", "command": "node \".claude/hooks/context-mode-cache-heal.mjs\"" }] }
+  "env": {
+    "CLAUDE_CODE_ATTRIBUTION_HEADER": "0",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "CLAUDE_FLOW_V3_ENABLED": "true",
+    "CLAUDE_FLOW_HOOKS_ENABLED": "true",
+    "CLAUDECODENOFLICKER": "1",
+    "CLAUDE_CODE_ALWAYS_THINKING": "0",
+    "CLAUDE_CODE_STREAM_DELAY": "0",
+    "CLAUDE_CODE_WORKFLOWS": "1",
+    "DISABLE_GROWTHBOOK": "1",
+    "ULTRA_COST_EFFECTIVE_PLATFORM": "claude",
+    "ULTRA_COST_EFFECTIVE_LEVEL": "medium",
+    "ULTRA_COST_EFFECTIVE_PRESET": "standard"
+  },
+  "attribution": {
+    "commit": "Co-Authored-By: claude-flow <ruv@ruv.net>",
+    "pr": "🤖 Generated with [claude-flow](https://github.com/ruvnet/claude-flow)"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(node ultra-cost-effective/helpers/*.cjs:*)",
+      "Bash(node ultra-cost-effective/helpers/perf/*.cjs:*)",
+      "Bash(npm install -g lean-ctx-bin:*)",
+      "Bash(lean-ctx:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run lint:*)",
+      "Bash(cargo test:*)",
+      "Bash(cargo build:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(pytest:*)",
+      "Bash(go test:*)",
+      "Bash(go build:*)",
+      "Bash(go vet:*)",
+      "mcp__lean-ctx__ctx_read",
+      "mcp__lean-ctx__ctx_edit",
+      "Edit(/.claude/skills/all-in-mvp/**)"
+    ]
+  },
+  "model": "deepseek-v4-flash",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ultra-cost-effective/helpers/tokenforge-hook.cjs",
+            "timeout": 5000
+          }
         ]
-    },
-    "model": "deepseek-v4-flash",
-    "modelPreferences": {
-        "preferred": "deepseek-v4-flash",
-        "fallbacks": [
-            "deepseek-v4-pro"
-        ],
-        "automaticallySwitch": true
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ultra-cost-effective/helpers/agent-spawn-guard.cjs",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ultra-cost-effective/helpers/perf/perf-tracker.cjs --capture",
+            "timeout": 3000
+          },
+          {
+            "type": "command",
+            "command": "node ultra-cost-effective/helpers/context-interceptor.cjs post-tool-use",
+            "timeout": 3000
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ultra-cost-effective/helpers/model-router.cjs hook",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  },
+  "verbose": true,
+  "modelPreferences": {
+    "preferred": "deepseek-v4-flash",
+    "fallbacks": [
+      "deepseek-v4-pro"
+    ],
+    "automaticallySwitch": true
+  },
+  "mcpServers": {
+    "lean-ctx": {
+      "command": "lean-ctx",
+      "args": [
+        "mcp"
+      ]
     }
+  }
 }

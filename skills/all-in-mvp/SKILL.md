@@ -6,11 +6,19 @@ metadata:
   stage-gates: true
   max-parallel-agents: 3
   based_on: MVP白皮书 v2.5.0
+  platform: claude-code
+  workflow-ready: true
+  workflow-scripts:
+    - ".claude/workflows/stage1-prd.js"
+    - ".claude/workflows/stage2-planning.js"
+    - ".claude/workflows/stage3-execution.js"
+    - ".claude/workflows/stage4-integration.js"
 ---
 
-# Parallel MVP Pipeline — 多 Agent 并行开发流水线
+# Parallel MVP Pipeline — Claude Code Dynamic Workflow 版
 
 > 基于《MVP 白皮书 v2.5》的多 Agent 并行工程方法论。3 种运行模式、严格门禁、最大并行度。增量变更强制走完整流水线（§0.2决策树）。
+> **Claude Code 特化版**：利用 Dynamic Workflows（`CLAUDE_CODE_WORKFLOWS=1`）实现脚本化编排，主 Agent 只触发 Workflow + 审查结果，中间状态不占上下文。
 
 ---
 
@@ -26,9 +34,72 @@ metadata:
 
 ---
 
+## Dynamic Workflow 执行模式（Claude Code 专有）
+
+> **核心变化**：每个 Stage 对应一个独立的 Workflow 脚本（`.claude/workflows/*.js`），脚本自包含，prompt 内嵌，主 Agent 只需触发脚本并审查产出卡片。
+
+### 主 Agent 角色转变
+
+| 旧模式（手动 spawn） | 新模式（脚本驱动） |
+|-------------------|---------------------|
+| 主 Agent 逐个角色扮演，切换 context | 主 Agent = 指挥官，触发 Workflow + 审查产出卡片 |
+| 子 Agent prompt 靠主 Agent 对话切换 | 子 Agent 在 Workflow 脚本内独立运行 |
+| 所有中间状态在主会话上下文累积 | 中间状态在 Workflow 内隔离，主会话始终干净 |
+| 中断后只能重来 | Workflow 支持 `resumeFromRunId` 断点续跑 |
+| 最大并行度靠主 Agent 手动管理 | Workflow 自动按依赖图 fan-out |
+
+### Workflow 触发时机
+
+```
+用户需求进入 → 主 Agent 判定模式（轻量/全量/增量）
+    │
+    ├── 轻量模式 → 主 Agent 直接执行 QuickStep1-3（不触发 Workflow）
+    │
+    └── 全量/增量模式 → 主 Agent 依次触发 Workflow：
+          Workflow({ scriptPath: '.claude/workflows/stage1-prd.js', args: {...} })
+          → Workflow({ scriptPath: '.claude/workflows/stage2-planning.js', args: {...} })
+          → Workflow({ scriptPath: '.claude/workflows/stage3-execution.js', args: {...} })
+          → Workflow({ scriptPath: '.claude/workflows/stage4-integration.js', args: {...} })
+          每个 Workflow 完成后，主 Agent 审查产出卡片，确认门禁通过，再触发下一个
+```
+
+### Workflow 脚本架构
+
+4 个脚本各自自包含，不依赖运行时读取 `agents/*.md` 文件（prompt 内嵌模板字符串）：
+
+```
+.claude/workflows/
+├── stage1-prd.js          ← PM Agent (pro) → PRD.md
+├── stage2-planning.js     ← Architect(pro) + Domain Expert(flash) + Grill(pro) + Mock/Test(flash)
+├── stage3-execution.js    ← Coordinator(flash) + Backend/Frontend(flash) + Code Reviewer(pro)
+└── stage4-integration.js  ← Stage4 Coord(pro) + Merge/Integration/Test(flash) + Debug(flash)
+```
+
+### 如何触发 Workflow
+
+**方式一（推荐）**：直接调用脚本
+```javascript
+// Stage1: 需求对齐
+Workflow({ scriptPath: '.claude/workflows/stage1-prd.js', args: { userRequirement: '用户需求', context: '业务背景' } })
+
+// Stage2: 规划校验
+Workflow({ scriptPath: '.claude/workflows/stage2-planning.js', args: { prdPath: 'PRD.md' } })
+
+// Stage3: 并行开发
+Workflow({ scriptPath: '.claude/workflows/stage3-execution.js', args: { taskPath: 'task.md', modulesDir: 'modules/' } })
+
+// Stage4: 集成验收
+Workflow({ scriptPath: '.claude/workflows/stage4-integration.js', args: { srcDir: 'src/', mockDir: 'mocks/' } })
+```
+
+**方式二**：开启 ultracode 模式后直接描述任务
+> "Build a [项目描述] using the all-in-mvp pipeline"
+
+---
+
 ## 快速通道：简单任务判定（进入流水线前执行）
 
-> **在执行完整流水线之前，先判定任务复杂度。简单任务走轻量通道，避免杀鸡用牛刀。**
+> **在执行完整流水线之前，先判定任务复杂度。简单任务走轻量通道，避免不必要的 Workflow 开销。**
 
 ### 判定流程
 
@@ -44,8 +115,8 @@ metadata:
   6. 无外部服务调用？
   7. 仅 1 个全栈模块？
     ↓
-满足 ≥3 项 → 轻量模式（3 步直通车）
-不满足     → 全量/增量模式（完整流水线）
+满足 ≥3 项 → 轻量模式（3 步直通车，主 Agent 直接执行，不触发 Workflow）
+不满足     → 全量/增量模式（触发完整 Workflow 流水线）
 ```
 
 ### 轻量模式 QuickStep 1-3
@@ -90,7 +161,7 @@ QuickStep3: 轻量验收
 - 用户追加需求导致模块 ≥2
 - 需要多角色权限
 
-> 升级时保留已产出代码，补充执行全量 Stage1→Stage2。
+> 升级时保留已产出代码，补充执行全量 Stage1→Stage2 Workflow。
 
 ---
 
@@ -110,97 +181,119 @@ QuickStep3: 轻量验收
 
 ---
 
-## Stage 1: 需求对齐（串行，产品经理 Agent）
+## Stage 1: 需求对齐 — Workflow(`.claude/workflows/stage1-prd.js`)
 
 **前置条件**：用户需求已收集（如果模糊则先执行 Inversion 采集）。
-**产出物**：`PRD.md`
+**产出物**：`PRD.md` + `decisions/stage1-prd-decisions.md`
+**执行方式**：触发 Workflow 脚本（串行，单子任务）
+**模型**：`deepseek-v4-pro`
 
-### 执行步骤
+### 触发方式
 
-1. 用 `agents/pm-agent.md` 作为 prompt 创建产品经理 Agent
-2. 给 Agent 提供：用户原始需求 + 业务背景
-3. Agent 产出 PRD.md，必须包含：
-   - 项目背景与目标
-   - 术语定义
-   - 风险与约束
-   - 业务主流程（用户旅程）
-   - ER 关系 / 核心领域模型
-   - 功能需求（含验收标准）
-   - 核心实体状态图
-4. **门禁**：PRD 评审通过后锁定为 `PRD.md`。锁定的 PRD 是后续所有阶段的唯一基准。
+```javascript
+Workflow({
+  scriptPath: '.claude/workflows/stage1-prd.js',
+  args: {
+    userRequirement: '用户原始需求描述',
+    context: '可选业务背景'
+  }
+})
+```
+
+### 脚本内部流程
+
+```
+phase('需求理解')
+  → PM Agent (pro) 读取用户需求
+  → 产出理解确认清单 (CEP 卡片)
+  → [Human Gate] 用户确认 ✅/⚠️
+phase('PRD撰写')
+  → PM Agent (pro) 产出 PRD 草案（受 PRD_SCHEMA 约束）
+  → 主 Agent 审查 9 章节齐全性
+  → 标记 PRD.md 为【锁定版】
+```
+
+### PRD 必须包含
+
+| 章节 | 内容 |
+|------|------|
+| 项目背景 | 业务目标、价值主张、范围边界 |
+| 术语定义 | 领域术语、缩写、业务概念 |
+| 风险与约束 | 技术约束、业务约束、合规要求 |
+| 业务主流程 | 核心用户旅程、系统交互图 |
+| ER 关系 | 实体关系图、核心领域模型 |
+| 功能需求 | 功能描述、验收标准、业务规则 |
+| 复杂/核心专题 | 复杂业务逻辑的深度分析 |
+| 核心实体状态图 | 状态机、状态转换条件 |
+| 验收标准 | 集成测试场景（happy path + exception path） |
+
+### 门禁
+
+PRD 评审通过后锁定为 `PRD.md`。锁定的 PRD 是后续所有阶段的唯一基准。
+
+### 主 Agent 动作
+
+1. 触发 `Workflow({ scriptPath: '.claude/workflows/stage1-prd.js', args: { userRequirement, context } })`
+2. 等待 Workflow 完成
+3. 审查产出卡片，确认 9 个章节齐全
+4. 门禁通过 → 标记 PRD.md 为【锁定版】→ 进入 Stage2
 
 ---
 
-## Stage 2: 规划阶段（①→②→↺→③a∥③b-1∥③b-2→③c）
+## Stage 2: 规划阶段 — Workflow(`.claude/workflows/stage2-planning.js`)
 
 **前置条件**：`PRD.md` 已存在并锁定。
+**执行方式**：触发 Workflow 脚本（内部串行+并行混合）
+**模型分配**：Architect/Grill → pro，其余 flash
 
-### 2.1 ① 架构专家（串行）
+### 触发方式
 
-1. 用 `agents/architect.md` 创建架构 Agent
-2. 输入：`PRD.md`
-3. 产出：`spec.md`（架构设计）+ `schema.sql`（数据库 Schema）+ `api-contract.yaml`（接口契约）
-4. **技术栈绑定**：询问用户偏好的技术栈或使用默认（Hono + Drizzle + SQLite + Vue 3 + Vite + shadcn/vue）
-5. 产出物标记为【初版】
+```javascript
+Workflow({
+  scriptPath: '.claude/workflows/stage2-planning.js',
+  args: { prdPath: 'PRD.md' }
+})
+```
 
-### 2.2 ② 业务领域专家（串行）
+### 脚本内部流程
 
-1. 用 `agents/domain-expert.md` 创建业务领域 Agent
-2. 输入：`PRD.md` + `spec.md` + `schema.sql` + `api-contract.yaml`（均为【初版】）
-3. 产出：
-   - `task.md` — 任务全景图（所有模块清单 + 依赖关系）
-   - `modules/<module>.md` — 每个模块的详细定义（边界、接口、表、验收标准）
-4. 产出物标记为【初版】
+```
+// 串行段 — pipeline 模式
+阶段① Architect (pro)
+  → 输入: PRD.md
+  → MQAP: 理解确认清单 → CEP 卡片 → 产出
+  → 产出: spec.md + schema.sql + api-contract.yaml【初版】
 
-### 2.3 ↺ 拷问审查循环（grill review）
+阶段② Domain Expert (flash)
+  → 输入: PRD.md + 阶段①产出【初版】
+  → MQAP: 理解确认清单 → CEP 卡片 → 产出
+  → 产出: task.md + modules/<module>.md【初版】
 
-**在 ① 和 ② 之间运行的双向校验。**
+阶段↺ Grill Review (pro) — 循环算法
+  → 输入: 阶段① + 阶段②产出
+  → 双向校验（需求覆盖 / 模块边界 / 术语一致性 / 验收标准）
+  → 循环: 发现不一致 → 修正(flash) → 重新审查
+  → 终止: 连续2轮零发现 或 6轮硬上限
+  → 通过 → 所有产出物升级为【锁定版】
 
-1. 用 `agents/grill-review.md` 创建审查 Agent
-2. 审查 Agent 对照 `PRD.md`（基准），检查：
-   - 需求覆盖完整性：PRD 的功能需求在 spec.md 中都有对应接口/表？
-   - 模块边界合理性：module docs 与 schema + api-contract 一致？
-   - 术语一致性：PRD / spec / module docs 中同一概念用同一术语？
-   - 验收标准对齐：module docs 的验收标准完整覆盖 PRD 的验收标准？
-3. 发现不一致 → 写审查报告 → ①/② 分别修正 → 重新审查
-4. **循环上限 3 轮**，仍不一致 → 输出「未决问题清单」→ 由人类决策
-5. 全部通过 → 所有产出物升级为【锁定版】
+// barrier: 串行段全部通过后才进入并行段
 
-### 2.4 ③a Mock 服务（与 ③b 并行）
+阶段③a Mock Service (flash) ────┐
+阶段③b-1 Unit Tests (flash, ≤2) ─┤ 并行
+阶段③b-2 E2E Tests (flash, 串行) ─┤
+阶段③c Test Review (flash) ────┘ 等③a+③b全完成
+  → 4项检查: 文件存在性 / API路由有效性 / 场景覆盖 / fixture一致性
+  → 通过标准: 无 ERROR
+```
 
-1. 用 `agents/mock-service.md` 创建 Mock Agent
-2. 输入：`api-contract.yaml`【锁定版】+ `task.md`【锁定版】
-3. 产出：`mocks/` 目录下的完整 Mock 服务
-   - 支持所有接口 happy path + 主要 exception path
-   - 按模块组织目录结构（与 Stage3 后端分配一致）
-   - Mock 外部依赖（支付、短信、存储、推送）
+### 审查维度速查
 
-### 2.5 ③b-1 单模块 API 集成测试（最多 2 Agent 内部并行）
-
-1. 按模块平分给 2 个测试 Agent（Agent 数量 ≦ 模块数）
-2. 用 `agents/single-module-test.md` 创建测试 Agent
-3. 输入：对应模块的 `<module>.md`【锁定版】+ `api-contract.yaml`【锁定版】
-4. 产出：`integration-tests/modules/<module>.test.ts`
-   - 覆盖：接口输入/输出验证、数据库读写正确性、异常路径
-   - **此阶段只写用例，不执行**
-
-### 2.6 ③b-2 业务条线 E2E 测试（1 Agent 串行）
-
-1. 用 `agents/scenario-test.md` 创建端到端测试 Agent
-2. 输入：`PRD.md`【锁定版】（业务主流程）+ `task.md`【锁定版】（模块依赖）
-3. 产出：`integration-tests/scenarios/<scenario>.test.ts`
-   - 覆盖完整用户旅程、跨模块协作流程
-   - 准备场景级共享测试数据
-   - **此阶段只写用例，不执行**
-
-### 2.7 ③c 测试用例静态审查（串行收尾，1 Agent）
-
-1. 用 `agents/test-review.md` 创建审查 Agent
-2. 输入：`integration-tests/modules/` + `integration-tests/scenarios/` + `<module>.md` + `PRD.md`
-3. 产出：测试用例审查报告
-4. 4项检查：文件存在性、API路由有效性、场景覆盖完整性、fixture类型一致性
-5. **此阶段只审查用例结构，不执行测试（执行在 Stage4）**
-6. 通过标准：无 ERROR 级别问题。WARNING 可记录但通过。
+| 审查项 | 检查方式 | 谁审谁 |
+|--------|---------|--------|
+| 需求覆盖完整性 | PRD 中的功能需求是否在 spec.md 中都有对应接口/表？ | 审查 ① |
+| 模块边界合理性 | module docs 的接口/表分配是否与 schema + api-contract 一致？ | 审查 ② |
+| 术语一致性 | PRD / spec / module docs 中同一概念是否使用同一术语？ | 审查双方 |
+| 验收标准对齐 | module docs 的验收标准是否完整覆盖 PRD 的验收标准？ | 审查 ② |
 
 ### Stage 2 门禁
 
@@ -215,30 +308,56 @@ QuickStep3: 轻量验收
 - [ ] `integration-tests/scenarios/` 已产出
 - [ ] ③c 测试用例静态审查通过（无 ERROR）
 
+### 主 Agent 动作
+
+1. 触发 `Workflow({ scriptPath: '.claude/workflows/stage2-planning.js', args: { prdPath: 'PRD.md' } })`
+2. Workflow 脚本内部自动处理串行/并行编排
+3. 等待 Workflow 完成
+4. 审查产出卡片，逐项核对门禁清单
+5. 门禁全部通过 → 进入 Stage3
+
 ---
 
-## Stage 3: 执行阶段（大规模并行）
+## Stage 3: 执行阶段 — Workflow(`.claude/workflows/stage3-execution.js`)
 
 **前置条件**：Stage 2 门禁全部通过。
+**执行方式**：触发 Workflow 脚本（大规模并行 fan-out）
+**模型分配**：Code Reviewer → pro，其余 flash
 
-### 3.0 Pipeline Coordinator（调度中枢）
+### 触发方式
 
-1. 用 `agents/pipeline-coordinator.md` 创建 Coordinator Agent
-2. Coordinator 读取 `task.md` 中的模块依赖图，按策略分批分配：
-
-**调度算法**（每轮执行）：
-```
-1. 依赖图筛选 → 找出「依赖已满足 ∩ 未分配」的候选模块
-2. 专家匹配 → 按领域优先分配（认证/业务核心/工具配置）
-3. 兜底分配 → 剩余模块给任意空闲 Agent
-4. 记录分配 → 模块标记为「已分配」，写入分配日志
+```javascript
+Workflow({
+  scriptPath: '.claude/workflows/stage3-execution.js',
+  args: { taskPath: 'task.md', modulesDir: 'modules/' }
+})
 ```
 
-**后端 Agent 并行上限：3 | 前端 Agent 并行上限：3**
+### 脚本内部流程
+
+```
+// 第0步: Coordinator 先行
+Coordinator (flash)
+  → 读取 task.md 依赖图
+  → 输出: 模块分配方案（轮次表 + 依赖关系）
+
+// 主循环: 按依赖图分批 fan-out
+while 存在未完成模块:
+  1. 扫描状态 → 候选集 = 依赖已满足 ∩ 未分配
+  2. 并行分配候选集:
+     parallel(后端模块 → agent(BACKEND_DEV_PROMPT, flash))
+  3. 每模块完成后:
+     if 需要审查 → agent(CODE_REVIEW_PROMPT, pro)
+  4. 标记 DONE → 释放下游 → 下一轮
+
+// 前端并行开发（基于 Mock）
+parallel(页面模块 → agent(FRONTEND_DEV_PROMPT, flash))
+  前端 Agent 不可自标 DONE（涉及 CSS → VISUAL_PENDING）
+```
 
 ### 文件状态标记（Agent 间通信协议）
 
-Agent 通过模块目录下的状态文件通信。Coordinator 扫描文件系统判断进度。
+Agent 通过模块目录下的状态文件通信。Workflow 脚本扫描文件系统判断进度。
 
 #### DONE 标记
 
@@ -258,11 +377,10 @@ checks:
   coverage: 85.2
   code_review: PASS
   flaky_test: false
-  # 视觉验证（v2.5 新增）
-  visual_computed_style: PASS      # 防线1：computed style 断言全部通过
-  visual_regression: PASS           # 防线2：像素对比通过（或首次基线已生成）
-  visual_layout_integrity: PASS     # 防线3：无元素重叠、DOM结构正确
-  visual_human_review: NOT_REQUIRED # REQUIRED | NOT_REQUIRED（CSS/布局变更时 REQUIRED）
+  visual_computed_style: PASS
+  visual_regression: PASS
+  visual_layout_integrity: PASS
+  visual_human_review: NOT_REQUIRED
 issues: []
 ```
 
@@ -270,7 +388,6 @@ issues: []
 
 文件路径：`src/modules/<module>/BLOCKED`
 
-文件内容（YAML 格式）：
 ```yaml
 module: <module_name>
 agent: <agent_name>
@@ -282,188 +399,136 @@ action_required: <what_needs_to_happen>
 suggested_fix: <optional_suggestion>
 ```
 
-#### VISUAL_PENDING 标记（v2.5 新增）
+#### VISUAL_PENDING 标记
 
-> **前端专用**：当修改涉及 CSS/布局/动画，Agent 不能自行判定视觉正确。标记 VISUAL_PENDING 等待人类视觉确认。
+> **前端专用**：当修改涉及 CSS/布局/动画，Agent 不能自行判定视觉正确。
 
 文件路径：`src/modules/<module>/VISUAL_PENDING`
 
-文件内容（YAML 格式）：
 ```yaml
 module: <module_name>
-agent: <agent_name>
 status: VISUAL_PENDING
-pending_at: "YYYY-MM-DD HH:MM:SS"
-reason: |
-  CSS layout changed — header + sidebar restructured
-  Cannot verify visual correctness autonomously
-screenshots:
-  before: "screenshots/dashboard-before.png"
-  after: "screenshots/dashboard-after.png"
-  diff: "screenshots/dashboard-diff.png"
-automated_checks:
-  computed_style: PASS
-  visual_regression: FAIL  # expected after layout change
-  layout_integrity: PASS
+reason: CSS layout changed — cannot verify visual correctness autonomously
 review_url: "http://localhost:5173/dashboard"
 human_action: "请打开 review_url 查看视觉效果，确认无误后删除此文件并创建 DONE"
 ```
 
-#### V_PENDING 标记（v2.5 新增，轻量版）
+#### 状态扫描规则
 
-> 用于非模块目录（如 `src/views/`、`src/components/`）。前端页面完成但等待视觉确认。
-
-文件路径：`src/views/<page>/V_PENDING` 或 `src/components/<component>/V_PENDING`
-
-文件内容（简化 YAML）：
-```yaml
-page: <page_name>
-status: V_PENDING
-reason: <一句话原因>
-review_url: <本地预览地址>
-```
-
-#### Coordinator 扫描规则
-
-| 模块目录状态 | 含义 | Coordinator 动作 |
-|------------|------|-----------------|
+| 模块目录状态 | 含义 | Workflow 动作 |
+|------------|------|-------------|
 | 目录不存在 | 未分配 | 下一轮扫描时分配 |
 | 目录存在，无状态文件 | 已分配，开发中 | 等待 |
 | DONE 存在 | 已完成 | 释放下游依赖模块 |
 | BLOCKED 存在 | 开发阻塞 | 读取原因，决定降级或等待 |
-| DEFER 存在 | 主动推迟 | 级联DEFER下游依赖模块，其余模块继续执行 |
-| VISUAL_PENDING 存在 | 前端视觉待人类确认 | **不作为DONE**，不释放下游；通知人类审核 |
-| V_PENDING 存在 | 前端页面视觉待确认 | 同 VISUAL_PENDING |
+| DEFER 存在 | 主动推迟 | 级联DEFER下游依赖模块 |
+| VISUAL_PENDING 存在 | 前端视觉待人类确认 | **不作为DONE**，通知人类审核 |
 | DONE 和 BLOCKED 同时存在 | 已完成但有遗留问题 | 标记为 DONE（遗留问题进 Stage4） |
 | DONE 和 VISUAL_PENDING 同时存在 | 非法状态 | ERROR：Agent 违规自标 DONE |
 
-### 3.1 后端团队：TDD 开发
-
-1. Coordinator 分配模块给后端 Agent（最多 3 个并行）
-2. 每个后端 Agent 用 `agents/backend-tdd.md` 创建
-3. 每个 Agent 遵循 Red→Green→Refactor 微循环
-4. 产出：`src/modules/<module>/`（routes + service + schema + types + test）
-
-### 3.2 前端团队：基于 Mock 开发
-
-1. Coordinator 分配页面给前端 Agent（最多 3 个并行）
-2. 每个前端 Agent 用 `agents/frontend-dev.md` 创建
-3. 所有 API 调用指向 Mock 服务
-4. 产出：`src/views/` + `src/components/` + `src/composables/`
-
-### 3.3 测试团队：持续补充边界用例
-
-- 在后端开发过程中持续补充复杂边界用例
-- 后端每完成一个新模块，补充该模块的边界测试
-
 ### Stage 3 门禁 (MUST — v2.5 视觉强化)
 
-**测试门禁强化**：每个模块必须通过完整的5层测试 + 3道视觉防线才能标记DONE。
+每个模块必须通过完整的5层测试 + 3道视觉防线才能标记DONE：
 
 - [ ] 后端全部模块 DONE（模块目录下存在 DONE 标记）
 - [ ] 前端全部页面 DONE（或 VISUAL_PENDING 已由人类确认后转 DONE）
 - [ ] **L1 单元测试**：所有Service函数、纯函数、工具函数测试通过
 - [ ] **L2 API集成测试**：每个路由的happy+error path测试通过
 - [ ] **L3 数据库集成测试**：事务、迁移、约束测试通过
-- [ ] **L4 有头浏览器测试**：真实浏览器渲染、交互测试通过（本地验证）
+- [ ] **L4 有头浏览器测试**：真实浏览器渲染、交互测试通过
 - [ ] **L5 无头CI测试**：Playwright headless测试通过
-- [ ] **V1 视觉样式断言**：computed style 断言全部通过（颜色/尺寸/间距/排版/布局/定位/边框）
-- [ ] **V2 视觉回归快照**：像素对比通过（或首次基线已生成）
-- [ ] **V3 布局完整性**：无元素重叠、DOM结构正确、z-index层级正确
+- [ ] **V1 视觉样式断言**：computed style 断言全部通过
+- [ ] **V2 视觉回归快照**：像素对比通过
+- [ ] **V3 布局完整性**：无元素重叠、DOM结构正确
 - [ ] **覆盖率 ≥ 80%**（statements + branches + functions）
 - [ ] **无 flaky tests**：同一测试运行10次全部通过
 - [ ] Code Review 无 P0 问题
-- [ ] **前端无未解决的 VISUAL_PENDING**（全部由人类确认或判定为 NOT_REQUIRED）
+- [ ] **前端无未解决的 VISUAL_PENDING**
 
-### Stage 3 测试执行流程
+### 测试执行流程
 
 ```bash
 # 每个模块开发完成后必须执行：
-
-# 1. L1-L3 后端测试
 npx vitest run --coverage
-
-# 2. V1 视觉样式断言（computed style）
 npx playwright test tests/visual/<page>.visual.spec.ts
-
-# 3. V2 视觉回归快照（像素对比）
 npx playwright test tests/visual/<page>.screenshot.spec.ts
-
-# 4. V3 布局完整性检查
 npx playwright test tests/visual/<page>.visual.spec.ts -g "overlapping"
-
-# 5. L4 有头浏览器测试（本地人工验证）
 npx playwright test --project=chromium-headed
-
-# 6. L5 无头CI测试
 npx playwright test --project=chromium-headless
-
-# 7. 覆盖率检查（必须 ≥ 80%）
 npx vitest run --coverage --reporter=json
-
-# 8. 稳定性检查（运行3次确保无flaky）
 for i in {1..3}; do npx vitest run; done
 ```
 
+### 主 Agent 动作
+
+1. 触发 `Workflow({ scriptPath: '.claude/workflows/stage3-execution.js', args: { taskPath, modulesDir } })`
+2. Workflow 脚本内部：
+   - Coordinator 运行 → 输出分配方案
+   - 按依赖图并行 fan-out 后端+前端子任务
+   - 扫描 DONE/BLOCKED/VISUAL_PENDING 标记
+   - 按需触发 Code Review
+3. Workflow 完成后，主 Agent 审查门禁清单
+4. 特别检查：无未解决的 VISUAL_PENDING（人类确认所有前端页面）
+5. 门禁全部通过 → 进入 Stage4
+
 ---
 
-## Stage 4: 集成与验收（串行收敛）
+## Stage 4: 集成与验收 — Workflow(`.claude/workflows/stage4-integration.js`)
 
 **前置条件**：Stage 3 门禁全部通过。
+**执行方式**：触发 Workflow 脚本（串行收敛）
+**模型分配**：Stage4 Coordinator → pro，其余 flash
 
-### 4.0 Stage4 Coordinator（集成协调者）
+### 触发方式
 
-1. 用 `agents/stage4-coordinator.md` 创建 Stage4 Coordinator Agent
-2. 编排 4.1-4.5 子阶段执行顺序
-3. 接收联调问题 → 分类（契约/实现/理解偏差）→ 分发（后端/前端/Mock）
-4. 跟踪Bug修复状态，执行最终门禁检查
-5. 可复用 Stage3 Pipeline Coordinator 实例（已有全局上下文）
-
-### 4.1 后端模块合并（四步子流程）
-
-- 合并各模块路由到统一入口
-- 验证全局 Schema 一致性
-- 运行全量单元测试
-
-### 4.2 前后端联调
-
-- 前端切换 Mock → 真实后端 API
-- 按模块逐个联调
-- 记录接口不匹配问题
-
-**联调问题记录模板**（每个不匹配问题一条记录，写入 `integration-issues.md`）：
-
-```markdown
-## 联调问题记录
-
-### #ISSUE-001: [问题简述]
-
-| 字段 | 值 |
-|------|-----|
-| **发现时间** | YYYY-MM-DD HH:MM |
-| **涉及模块** | <module_name> |
-| **涉及接口** | `METHOD /api/xxx` |
-| **预期行为** | [api-contract.yaml 中的定义] |
-| **实际行为** | [联调中观察到的偏差] |
-| **偏差类型** | 响应格式不一致 / 状态码不一致 / 字段缺失 / 字段类型不一致 / 路由不存在 |
-| **影响范围** | 前端哪些页面/组件受影响 |
-| **修复方式** | 修正后端 / 修正契约 / 修正前端 |
-| **修复状态** | 待修复 / 已修复 / 已确认无需修复 |
-| **修复人** | <agent_name> |
+```javascript
+Workflow({
+  scriptPath: '.claude/workflows/stage4-integration.js',
+  args: { srcDir: 'src/', mockDir: 'mocks/' }
+})
 ```
 
-### 4.3 集成测试执行
+### 脚本内部流程
 
-- 运行 `integration-tests/modules/` + `integration-tests/scenarios/`
-- 输出测试报告
+```
+阶段4.1 后端合并 (flash)
+  → 合并各模块路由到统一入口（app.ts/main.ts）
+  → 验证全局 Schema 一致性
+  → 运行全量单元测试
+  → 输出合并报告
 
-### 4.4 Bug 修复
+阶段4.2 前后端联调 (flash)
+  → 前端切换 Mock → 真实后端 API
+  → 按模块逐个联调
+  → 记录接口不匹配到 integration-issues.md
+  → 问题分类: 契约问题 / 实现问题 / 理解偏差 / Mock偏差
 
-用 `agents/debug-fixer.md` 创建 Debug Agent，按需执行修复循环。
+阶段4.3 集成测试 (flash)
+  → 运行 integration-tests/modules/ + scenarios/
+  → 运行 L1-L5 全部测试层 + V1-V3 视觉检查
+  → 输出测试报告 + 覆盖率报告
+
+阶段4.4 Bug修复循环 (flash dev + pro reviewer)
+  → while 存在未修复 Bug && 轮次 < 3:
+      → agent(分析 Bug 列表, pro)
+      → agent(修复 Bug, flash)
+      → 回归测试验证
+  → 3 轮后仍有 Bug → 标记 BLOCKED
+
+→ 质量审计输出
+→ 交付归档 delivery/
+```
+
+### 联调问题分类
+
+| 分类 | 判定 | 修复方向 |
+|------|------|---------|
+| 契约问题 | 接口响应与 api-contract.yaml 不一致 | 修正后端 |
+| 实现问题 | 接口符合契约但数据/逻辑错误 | 修正后端 |
+| 理解偏差 | 前端对接口理解与后端设计不一致 | 修正前端 + Mock |
+| Mock偏差 | Mock 与真实 API 不一致 | 修正 Mock |
 
 ### Stage 4 门禁（终检）(MUST — v2.5 视觉强化)
-
-**终检强化**：集成验收必须通过完整的质量审计清单，含视觉验证。
 
 - [ ] 后端合并完成，路由一致性验证通过
 - [ ] 前后端联调全部模块通过
@@ -478,31 +543,17 @@ for i in {1..3}; do npx vitest run; done
 - [ ] **Mock-后端一致性**：7个维度全部匹配
 - [ ] 无 P0/P1 Bug 遗留
 
-### 质量审计清单（迭代20最终版）
+### 质量审计清单
 
 ```markdown
 # MVP质量审计报告
 
 ## 测试覆盖审计
-- [ ] L1 单元测试：所有模块的Service/工具函数
-- [ ] L2 API集成测试：所有路由的happy+error path
-- [ ] L3 数据库集成测试：事务、迁移、约束
-- [ ] L4 有头浏览器测试：真实浏览器验证
-- [ ] L5 无头CI测试：CI环境验证
-- [ ] V1 视觉样式测试：computed style 断言（颜色/尺寸/间距/排版/布局/定位/边框）
-- [ ] V2 视觉回归测试：像素对比快照
-- [ ] V3 布局完整性测试：重叠检测、A11y tree快照
-- [ ] 状态机测试：所有状态流转（如有状态实体）
-- [ ] 数据权限测试：行级+列级权限（如有多角色）
-- [ ] 并发测试：共享资源的竞态条件
-- [ ] 边界测试：数值/时间/字符串/集合/分页
-- [ ] 安全测试：限流/防重放/SQL注入/XSS/越权/CSRF
-- [ ] 性能测试：负载/压力/内存泄漏
-- [ ] 错误恢复测试：事务回滚/重试/断路器
-- [ ] 地理围栏测试：距离/范围/多边形（如有地理位置）
-- [ ] 数据一致性测试：外键/唯一/CHECK/触发器
-- [ ] 迁移测试：数据完整性/格式转换/回滚
-- [ ] 前端组件测试：渲染/交互/状态/生命周期
+- [ ] L1-L5 全部测试层
+- [ ] V1-V3 视觉防线
+- [ ] 状态机测试 / 数据权限测试 / 并发测试 / 边界测试
+- [ ] 安全测试 / 性能测试 / 错误恢复测试
+- [ ] 前端组件测试
 
 ## 一致性审计
 - [ ] Mock与后端响应格式一致
@@ -514,10 +565,43 @@ for i in {1..3}; do npx vitest run; done
 
 ## 稳定性审计
 - [ ] 无flaky tests（连续运行10次全部通过）
-- [ ] 无视觉回归（像素diff通过）
-- [ ] 无内存泄漏（5分钟负载测试通过）
-- [ ] 无race condition（并发测试通过）
+- [ ] 无视觉回归
+- [ ] 无内存泄漏
+- [ ] 无race condition
 ```
+
+### 主 Agent 动作
+
+1. 触发 `Workflow({ scriptPath: '.claude/workflows/stage4-integration.js', args: { srcDir, mockDir } })`
+2. Workflow 脚本内部按 4.1→4.2→4.3→4.4 顺序执行
+3. 主 Agent 审查最终测试报告 + 质量审计清单
+4. 确认无 P0/P1 Bug
+5. Stage4 门禁全部通过 → 交付
+
+---
+
+## Stage 5: 流程复盘与经验沉淀
+
+**前置条件**：Stage 4 门禁全部通过，项目已交付。
+**执行方式**：触发 Workflow 或主 Agent 直接执行（轻量）
+
+### 执行步骤
+
+1. 以 `agents/retrospective-agent.md` 为 prompt 创建复盘子任务
+2. 输入：`pipeline-execution-log.md` + `pipeline-metrics.json` + Bug 清单 + 审查报告历史
+3. 产出：`retrospective.md` + 可选白皮书修订提案
+4. 6项必须产出：
+   - 流程健康度评分（各 Stage 实际/预期耗时比值）
+   - Agent 效率分析（各角色产出质量、返工率）
+   - 契约偏差分析（spec.md 与实际实现的差异点）
+   - 模式提取（本次迭代验证有效的实践）
+   - 反模式记录（本次迭代暴露的流程缺陷）
+   - 白皮书修订建议（具体条款 + 修订理由）
+5. 异常模式识别（4项检查）：
+   - 模块实际耗时 > 预期 2 倍 → 高风险模块类型
+   - Agent CR 打回率 > 30% → 需强化该角色 Skill
+   - 阶段实际耗时 > 预期 1.5 倍 → 瓶颈阶段
+   - Bug 某类占比 > 40% → 系统性缺陷来源
 
 ---
 
@@ -540,7 +624,7 @@ for i in {1..3}; do npx vitest run; done
         ├── 改善实现：需求不变但改进技术方案/重构/性能优化
         └── 需求调整：文案变更、字段重命名、业务规则微调
               ↓
-        必须执行：PRD修订 → Stage2架构重审 → ↺审查 → Mock同步 → 测试更新 → Stage3开发 → Stage4集成
+        必须执行：PRD修订 → Stage2架构重审Workflow → ↺审查 → Mock同步 → 测试更新 → Stage3开发Workflow → Stage4集成Workflow
 ```
 
 > **判定红线**：如果变更需要修改 PRD 文档中的**任何一个字**（除错别字修正外），即归为非Bug变更，触发完整流水线。
@@ -549,32 +633,32 @@ for i in {1..3}; do npx vitest run; done
 
 | 迭代场景 | Stage1 | Stage2 | Stage3 | Stage4 |
 |---------|--------|--------|--------|--------|
-| 新增独立模块 | 更新PRD | 仅新模块走①→②→↺→③ | 仅新模块 | 集成新模块 |
-| 非Bug变更（需求迭代/新功能/改善实现/Issue修复） | 更新PRD | 重走①→②→↺→③（受影响模块+接口+Mock+测试） | 重新开发变更模块 | 重新集成 |
-| 纯Bug修复（逻辑修正，不改需求） | 跳过 | 跳过 | 跳过 | 仅Stage4 |
+| 新增独立模块 | 更新PRD | 仅新模块走Workflow | 仅新模块 | 集成新模块 |
+| 非Bug变更 | 更新PRD | 重走Workflow（受影响模块+接口+Mock+测试） | 重新开发变更模块 | 重新集成 |
+| 纯Bug修复 | 跳过 | 跳过 | 跳过 | 仅Stage4 Workflow |
 
 ---
 
 ## 并发模型速查
 
-| 阶段 | 并行度 | 说明 |
-|------|--------|------|
-| Stage1 | 串行 | 1 个 PM Agent |
-| Stage2 ① ② | 串行 | 架构先 → 业务后 |
-| Stage2 ↺ | 串行循环 | grill 审查 → 修正 → 再审 |
-| Stage2 ③a/③b-1/③b-2 | 并行 | Mock + 两类测试 同时启动 |
+| 阶段 | 并行度 | Workflow 内部策略 |
+|------|--------|-----------------|
+| Stage1 | 串行 | 1 个子任务（PM） |
+| Stage2 ①→② | 串行 | 架构先 → 业务后 |
+| Stage2 ↺ | 串行循环 | grill 审查 → 修正 → 再审（连续2轮零发现或6轮硬上限） |
+| Stage2 ③a/③b-1/③b-2 | 并行 | Mock + 两类测试 同时 fan-out |
 | Stage2 ③b-1 内部 | 最多 2 | 按模块平分 |
 | Stage2 ③c | 串行 | ③a/③b全部完成后方可启动 |
-| Stage3 后端 | 最多 3 | Coordinator 按依赖图调度 |
-| Stage3 前端 | 最多 3 | 基于 Mock，无需等后端 |
-| Stage4 | 串行 | Stage4 Coordinator 编排 → 合并 → 联调 → 测试 → 修复 |
-| Stage5 | 串行 | 1 个复盘 Agent |
+| Stage3 后端 | Dynamic | Workflow 按依赖图 fan-out，无硬上限 |
+| Stage3 前端 | Dynamic | 基于 Mock，与后端并行 fan-out |
+| Stage4 | 串行 | 合并 → 联调 → 测试 → 修复 |
+| Stage5 | 串行 | 1 个复盘子任务 |
 
 ---
 
 ## Gotchas
 
-- **先判定再执行**：进入流水线前先走「快速通道：简单任务判定」。简单任务用轻量模式（10-30min），不要对简单任务上全量四阶段流水线。
+- **先判定再执行**：进入流水线前先走「快速通道：简单任务判定」。简单任务用轻量模式（10-30min），不要对简单任务触发 Workflow 脚本。
 - **轻量模式无门禁**：简单任务用户确认即通过，不要求 L1-L5 全层测试。
 - **Stage 不可跳过（全量/增量）**：门禁是硬约束。不要在 Stage2 还没锁定时就开始 Stage3 的开发，Schema 变更会导致所有模块返工。
 - **Schema 锁定后严禁修改**：如果必须变更，先通知所有依赖该表的 Agent，走变更评审后再修改。
@@ -582,38 +666,115 @@ for i in {1..3}; do npx vitest run; done
 - **Mock 与真实 API 必须一致**：两者基于同一 `api-contract.yaml` 生成。联调发现问题时更新契约文件，然后同步修改 Mock 和真实实现。
 - **TDD 是强制流程**：先写测试（RED）→ 再写实现（GREEN）→ 最后重构（REFACTOR）。不允许先写实现再补测试。
 - **文件驱动通信**：Agent 之间不直接发消息。Coordinator 通过扫描文件系统中的 DONE/BLOCKED 标记了解进度。产出物文件即状态信号。
-- **Agent 数量上限**：后端 3 个、前端 3 个、测试 2 个。超过上限的模块按批次排队，不新增 Agent。
+- **Workflow 脚本自动伸缩并行度**：stage3-execution.js 按依赖图动态 fan-out，无硬上限。无依赖的模块可全部并行。
 - **确定性分配**：同输入必须产生相同的模块拆分和分配结果。`task.md` 中模块的枚举顺序作为稳定排序依据。
-- **DEFER vs BLOCKED**：DEFER 是主动推迟（不可/不值得本轮完成），BLOCKED 是被动等待（等待依赖/修复）。两者互斥——一个模块不能同时为两者。DEFER 会级联标记下游依赖模块。
-- **增量模式判定规则**：纯Bug修复（不改需求文档）→ 跳过 Stage1-3，直接 Stage4。非Bug变更（Issue/新功能/改善实现/需求调整）→ 必须走完整 PRD→Stage2→Stage3→Stage4 增量流水线。判定红线：只要变更需要修改 PRD 文档中任何一个字，即触发完整流水线。不确定时默认走非Bug变更流程。
-- **LLM 无视觉能力 — 不能自标 DONE**：修改了 CSS/布局/动画的前端 Agent 必须标记 VISUAL_PENDING，等待人类视觉确认。Agent 自行判定"看起来没问题"是 P0 错误。只有纯逻辑/文本修改可自标 DONE。
-- **toBeVisible() 不等于视觉正确**：Playwright 的 `toBeVisible()` 只检查 DOM 中存在且无 `display:none`/`visibility:hidden`。它不检查颜色是否正确、元素是否被遮挡、布局是否错乱。必须用三道视觉防线（V1 computed style + V2 像素对比 + V3 布局完整性）。
-- **VISUAL_PENDING 不可跳过**：Coordinator 将 VISUAL_PENDING 视为非完成状态，不释放下游依赖。人类未确认前 Stage4 门禁不能通过。
-- **视觉回归基线必须进 Git**：`tests/visual/*-snapshots/` 目录提交到版本控制。首次运行 `--update-snapshots` 生成基线后提交。后续 CI 中对比。
+- **DEFER vs BLOCKED**：DEFER 是主动推迟，BLOCKED 是被动等待。两者互斥。DEFER 会级联标记下游依赖模块。
+- **增量模式判定规则**：纯Bug修复（不改需求文档）→ 跳过 Stage1-3，直接 Stage4。非Bug变更 → 必须走完整增量流水线。
+- **LLM 无视觉能力 — 不能自标 DONE**：修改了 CSS/布局/动画的前端 Agent 必须标记 VISUAL_PENDING，等待人类视觉确认。
+- **VISUAL_PENDING 不可跳过**：Workflow 脚本将 VISUAL_PENDING 视为非完成状态，不释放下游依赖。
+- **视觉回归基线必须进 Git**：`tests/visual/*-snapshots/` 目录提交到版本控制。
+- **Workflow 脚本消耗更多 token**：动态 Workflow 脚本比手动模式消耗更多 token。轻量任务不要触发脚本。
+- **脚本自包含原则**：4 个 `.claude/workflows/*.js` 脚本内嵌了压缩版 prompt，不依赖运行时读取 `agents/*.md`。修改 prompt 时需同步更新脚本和 agents/ 目录。
+- **模型分配显式指定**：每个 agent() 调用通过 `model` 参数显式指定（pro/flash），不依赖 settings.json 全局默认。未指定时 fallback 到 `deepseek-v4-flash`。
+- **Grill 循环保护**：stage2-planning.js 的 Grill 循环有 6 轮硬上限 + 重复问题检测，防止无限循环。连续2轮零发现即提前退出。
+- **E2E 最低用例数（v2.6 强制）**：全量模式下 L5 E2E 用例数不得低于以下标准。低于此数视为测试不充分，Stage 4 门禁不通过。
 
----
+| 模块类型 | 最低 E2E 用例数 | 说明 |
+|---------|:-----------:|------|
+| 登录认证 | 12+ | 正常登录(每角色) + 错误密码 + 入口匹配 + 改密(3场景) + 找回密码 + 退出 |
+| 角色管理 | 6+ | CRUD + 启用/禁用 + 权限分配 + 非管理员拒绝 |
+| 账号管理 | 8+ | CRUD + 启用/禁用 + 重置密码 + 权限查看 + 手机号校验 + 非管理员拒绝 + 禁用后不可登录 |
+| 渠道管理 | 10+ | CRUD + 企业/个人类型 + 启用/禁用 + 重置密码 + 重复手机号 + 关联弹窗 + 销售可创建 |
+| 客户管理 | 8+ | CRUD + 单/多联系人 + 关联弹窗 + 渠道人员隔离 + 搜索 |
+| 商机管理 | 15+ | 创建+审核(通过/驳回/撤销)+跟进+状态流转+调配+编辑退回+汇总+伙伴报备+隔离 |
+| 首页仪表盘 | 3+ | KPI卡片 + 图表 + 按角色数据正确 |
+| 导航与布局 | 5+ | 菜单权限(每角色) + 页面跳转 + 用户信息显示 |
+| **合计最低** | **70+** | 覆盖所有 PRD 验收标准 + 所有角色 + 所有错误路径 |
 
-## Stage 5: 流程复盘与经验沉淀（串行，1 Agent）
+> 实际用例数按模块复杂度等比放大。如商机管理含状态机+审批流，应 20+。
 
-**前置条件**：Stage 4 门禁全部通过，项目已交付。
+### E2E 测试编写最佳实践（v2.6）
 
-### 执行步骤
+#### 1. 文件组织
+```
+tests/e2e/
+├── helpers.ts              # 共享辅助函数（账号准备、登录、导航）
+├── auth.spec.ts            # 登录认证（每角色 + 错误路径 + 改密）
+├── dashboard-navigation.spec.ts  # 首页 + 导航 + 布局
+├── roles-accounts.spec.ts  # 角色管理 + 账号管理
+├── channels.spec.ts        # 渠道管理
+├── customers.spec.ts       # 客户管理
+└── opportunities.spec.ts   # 商机管理（最复杂，用例最多）
+```
 
-1. 用 `agents/retrospective-agent.md` 创建复盘 Agent
-2. 输入：`pipeline-execution-log.md` + `pipeline-metrics.json` + Bug 清单 + 审查报告历史
-3. 产出：`retrospective.md` + 可选白皮书修订提案
-4. 6项必须产出：
-   - 流程健康度评分（各 Stage 实际/预期耗时比值）
-   - Agent 效率分析（各角色产出质量、返工率）
-   - 契约偏差分析（spec.md 与实际实现的差异点）
-   - 模式提取（本次迭代验证有效的实践）
-   - 反模式记录（本次迭代暴露的流程缺陷）
-   - 白皮书修订建议（具体条款 + 修订理由）
-5. 异常模式识别（4项检查）：
-   - 模块实际耗时 > 预期 2 倍 → 高风险模块类型
-   - Agent CR 打回率 > 30% → 需强化该角色 Skill
-   - 阶段实际耗时 > 预期 1.5 倍 → 瓶颈阶段
-   - Bug 某类占比 > 40% → 系统性缺陷来源
+#### 2. 账号准备自修复模式（MUST）
+```typescript
+// ✅ 正确：account ready 函数必须能处理脏状态
+export async function ensureAccountReady(request, phone, entry) {
+  // 尝试 1: 直接登录
+  let resp = await request.post(`${API}/auth/login`, { data: { phone, password: '123456', entryType: entry } });
+  // 尝试 2: 密码被改 → 自动重置
+  if (!resp.token) {
+    await request.post(`${API}/auth/forgot-password`, { data: { phone } });
+    resp = await request.post(...);
+  }
+  // 尝试 3: 仍失败 → 抛出明确错误
+  if (!resp.token) throw new Error(`Login failed for ${phone}`);
+  // 处理后 firstLogin
+  ...
+}
+```
+
+#### 3. 测试隔离（MUST）
+- 每个 `describe` 块开头 MUST 调用 `beforeAll` 重置所有种子账号
+- 测试间不共享可变状态 — 每个 `it` 可独立运行
+- 数据创建类测试在 `afterAll` 清理自己创建的数据
+
+#### 4. 选择器优先级
+| 优先级 | 选择器 | 示例 |
+|:--:|--------|------|
+| 1 | `getByText()` | `page.getByText('密码错误')` |
+| 2 | `getByRole()` | `page.getByRole('button', { name: '登录' })` |
+| 3 | `text=` 伪选择器 | `page.locator('text=渠道总数')` |
+| 4 | `[placeholder="..."]` | `page.locator('input[placeholder="请输入手机号"]')` |
+| 5 | `.class` / CSS | `page.locator('.glass-card')` — 最后手段 |
+
+#### 5. 错误处理与调试
+- 每个测试的断言 MUST 有明确的失败消息
+- 关键步骤后 `await page.waitForTimeout(500)` 避免 React 渲染竞态
+- 复杂交互（弹窗、模态框、alert）使用 `page.on('dialog', ...)` 监听
+- 失败测试自动截图（Playwright `trace: 'on-first-retry'`）
+
+#### 6. 覆盖率检查清单
+- [ ] 每个 API 端点至少 1 个 Happy Path + 1 个 Error Path 用例
+- [ ] 每个角色至少 1 个权限校验用例
+- [ ] 每个表单至少 1 个空字段提交 + 1 个正常提交用例
+- [ ] 状态机每个状态转换至少 1 个用例
+- [ ] 数据隔离至少 1 个跨角色验证用例
+
+#### 7. 全流程深度测试（v2.7 强制）
+
+> **页面可打开 ≠ 功能正确。每个角色必须测完整的"创建→提交→验证→列表可见"闭环。**
+
+| 角色 | 必测全流程 | 最少用例 |
+|------|-----------|:------:|
+| 管理员 | 登录 → 查看统计 → 创建角色 → 创建账号 → 审核商机(通过+驳回+撤销) → 商机调配 → 查看汇总 | 8 |
+| 销售人员 | 登录 → 创建渠道 → 创建客户(关联渠道) → 创建商机 → 查看我的商机 → 商机跟进 → 查看汇总 | 7 |
+| 渠道人员 | 登录 → 创建客户 → 报备商机 → 查看商机列表 → 查看商机状态 → 验证数据隔离 | 6 |
+
+**工作流测试文件组织：**
+```
+tests/e2e/
+├── workflows-internal.spec.ts  # 内部全流程（管理员+销售）
+└── workflows-partner.spec.ts   # 合作伙伴全流程（渠道人员）
+```
+
+**工作流测试强制要求：**
+- MUST 用 API 直接创建数据（避免前端表单选择器的不稳定性）
+- MUST 验证创建的数据出现在对应列表/详情中
+- MUST 覆盖每个角色的核心业务闭环
+- MUST 验证跨角色数据隔离
+- MUST 在 beforeAll 中确保账号就绪（firstLogin 已处理）
 
 ---
 
@@ -625,7 +786,6 @@ for i in {1..3}; do npx vitest run; done
 | **Drizzle ORM** | 数据库 ORM | 类型安全、Schema 即代码 |
 | **SQLite** | 数据库 | 零配置、原型阶段首选 |
 | **Vue 3 + Vite** | 前端框架 | 组合式 API、快速 HMR |
-| **shadcn/vue** | UI 组件库 | 默认 UI 框架，现代化设计 |
 | **Vitest** | 测试框架 | 与 Vite 共享配置、高性能 |
 | **OpenAPI 3.0** | 接口契约 | 标准化的 API 描述格式 |
 

@@ -25,17 +25,16 @@
 | 路由 | Vue Router | 4.x | |
 | 状态 | Pinia | 2.x | |
 | HTTP | Axios | 1.x | |
-| UI框架 | shadcn/vue（默认） | 6选1，选定后不可混用 |
+| UI框架 | 6选1（见下） | | 选定后不可混用 |
 
 ### UI 框架选择（按项目类型）
 
 | 项目类型 | 推荐 | 备选 |
 |----------|------|------|
-| 默认（无特殊需求） | **shadcn/vue** | Tailwind CSS |
 | 企业后台/B端 | Ant Design Vue | Element Plus / Arco Design |
 | 通用管理/电商 | Element Plus | Ant Design Vue |
 | 现代品牌化Web | Tailwind CSS | shadcn/vue |
-| 自定义设计+预置组件 | **shadcn/vue** | Tailwind CSS |
+| 自定义设计+预置组件 | shadcn/vue | Tailwind CSS |
 | H5移动端 | Vant | Tailwind CSS |
 
 ## 测试（不可协商）

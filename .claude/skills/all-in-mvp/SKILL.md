@@ -677,6 +677,104 @@ Workflow({
 - **脚本自包含原则**：4 个 `.claude/workflows/*.js` 脚本内嵌了压缩版 prompt，不依赖运行时读取 `agents/*.md`。修改 prompt 时需同步更新脚本和 agents/ 目录。
 - **模型分配显式指定**：每个 agent() 调用通过 `model` 参数显式指定（pro/flash），不依赖 settings.json 全局默认。未指定时 fallback 到 `deepseek-v4-flash`。
 - **Grill 循环保护**：stage2-planning.js 的 Grill 循环有 6 轮硬上限 + 重复问题检测，防止无限循环。连续2轮零发现即提前退出。
+- **E2E 最低用例数（v2.6 强制）**：全量模式下 L5 E2E 用例数不得低于以下标准。低于此数视为测试不充分，Stage 4 门禁不通过。
+
+| 模块类型 | 最低 E2E 用例数 | 说明 |
+|---------|:-----------:|------|
+| 登录认证 | 12+ | 正常登录(每角色) + 错误密码 + 入口匹配 + 改密(3场景) + 找回密码 + 退出 |
+| 角色管理 | 6+ | CRUD + 启用/禁用 + 权限分配 + 非管理员拒绝 |
+| 账号管理 | 8+ | CRUD + 启用/禁用 + 重置密码 + 权限查看 + 手机号校验 + 非管理员拒绝 + 禁用后不可登录 |
+| 渠道管理 | 10+ | CRUD + 企业/个人类型 + 启用/禁用 + 重置密码 + 重复手机号 + 关联弹窗 + 销售可创建 |
+| 客户管理 | 8+ | CRUD + 单/多联系人 + 关联弹窗 + 渠道人员隔离 + 搜索 |
+| 商机管理 | 15+ | 创建+审核(通过/驳回/撤销)+跟进+状态流转+调配+编辑退回+汇总+伙伴报备+隔离 |
+| 首页仪表盘 | 3+ | KPI卡片 + 图表 + 按角色数据正确 |
+| 导航与布局 | 5+ | 菜单权限(每角色) + 页面跳转 + 用户信息显示 |
+| **合计最低** | **70+** | 覆盖所有 PRD 验收标准 + 所有角色 + 所有错误路径 |
+
+> 实际用例数按模块复杂度等比放大。如商机管理含状态机+审批流，应 20+。
+
+### E2E 测试编写最佳实践（v2.6）
+
+#### 1. 文件组织
+```
+tests/e2e/
+├── helpers.ts              # 共享辅助函数（账号准备、登录、导航）
+├── auth.spec.ts            # 登录认证（每角色 + 错误路径 + 改密）
+├── dashboard-navigation.spec.ts  # 首页 + 导航 + 布局
+├── roles-accounts.spec.ts  # 角色管理 + 账号管理
+├── channels.spec.ts        # 渠道管理
+├── customers.spec.ts       # 客户管理
+└── opportunities.spec.ts   # 商机管理（最复杂，用例最多）
+```
+
+#### 2. 账号准备自修复模式（MUST）
+```typescript
+// ✅ 正确：account ready 函数必须能处理脏状态
+export async function ensureAccountReady(request, phone, entry) {
+  // 尝试 1: 直接登录
+  let resp = await request.post(`${API}/auth/login`, { data: { phone, password: '123456', entryType: entry } });
+  // 尝试 2: 密码被改 → 自动重置
+  if (!resp.token) {
+    await request.post(`${API}/auth/forgot-password`, { data: { phone } });
+    resp = await request.post(...);
+  }
+  // 尝试 3: 仍失败 → 抛出明确错误
+  if (!resp.token) throw new Error(`Login failed for ${phone}`);
+  // 处理后 firstLogin
+  ...
+}
+```
+
+#### 3. 测试隔离（MUST）
+- 每个 `describe` 块开头 MUST 调用 `beforeAll` 重置所有种子账号
+- 测试间不共享可变状态 — 每个 `it` 可独立运行
+- 数据创建类测试在 `afterAll` 清理自己创建的数据
+
+#### 4. 选择器优先级
+| 优先级 | 选择器 | 示例 |
+|:--:|--------|------|
+| 1 | `getByText()` | `page.getByText('密码错误')` |
+| 2 | `getByRole()` | `page.getByRole('button', { name: '登录' })` |
+| 3 | `text=` 伪选择器 | `page.locator('text=渠道总数')` |
+| 4 | `[placeholder="..."]` | `page.locator('input[placeholder="请输入手机号"]')` |
+| 5 | `.class` / CSS | `page.locator('.glass-card')` — 最后手段 |
+
+#### 5. 错误处理与调试
+- 每个测试的断言 MUST 有明确的失败消息
+- 关键步骤后 `await page.waitForTimeout(500)` 避免 React 渲染竞态
+- 复杂交互（弹窗、模态框、alert）使用 `page.on('dialog', ...)` 监听
+- 失败测试自动截图（Playwright `trace: 'on-first-retry'`）
+
+#### 6. 覆盖率检查清单
+- [ ] 每个 API 端点至少 1 个 Happy Path + 1 个 Error Path 用例
+- [ ] 每个角色至少 1 个权限校验用例
+- [ ] 每个表单至少 1 个空字段提交 + 1 个正常提交用例
+- [ ] 状态机每个状态转换至少 1 个用例
+- [ ] 数据隔离至少 1 个跨角色验证用例
+
+#### 7. 全流程深度测试（v2.7 强制）
+
+> **页面可打开 ≠ 功能正确。每个角色必须测完整的"创建→提交→验证→列表可见"闭环。**
+
+| 角色 | 必测全流程 | 最少用例 |
+|------|-----------|:------:|
+| 管理员 | 登录 → 查看统计 → 创建角色 → 创建账号 → 审核商机(通过+驳回+撤销) → 商机调配 → 查看汇总 | 8 |
+| 销售人员 | 登录 → 创建渠道 → 创建客户(关联渠道) → 创建商机 → 查看我的商机 → 商机跟进 → 查看汇总 | 7 |
+| 渠道人员 | 登录 → 创建客户 → 报备商机 → 查看商机列表 → 查看商机状态 → 验证数据隔离 | 6 |
+
+**工作流测试文件组织：**
+```
+tests/e2e/
+├── workflows-internal.spec.ts  # 内部全流程（管理员+销售）
+└── workflows-partner.spec.ts   # 合作伙伴全流程（渠道人员）
+```
+
+**工作流测试强制要求：**
+- MUST 用 API 直接创建数据（避免前端表单选择器的不稳定性）
+- MUST 验证创建的数据出现在对应列表/详情中
+- MUST 覆盖每个角色的核心业务闭环
+- MUST 验证跨角色数据隔离
+- MUST 在 beforeAll 中确保账号就绪（firstLogin 已处理）
 
 ---
 
