@@ -7,5 +7,8 @@ MVP白皮书.md
 node_modules/
 nul
 
+# UltraCostEffective
+.ultra-cost-effective-tracker.json
+
 # embedded repo
 ultra-cost-effective/
