@@ -5,7 +5,8 @@
 #  用法：
 #
 # ① giget 拉取后本地安装（推荐）：
-#    npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-project
+#    npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-project `
+#      --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"
 #    cd my-project
 #    .\install.ps1
 #
@@ -15,7 +16,7 @@
 # 原理：推库前 pre-push hook 已自动同步 skills →
 # .claude/skills/ + .qoder/skills/ + .trae/skills/，
 # 本脚本只需将已融合的技能复制到全局配置目录。
-# 同时自动清理根目录中的冗余文档文件。
+# 同时兜底清理根目录中的冗余文档文件（主防线是 --ignore）。
 # ============================================================
 
 param(
@@ -32,7 +33,7 @@ function Write-Header   { param([string]$M) Write-Host $M -ForegroundColor Cyan 
 
 function Test-Command { param([string]$C) return [bool](Get-Command -Name $C -ErrorAction SilentlyContinue) }
 
-# --- 清理根目录冗余文件（替代 giget --ignore）---
+# --- 清理根目录冗余文件（兜底：--ignore 是主防线，此处补漏）---
 function Clear-Root {
     param([string]$Root = ".")
     Write-Info "清理根目录冗余文件..."
@@ -107,7 +108,8 @@ function Show-Help {
     Write-Host ""
     Write-Host "示例："
     Write-Host "  # giget 拉取后安装（推荐）"
-    Write-Host "  npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-project"
+    Write-Host "  npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-project ``"
+    Write-Host "    --ignore `"AGENTS.md,...ultra-cost-effective/**`""
     Write-Host "  cd my-project ; .\install.ps1"
     Write-Host ""
     Write-Host "  # 远程一键安装"

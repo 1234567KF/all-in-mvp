@@ -7,7 +7,8 @@
 #  用法：
 #
 # ① giget 拉取后本地安装（推荐）：
-#    npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-project
+#    npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-project \
+#      --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"
 #    cd my-project
 #    chmod +x install.sh && ./install.sh
 #
@@ -17,7 +18,7 @@
 # 原理：推库前 pre-push hook 已自动同步 skills →
 # .claude/skills/ + .qoder/skills/ + .trae/skills/，
 # 本脚本只需将已融合的技能复制到全局配置目录。
-# 同时自动清理根目录中的冗余文档文件。
+# 同时兜底清理根目录中的冗余文档文件（主防线是 --ignore）。
 # ============================================================
 
 set -e
@@ -33,7 +34,7 @@ print_header()  { echo -e "${CYAN}$1${NC}"; }
 
 command_exists() { command -v "$1" >/dev/null 2>&1; }
 
-# --- 清理根目录冗余文件（替代 giget --ignore）---
+# --- 清理根目录冗余文件（兜底：--ignore 是主防线，此处补漏）---
 cleanup_root() {
     local root="${1:-.}"
     print_info "清理根目录冗余文件..."
@@ -106,7 +107,8 @@ show_help() {
     echo ""
     echo "示例："
     echo "  # giget 拉取后安装（推荐）"
-    echo "  npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-project"
+    echo "  npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-project \\"
+    echo "    --ignore \"AGENTS.md,...ultra-cost-effective/**\""
     echo "  cd my-project && ./install.sh"
     echo ""
     echo "  # 远程一键安装"
