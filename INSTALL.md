@@ -18,7 +18,7 @@
                       ▼ git push
                  GitHub 仓库（三平台目录已在仓库中且最新）
                       │
-                      ▼ npx giget 拉取
+                      ▼ npx giget 拉取（registry 简写）
               用户项目（无需额外下载/融合）
                       │
                       ▼ install.sh
@@ -35,13 +35,23 @@
 
 ```bash
 # macOS / Linux / WSL
-npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project --ignore "AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**" && cd my-mvp-project && chmod +x install.sh && ./install.sh
+npx giget all-in-mvp my-mvp-project --registry https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/registry && cd my-mvp-project && chmod +x install.sh && ./install.sh
 
 # Windows PowerShell
-npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project --ignore "AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"; cd my-mvp-project; .\install.ps1
+npx.cmd giget all-in-mvp my-mvp-project --registry https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/registry; cd my-mvp-project; .\install.ps1
 ```
 
-> 拉取模板 + 安装技能，一条命令完成。
+> 拉取模板 + 安装技能，一条命令完成。install.sh 自动清理根目录冗余文件。
+
+### 已切到项目根目录
+
+```bash
+# macOS / Linux / WSL
+npx giget all-in-mvp . --force --registry https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/registry && chmod +x install.sh && ./install.sh
+
+# Windows PowerShell
+npx.cmd giget all-in-mvp . --force --registry https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/registry; .\install.ps1
+```
 
 ### 分步操作
 
@@ -52,17 +62,15 @@ npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project --ignore "AGENTS
 
 ```bash
 # macOS / Linux / WSL
-npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project \
-  --ignore "AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"
+npx giget all-in-mvp my-mvp-project --registry https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/registry
 cd my-mvp-project
 
-# Windows (PowerShell) — 注意用 npx.cmd 避免 npx.ps1 兼容性问题
-npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project `
-  --ignore "AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"
+# Windows PowerShell
+npx.cmd giget all-in-mvp my-mvp-project --registry https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/registry
 cd my-mvp-project
 ```
 
-> 💡 拉取后 `.claude/skills/` `.qoder/skills/` `.trae/skills/` 已是最新融合版本（推库前 pre-push hook 自动同步），无需额外下载。`--ignore` 排除根目录的文档/白皮书/截图等元数据。
+> 💡 拉取后 `.claude/skills/` `.qoder/skills/` `.trae/skills/` 已是最新融合版本（推库前 pre-push hook 自动同步），无需额外下载。install.sh 运行时会自动清理根目录冗余文件。
 
 ### Step 2：安装技能到 AI Agent
 
@@ -212,7 +220,7 @@ git push origin all-in-mvp --tags
 
 用户通过 tag 锁定版本：
 ```bash
-npx giget gh:1234567KF/all-in-mvp#v2.9.0 my-project --ignore "..."
+npx giget all-in-mvp#v2.9.0 my-project --registry https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/registry
 ```
 
 ---
@@ -221,11 +229,22 @@ npx giget gh:1234567KF/all-in-mvp#v2.9.0 my-project --ignore "..."
 
 ### Q: 为什么 giget 拉取后的项目没有 README 等文档？
 
-A: `--ignore` 参数有意排除了根目录的文档/白皮书/截图等元数据，只分发核心技能与脚本。文档在 [GitHub 仓库](https://github.com/1234567KF/all-in-mvp) 随时可查。
+A: install.sh 运行时会自动清理根目录的文档/白皮书/截图等冗余文件，只保留核心技能与脚本。文档在 [GitHub 仓库](https://github.com/1234567KF/all-in-mvp) 随时可查。
 
 ### Q: 安装一次后，其他项目还需要再运行 install.sh 吗？
 
 A: **不需要**。技能已安装到全局目录（`~/.qoder/skills/`、`~/.claude/skills/`），所有项目共享。更新技能时重新运行 install.sh 即可覆盖升级。
+
+### Q: 支持更短的命令吗？
+
+A: 支持。设置环境变量后可以省略 `--registry`：
+```bash
+# 全局设置（加入 ~/.bashrc 或 ~/.zshrc）
+export GIGET_REGISTRY=https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/registry
+
+# 之后只需
+npx giget all-in-mvp my-project
+```
 
 ### Q: 为什么 giget URL 需要 `#all-in-mvp`？
 

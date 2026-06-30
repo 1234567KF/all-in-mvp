@@ -6,9 +6,8 @@
 #
 #  用法：
 #
-# ① giget 拉取后本地安装（推荐）：
-#    npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-project \
-#      --ignore "AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"
+# ① giget registry 简写（推荐）：
+#    npx giget all-in-mvp my-project --registry https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/registry
 #    cd my-project
 #    chmod +x install.sh && ./install.sh
 #
@@ -18,6 +17,7 @@
 # 原理：推库前 pre-push hook 已自动同步 skills →
 # .claude/skills/ + .qoder/skills/ + .trae/skills/，
 # 本脚本只需将已融合的技能复制到全局配置目录。
+# 同时自动清理根目录中的冗余文档文件。
 # ============================================================
 
 set -e
@@ -32,6 +32,20 @@ print_info()    { echo -e "${BLUE}ℹ $1${NC}"; }
 print_header()  { echo -e "${CYAN}$1${NC}"; }
 
 command_exists() { command -v "$1" >/dev/null 2>&1; }
+
+# --- 清理根目录冗余文件（替代 giget --ignore）---
+cleanup_root() {
+    local root="${1:-.}"
+    print_info "清理根目录冗余文件..."
+    rm -f "$root/AGENTS.md" "$root/README.md" "$root/INSTALL.md" \
+          "$root/WhyMe.md" "$root/screenshot-1-full.png" "$root/nul" \
+          "$root/all-in-mvp-testing-mode-analysis.md" \
+          "$root/all-in-mvp-workflow-plan.md" \
+          "$root/MVP"* "$root/CLAUDE.md" 2>/dev/null || true
+    rm -rf "$root/shadcn" "$root/tools" "$root/overlays" \
+           "$root/ultra-cost-effective" 2>/dev/null || true
+    print_success "根目录清理完成"
+}
 
 # --- 安装技能到 Agent（从本地目录复制）---
 install_skills() {
@@ -91,9 +105,8 @@ show_help() {
     echo "  --help          帮助"
     echo ""
     echo "示例："
-    echo "  # giget 拉取后安装（推荐）"
-    echo "  npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-project \\"
-    echo "    --ignore \"AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**\""
+    echo "  # giget registry 简写（推荐）"
+    echo "  npx giget all-in-mvp my-project --registry https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/registry"
     echo "  cd my-project && ./install.sh"
     echo ""
     echo "  # 远程一键安装"
@@ -117,6 +130,10 @@ main() {
     print_header "============================"
     print_header "  all-in-mvp 技能安装 v2.9.0"
     print_header "============================"
+    echo ""
+
+    # 清理根目录冗余文件（替代 giget --ignore）
+    cleanup_root "$SCRIPT_DIR"
     echo ""
 
     # 检查 Node.js（giget fallback 需要）
