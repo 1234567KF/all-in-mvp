@@ -4,8 +4,8 @@
 #
 #  用法：
 #
-# ① giget registry 简写（推荐）：
-#    npx.cmd giget all-in-mvp my-project --registry https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/registry
+# ① giget 拉取后本地安装（推荐）：
+#    npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-project
 #    cd my-project
 #    .\install.ps1
 #
@@ -106,8 +106,8 @@ function Show-Help {
     Write-Host "  -Help          帮助"
     Write-Host ""
     Write-Host "示例："
-    Write-Host "  # giget registry 简写（推荐）"
-    Write-Host "  npx.cmd giget all-in-mvp my-project --registry https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/registry"
+    Write-Host "  # giget 拉取后安装（推荐）"
+    Write-Host "  npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-project"
     Write-Host "  cd my-project ; .\install.ps1"
     Write-Host ""
     Write-Host "  # 远程一键安装"

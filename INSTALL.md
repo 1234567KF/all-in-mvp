@@ -18,7 +18,7 @@
                       ▼ git push
                  GitHub 仓库（三平台目录已在仓库中且最新）
                       │
-                      ▼ npx giget 拉取（registry 简写）
+                      ▼ npx giget 拉取（gh: URL）
               用户项目（无需额外下载/融合）
                       │
                       ▼ install.sh
@@ -35,10 +35,10 @@
 
 ```bash
 # macOS / Linux / WSL
-npx giget all-in-mvp my-mvp-project --registry https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/registry && cd my-mvp-project && chmod +x install.sh && ./install.sh
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project && cd my-mvp-project && chmod +x install.sh && ./install.sh
 
 # Windows PowerShell
-npx.cmd giget all-in-mvp my-mvp-project --registry https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/registry; cd my-mvp-project; .\install.ps1
+npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project; cd my-mvp-project; .\install.ps1
 ```
 
 > 拉取模板 + 安装技能，一条命令完成。install.sh 自动清理根目录冗余文件。
@@ -47,10 +47,10 @@ npx.cmd giget all-in-mvp my-mvp-project --registry https://raw.githubusercontent
 
 ```bash
 # macOS / Linux / WSL
-npx giget all-in-mvp . --force --registry https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/registry && chmod +x install.sh && ./install.sh
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp . --force && chmod +x install.sh && ./install.sh
 
 # Windows PowerShell
-npx.cmd giget all-in-mvp . --force --registry https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/registry; .\install.ps1
+npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp . --force; .\install.ps1
 ```
 
 ### 分步操作
@@ -62,11 +62,11 @@ npx.cmd giget all-in-mvp . --force --registry https://raw.githubusercontent.com/
 
 ```bash
 # macOS / Linux / WSL
-npx giget all-in-mvp my-mvp-project --registry https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/registry
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project
 cd my-mvp-project
 
 # Windows PowerShell
-npx.cmd giget all-in-mvp my-mvp-project --registry https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/registry
+npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project
 cd my-mvp-project
 ```
 
@@ -220,7 +220,7 @@ git push origin all-in-mvp --tags
 
 用户通过 tag 锁定版本：
 ```bash
-npx giget all-in-mvp#v2.9.0 my-project --registry https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/registry
+npx giget gh:1234567KF/all-in-mvp#v2.9.0 my-project
 ```
 
 ---
@@ -234,17 +234,6 @@ A: install.sh 运行时会自动清理根目录的文档/白皮书/截图等冗�
 ### Q: 安装一次后，其他项目还需要再运行 install.sh 吗？
 
 A: **不需要**。技能已安装到全局目录（`~/.qoder/skills/`、`~/.claude/skills/`），所有项目共享。更新技能时重新运行 install.sh 即可覆盖升级。
-
-### Q: 支持更短的命令吗？
-
-A: 支持。设置环境变量后可以省略 `--registry`：
-```bash
-# 全局设置（加入 ~/.bashrc 或 ~/.zshrc）
-export GIGET_REGISTRY=https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/registry
-
-# 之后只需
-npx giget all-in-mvp my-project
-```
 
 ### Q: 为什么 giget URL 需要 `#all-in-mvp`？
 

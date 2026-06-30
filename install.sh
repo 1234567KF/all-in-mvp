@@ -6,8 +6,8 @@
 #
 #  用法：
 #
-# ① giget registry 简写（推荐）：
-#    npx giget all-in-mvp my-project --registry https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/registry
+# ① giget 拉取后本地安装（推荐）：
+#    npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-project
 #    cd my-project
 #    chmod +x install.sh && ./install.sh
 #
@@ -105,8 +105,8 @@ show_help() {
     echo "  --help          帮助"
     echo ""
     echo "示例："
-    echo "  # giget registry 简写（推荐）"
-    echo "  npx giget all-in-mvp my-project --registry https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/registry"
+    echo "  # giget 拉取后安装（推荐）"
+    echo "  npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-project"
     echo "  cd my-project && ./install.sh"
     echo ""
     echo "  # 远程一键安装"
