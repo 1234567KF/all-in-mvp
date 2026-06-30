@@ -33,11 +33,15 @@
 
 ### 一行命令（推荐）
 
-```bash
-# macOS / Linux / WSL
-npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project && cd my-mvp-project && chmod +x install.sh && ./install.sh
+**macOS / Linux / WSL：**
 
-# Windows PowerShell
+```bash
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project && cd my-mvp-project && chmod +x install.sh && ./install.sh
+```
+
+**Windows PowerShell：**
+
+```powershell
 npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project; cd my-mvp-project; .\install.ps1
 ```
 
@@ -45,11 +49,15 @@ npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project; cd my-mvp-proje
 
 ### 已切到项目根目录
 
-```bash
-# macOS / Linux / WSL
-npx giget gh:1234567KF/all-in-mvp#all-in-mvp . --force && chmod +x install.sh && ./install.sh
+**macOS / Linux / WSL：**
 
-# Windows PowerShell
+```bash
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp . --force && chmod +x install.sh && ./install.sh
+```
+
+**Windows PowerShell：**
+
+```powershell
 npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp . --force; .\install.ps1
 ```
 
@@ -60,12 +68,16 @@ npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp . --force; .\install.ps1
 
 #### Step 1：拉取项目模板
 
+**macOS / Linux / WSL：**
+
 ```bash
-# macOS / Linux / WSL
 npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project
 cd my-mvp-project
+```
 
-# Windows PowerShell
+**Windows PowerShell：**
+
+```powershell
 npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project
 cd my-mvp-project
 ```
@@ -74,11 +86,15 @@ cd my-mvp-project
 
 ### Step 2：安装技能到 AI Agent
 
-```bash
-# macOS / Linux / WSL
-chmod +x install.sh && ./install.sh
+**macOS / Linux / WSL：**
 
-# Windows (PowerShell)
+```bash
+chmod +x install.sh && ./install.sh
+```
+
+**Windows PowerShell：**
+
+```powershell
 .\install.ps1
 ```
 
@@ -219,6 +235,7 @@ git push origin all-in-mvp --tags
 ```
 
 用户通过 tag 锁定版本：
+
 ```bash
 npx giget gh:1234567KF/all-in-mvp#v2.9.0 my-project
 ```
