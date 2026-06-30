@@ -29,9 +29,26 @@
 
 ---
 
-## 🚀 快速开始（giget 一键拉取）
+## 🚀 快速开始
 
-### Step 1：拉取项目模板
+### 一行命令（推荐）
+
+```bash
+# macOS / Linux / WSL
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project --ignore "AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**" && cd my-mvp-project && chmod +x install.sh && ./install.sh
+
+# Windows PowerShell
+npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project --ignore "AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"; cd my-mvp-project; .\install.ps1
+```
+
+> 拉取模板 + 安装技能，一条命令完成。
+
+### 分步操作
+
+<details>
+<summary>点击展开分步说明</summary>
+
+#### Step 1：拉取项目模板
 
 ```bash
 # macOS / Linux / WSL
@@ -68,6 +85,8 @@ cd my-other-project
 qoder    # 或 claude
 > 使用 all-in-mvp 创建一个后台管理系统
 ```
+
+</details>
 
 ---
 
