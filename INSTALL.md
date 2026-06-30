@@ -12,15 +12,15 @@
 
 ```bash
 # macOS / Linux / WSL
-npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project --ignore "AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"
 cd my-mvp-project
 
 # Windows (PowerShell) — 注意用 npx.cmd 避免 npx.ps1 兼容性问题
-npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project
+npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project --ignore "AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"
 cd my-mvp-project
 ```
 
-> 💡 `npx giget` 自动去除 `.git` 目录，拿到一个干净的项目模板。**注意**：仓库默认分支为 `all-in-mvp`（非 `main`），因此 URL 必须显式指定 `#all-in-mvp`。指定 `#v2.8.0` 可锁定版本。
+> 💡 `npx giget` 自动去除 `.git` 目录，拿到一个干净的项目模板。`--ignore` 排除根目录下的文档/白皮书/截图等元数据文件，只保留技能、脚本和 IDE 配置等核心分发内容。**注意**：仓库默认分支为 `all-in-mvp`（非 `main`），因此 URL 必须显式指定 `#all-in-mvp`。指定 `#v2.8.0` 可锁定版本。
 
 ### Step 2：安装技能到 AI Agent
 
@@ -294,7 +294,7 @@ skills/all-in-mvp/
 
 ```bash
 # 1. 拉取项目模板
-npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-crm-project
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-crm-project --ignore "AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"
 cd my-crm-project
 
 # 2. 安装技能到 AI Agent
@@ -322,7 +322,7 @@ curl -fsSL https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/ins
 npx giget gh:1234567KF/all-in-mvp#all-in-mvp/skills ~/.qoder/skills --force
 
 # 或拉取最新模板后运行 sync
-npx giget gh:1234567KF/all-in-mvp#v2.8.0 .
+npx giget gh:1234567KF/all-in-mvp#v2.8.0 . --ignore "AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"
 ./install.sh
 ```
 
@@ -330,7 +330,7 @@ npx giget gh:1234567KF/all-in-mvp#v2.8.0 .
 
 ```bash
 # 指定 tag 确保团队使用相同版本
-npx giget gh:1234567KF/all-in-mvp#v2.8.0 my-project
+npx giget gh:1234567KF/all-in-mvp#v2.8.0 my-project --ignore "AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"
 cd my-project && ./install.sh
 
 # 或直接 clone 仓库
@@ -386,6 +386,10 @@ git push origin all-in-mvp --tags
 ---
 
 ## ❓ 常见问题
+
+### Q: giget 拉取后项目里没有 README 等文档文件？
+
+A: 这是有意为之。`--ignore` 参数排除了根目录的文档/白皮书/截图等元数据文件，只分发目标项目真正需要的技能、脚本和 IDE 配置。这些文档在 [GitHub 仓库](https://github.com/1234567KF/all-in-mvp) 上可以随时查阅。
 
 ### Q: 为什么 giget URL 需要 `#all-in-mvp`？
 

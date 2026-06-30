@@ -7,7 +7,7 @@
 #  三种用法：
 # 
 #  ① giget 拉取后本地安装（推荐）：
-#     npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project
+#     npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project --ignore "AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"
 #     cd my-mvp-project
 #     chmod +x install.sh && ./install.sh
 # 
@@ -176,7 +176,7 @@ install_to_agent() {
         # 方案 B：远程下载（curl 管道场景）
         if command_exists npx; then
             print_info "从 GitHub 远程下载 skills..."
-            npx giget "gh:1234567KF/all-in-mvp#all-in-mvp/skills" "$target_dir" --force
+            npx giget "gh:1234567KF/all-in-mvp#all-in-mvp/skills" "$target_dir" --force --ignore "AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"
             print_success "$agent 技能安装完成（远程下载）"
         else
             print_error "未找到 npx，请先安装 npm"
@@ -192,7 +192,7 @@ install_to_agent() {
             install_to_agent "$agent"
         else
             print_error "未找到本地 skills/ 目录，且 npx 不可用"
-            print_info "请先运行: npx giget gh:1234567KF/all-in-mvp#all-in-mvp"
+            print_info "请先运行: npx giget gh:1234567KF/all-in-mvp#all-in-mvp --ignore \"AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**\""
             return 1
         fi
     fi
@@ -234,7 +234,7 @@ install_all() {
     echo "     - 搭建 MVP 脚手架"
     echo ""
     print_info "快速创建新项目（giget 一键拉取）："
-    echo "  npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-new-project"
+    echo "  npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-new-project --ignore \"AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**\""
     echo "  cd my-new-project && ./install.sh"
     echo ""
     print_info "更新技能："
@@ -258,7 +258,7 @@ show_help() {
     echo ""
     echo "示例："
     echo "  # giget 拉取后本地安装（推荐）"
-    echo "  npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-project"
+    echo "  npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-project --ignore \"AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**\""
     echo "  cd my-project && ./install.sh"
     echo ""
     echo "  # 远程一键安装"

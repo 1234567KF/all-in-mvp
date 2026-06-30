@@ -5,7 +5,7 @@
 #  三种用法：
 # 
 #  ① giget 拉取后本地安装（推荐）：
-#     npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project
+#     npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project --ignore "AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"
 #     cd my-mvp-project
 #     .\install.ps1
 # 
@@ -172,7 +172,7 @@ function Install-ToAgent {
         # 方案 B：远程下载（irm 管道场景）
         if (Test-Command "npx") {
             Write-Info "从 GitHub 远程下载 skills..."
-            npx.cmd giget "gh:1234567KF/all-in-mvp#all-in-mvp/skills" $targetDir --force
+            npx.cmd giget "gh:1234567KF/all-in-mvp#all-in-mvp/skills" $targetDir --force --ignore "AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"
             Write-Success "$AgentName 技能安装完成（远程下载）"
         } else {
             Write-Error "未找到 npx，请先安装 npm"
@@ -188,7 +188,7 @@ function Install-ToAgent {
             Install-ToAgent $AgentName
         } else {
             Write-Error "未找到本地 skills/ 目录，且 npx 不可用"
-            Write-Info "请先运行: npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp"
+            Write-Info "请先运行: npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp --ignore `"AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**`""
             return
         }
     }
@@ -227,7 +227,7 @@ function Install-All {
     Write-Host "     - 搭建 MVP 脚手架"
     Write-Host ""
     Write-Info "快速创建新项目（giget 一键拉取）："
-    Write-Host "  npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-new-project"
+    Write-Host "  npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-new-project --ignore `"AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**`""
     Write-Host "  cd my-new-project ; .\install.ps1"
     Write-Host ""
     Write-Info "更新技能："
@@ -251,7 +251,7 @@ function Show-Help {
     Write-Host ""
     Write-Host "示例："
     Write-Host "  # giget 拉取后本地安装（推荐）"
-    Write-Host "  npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-project"
+    Write-Host "  npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-project --ignore `"AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**`""
     Write-Host "  cd my-project ; .\install.ps1"
     Write-Host ""
     Write-Host "  # 远程一键安装"
