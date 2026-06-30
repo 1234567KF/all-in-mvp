@@ -15,8 +15,8 @@
 npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project
 cd my-mvp-project
 
-# Windows (PowerShell)
-npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project
+# Windows (PowerShell) — 注意用 npx.cmd 避免 npx.ps1 兼容性问题
+npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project
 cd my-mvp-project
 ```
 
@@ -56,8 +56,8 @@ qoder    # 或 claude
 | **Qoder** | `npx giget gh:1234567KF/all-in-mvp#all-in-mvp/skills ~/.qoder/skills --force` |
 | **Claude Code** | `npx giget gh:1234567KF/all-in-mvp#all-in-mvp/skills ~/.claude/skills --force` |
 | **Gemini** | `npx giget gh:1234567KF/all-in-mvp#all-in-mvp/skills ~/.gemini/config/skills --force` |
-| **Windows Qoder** | `npx giget gh:1234567KF/all-in-mvp#all-in-mvp/skills "$HOME\.qoder\skills" --force` |
-| **Windows Claude** | `npx giget gh:1234567KF/all-in-mvp#all-in-mvp/skills "$HOME\.claude\skills" --force` |
+| **Windows Qoder** | `npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp/skills $env:USERPROFILE\.qoder\skills --force` |
+| **Windows Claude** | `npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp/skills $env:USERPROFILE\.claude\skills --force` |
 
 > 💡 **提示**：若技能后续有更新，只需重新运行上述对应助手的命令即可完成覆盖升级。
 
@@ -390,6 +390,22 @@ git push origin all-in-mvp --tags
 ### Q: 为什么 giget URL 需要 `#all-in-mvp`？
 
 A: 本仓库的默认分支是 `all-in-mvp`，而不是 GitHub 常见的 `main`。如果不指定分支，giget 默认尝试拉取 `main` 分支，会导致 404。`gh:1234567KF/all-in-mvp#all-in-mvp` 中的 `#all-in-mvp` 就是显式告诉 giget 去拉取哪个分支。
+
+### Q: Windows PowerShell 运行 `npx giget` 报错 `$LASTEXITCODE`？
+
+A: 这是 npm 自带的 `npx.ps1` 脚本与某些 PowerShell 版本的兼容性问题。**解决方法**：用 `npx.cmd` 替代 `npx`：
+```powershell
+# 错误 ❌
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp
+
+# 正确 ✅
+npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp
+```
+如果仍然失败，可以用 `node -e` 绕过：
+```powershell
+npm install -g giget
+node -e "require('giget').downloadTemplate('gh:1234567KF/all-in-mvp#all-in-mvp', {dir:'./my-project'})"
+```
 
 ### Q: 为什么需要同步三个目录？
 
