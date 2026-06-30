@@ -5,18 +5,20 @@
 #  用法：
 #
 # ① giget 拉取后本地安装（推荐）：
-#    npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-project `
-#      --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**,skills/**"
+#    npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-project
 #    cd my-project
 #    .\install.ps1
 #
-# ② 远程一键安装：
+# ② 当前目录安装（最常用）：
+#    npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp . --force; .\install.ps1
+#
+# ③ 远程一键安装：
 #    irm https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/install.ps1 | iex
 #
 # 原理：推库前 pre-push hook 已自动同步 skills →
 # .claude/skills/ + .qoder/skills/ + .trae/skills/，
+# .gitattributes export-ignore 确保 GitHub tarball 自动过滤冗余文件，
 # 本脚本只需将已融合的技能复制到全局配置目录。
-# 同时兜底清理根目录中的冗余文档文件（主防线是 --ignore）。
 # ============================================================
 
 param(
@@ -32,21 +34,6 @@ function Write-Info     { param([string]$M) Write-Host "ℹ $M" -ForegroundColor
 function Write-Header   { param([string]$M) Write-Host $M -ForegroundColor Cyan }
 
 function Test-Command { param([string]$C) return [bool](Get-Command -Name $C -ErrorAction SilentlyContinue) }
-
-# --- 清理根目录冗余文件（兜底：--ignore 是主防线，此处补漏）---
-function Clear-Root {
-    param([string]$Root = ".")
-    Write-Info "清理根目录冗余文件..."
-    @("AGENTS.md","README.md","INSTALL.md","WhyMe.md","screenshot-1-full.png","nul","CLAUDE.md") | ForEach-Object {
-        Remove-Item "$Root\$_" -Force -ErrorAction SilentlyContinue
-    }
-    Remove-Item "$Root\all-in-mvp-*.md" -Force -ErrorAction SilentlyContinue
-    Remove-Item "$Root\MVP*" -Force -ErrorAction SilentlyContinue
-    @("shadcn","tools","overlays","ultra-cost-effective","skills") | ForEach-Object {
-        Remove-Item "$Root\$_" -Recurse -Force -ErrorAction SilentlyContinue
-    }
-    Write-Success "根目录清理完成"
-}
 
 # --- 安装技能（从本地目录复制）---
 function Install-Skills {
@@ -107,10 +94,12 @@ function Show-Help {
     Write-Host "  -Help          帮助"
     Write-Host ""
     Write-Host "示例："
-    Write-Host "  # giget 拉取后安装（推荐）"
-    Write-Host "  npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-project ``"
-    Write-Host "    --ignore `"AGENTS.md,...skills/**`""
+    Write-Host "  # giget 拉取后安装"
+    Write-Host "  npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-project"
     Write-Host "  cd my-project ; .\install.ps1"
+    Write-Host ""
+    Write-Host "  # 当前目录安装（最常用）"
+    Write-Host "  npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp . --force; .\install.ps1"
     Write-Host ""
     Write-Host "  # 远程一键安装"
     Write-Host "  irm https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/install.ps1 | iex"
@@ -126,10 +115,6 @@ function Main {
     Write-Header "============================"
     Write-Header "  all-in-mvp 技能安装 v2.9.0"
     Write-Header "============================"
-    Write-Host ""
-
-    # 清理根目录冗余文件（替代 giget --ignore）
-    Clear-Root $script:SCRIPT_DIR
     Write-Host ""
 
     if ($Agent -ne "") {

@@ -18,8 +18,8 @@
                       ▼ git push
                  GitHub 仓库（三平台目录已在仓库中且最新）
                       │
-                      ▼ npx giget 拉取（--ignore 过滤冗余文件）
-              用户项目（仅 .claude/.qoder/.trae/ 等核心文件）
+                      ▼ npx giget 拉取（.gitattributes 自动过滤）
+              用户项目（仅 .claude/.qoder/.trae/skills/ + install）
                       │
                       ▼ install.sh
               复制到全局 ~/.qoder/skills/ ~/.claude/skills/
@@ -36,31 +36,29 @@
 **macOS / Linux / WSL：**
 
 ```bash
-npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**,skills/**" && cd my-mvp-project && chmod +x install.sh && ./install.sh
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-project && cd my-project && chmod +x install.sh && ./install.sh
 ```
 
 **Windows PowerShell：**
 
 ```powershell
-npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**,skills/**"; cd my-mvp-project; .\install.ps1
+npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-project; cd my-project; .\install.ps1
 ```
 
-> 拉取模板 + 安装技能，一条命令完成。`--ignore` 排除根目录文档/白皮书/截图/源 skills，install.sh 还有兜底清理。
+> 拉取模板 + 安装技能，一条命令完成。`.gitattributes` 自动过滤冗余文件，下载即干净。
 
-> 💡 **嫌长？** 加到 `~/.bashrc`：`alias mvp-init='npx giget gh:1234567KF/all-in-mvp#all-in-mvp . --force --ignore "..." && chmod +x install.sh && ./install.sh'`，之后只需 `mvp-init`。
-
-### 已切到项目根目录
+### 当前目录安装（最常用）
 
 **macOS / Linux / WSL：**
 
 ```bash
-npx giget gh:1234567KF/all-in-mvp#all-in-mvp . --force --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**,skills/**" && chmod +x install.sh && ./install.sh
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp . --force && chmod +x install.sh && ./install.sh
 ```
 
 **Windows PowerShell：**
 
 ```powershell
-npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp . --force --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**,skills/**"; .\install.ps1
+npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp . --force; .\install.ps1
 ```
 
 ### 分步操作
@@ -73,18 +71,18 @@ npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp . --force --ignore "AGENTS.md,C
 **macOS / Linux / WSL：**
 
 ```bash
-npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**,skills/**"
-cd my-mvp-project
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-project
+cd my-project
 ```
 
 **Windows PowerShell：**
 
 ```powershell
-npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**,skills/**"
-cd my-mvp-project
+npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-project
+cd my-project
 ```
 
-> 💡 拉取后 `.claude/skills/` `.qoder/skills/` `.trae/skills/` 已是最新融合版本（推库前 pre-push hook 自动同步），无需额外下载。`--ignore` 在下载阶段排除根目录文档/白皮书，install.sh 另有兜底清理。
+> 💡 拉取后 `.claude/skills/` `.qoder/skills/` `.trae/skills/` 已是最新融合版本。`.gitattributes` 自动过滤源文件/文档，下载即干净。
 
 ### Step 2：安装技能到 AI Agent
 
@@ -239,7 +237,7 @@ git push origin all-in-mvp --tags
 用户通过 tag 锁定版本：
 
 ```bash
-npx giget gh:1234567KF/all-in-mvp#v2.9.0 my-project --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**,skills/**"
+npx giget gh:1234567KF/all-in-mvp#v2.9.0 my-project
 ```
 
 ---
@@ -248,7 +246,7 @@ npx giget gh:1234567KF/all-in-mvp#v2.9.0 my-project --ignore "AGENTS.md,CLAUDE.m
 
 ### Q: 为什么 giget 拉取后的项目没有 README 等文档？
 
-A: `--ignore` 参数排除了根目录的文档/白皮书/截图/源 skills 等元数据，只下载 `.claude/` `.qoder/` `.trae/` 等核心文件。install.sh 也有兜底清理。文档在 [GitHub 仓库](https://github.com/1234567KF/all-in-mvp) 随时可查。
+A: `.gitattributes` 的 `export-ignore` 规则让 GitHub tarball 自动排除文档/白皮书/源 skills 等文件，下载即干净。文档在 [GitHub 仓库](https://github.com/1234567KF/all-in-mvp) 随时可查。
 
 ### Q: 安装一次后，其他项目还需要再运行 install.sh 吗？
 
