@@ -1,13 +1,25 @@
 #!/bin/bash
 
-# all-in-mvp 技能快速安装脚本
+# ============================================================
+#  all-in-mvp 一键安装分发脚本
+# ============================================================
 # 
-# 使用方法：
-#   curl -fsSL https://raw.githubusercontent.com/your-username/all-in-mvp/main/install.sh | bash
-#   
-#   或者下载后运行：
-#   chmod +x install.sh
-#   ./install.sh
+#  三种用法：
+# 
+#  ① giget 拉取后本地安装（推荐）：
+#     npx giget gh:1234567KF/all-in-mvp my-mvp-project
+#     cd my-mvp-project
+#     chmod +x install.sh && ./install.sh
+# 
+#  ② 已 clone 仓库直接安装：
+#     git clone https://github.com/1234567KF/all-in-mvp.git
+#     cd all-in-mvp
+#     chmod +x install.sh && ./install.sh
+# 
+#  ③ 远程一键安装：
+#     curl -fsSL https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/install.sh | bash
+# 
+# ============================================================
 
 set -e
 
@@ -147,13 +159,42 @@ install_to_agent() {
     # 创建目标目录
     mkdir -p "$target_dir"
     
-    # 使用 npx giget 下载
-    if command_exists npx; then
-        npx giget github:your-username/all-in-mvp/skills "$target_dir" --force
-        print_success "$agent 技能安装完成"
+    # 智能检测：优先使用本地 skills/，其次使用 sync 脚本，最后远程下载
+    if [ "$USE_LOCAL" = true ] && [ -d "$SCRIPT_DIR/skills" ]; then
+        # 方案 A：本地 skills 目录存在 → 使用 sync 脚本（含 overlay 融合）
+        if [ -f "$SCRIPT_DIR/scripts/sync-skills.js" ] && command_exists node; then
+            print_info "检测到本地仓库，使用 sync 脚本（含 overlay 融合）..."
+            node "$SCRIPT_DIR/scripts/sync-skills.js" --mode push --target "$agent" --force
+            print_success "$agent 技能安装完成（本地 sync）"
+        else
+            # 降级：直接复制
+            print_info "使用本地 skills/ 目录直接复制..."
+            cp -r "$SCRIPT_DIR/skills/"* "$target_dir/" 2>/dev/null || true
+            print_success "$agent 技能安装完成（本地复制）"
+        fi
+    elif [ "$USE_REMOTE" = true ]; then
+        # 方案 B：远程下载（curl 管道场景）
+        if command_exists npx; then
+            print_info "从 GitHub 远程下载 skills..."
+            npx giget "gh:1234567KF/all-in-mvp/skills" "$target_dir" --force
+            print_success "$agent 技能安装完成（远程下载）"
+        else
+            print_error "未找到 npx，请先安装 npm"
+            return 1
+        fi
     else
-        print_error "未找到 npx，请先安装 npm"
-        return 1
+        # 方案 C：自动检测
+        if [ -d "$SCRIPT_DIR/skills" ]; then
+            USE_LOCAL=true
+            install_to_agent "$agent"
+        elif command_exists npx; then
+            USE_REMOTE=true
+            install_to_agent "$agent"
+        else
+            print_error "未找到本地 skills/ 目录，且 npx 不可用"
+            print_info "请先运行: npx giget gh:1234567KF/all-in-mvp"
+            return 1
+        fi
     fi
 }
 
@@ -192,6 +233,10 @@ install_all() {
     echo "     - 使用 all-in-mvp 创建一个 CRM 系统"
     echo "     - 搭建 MVP 脚手架"
     echo ""
+    print_info "快速创建新项目（giget 一键拉取）："
+    echo "  npx giget gh:1234567KF/all-in-mvp my-new-project"
+    echo "  cd my-new-project && ./install.sh"
+    echo ""
     print_info "更新技能："
     echo "  重新运行此脚本即可更新到最新版本"
     echo ""
@@ -205,15 +250,19 @@ show_help() {
     echo "  ./install.sh [options]"
     echo ""
     echo "选项："
-    echo "  --agent <name>  指定安装到的 Agent (qoder/claude/gemini)"
-    echo "  --help          显示此帮助信息"
+    echo "  --agent <name>    指定安装到的 Agent (qoder/claude/gemini)"
+    echo "  --local           强制使用本地 skills/ 目录安装"
+    echo "  --remote          强制从 GitHub 远程下载安装"
+    echo "  --version         显示版本信息"
+    echo "  --help            显示此帮助信息"
     echo ""
     echo "示例："
-    echo "  # 安装到所有检测到的 Agent"
-    echo "  ./install.sh"
+    echo "  # giget 拉取后本地安装（推荐）"
+    echo "  npx giget gh:1234567KF/all-in-mvp my-project"
+    echo "  cd my-project && ./install.sh"
     echo ""
-    echo "  # 只安装到 Qoder"
-    echo "  ./install.sh --agent qoder"
+    echo "  # 远程一键安装"
+    echo "  curl -fsSL https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/install.sh | bash"
     echo ""
     echo "  # 只安装到 Claude Code"
     echo "  ./install.sh --agent claude"
@@ -221,7 +270,12 @@ show_help() {
 
 # 主函数
 main() {
-    # 解析参数
+    # 获取脚本所在目录
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    
+    # 默认模式：自动检测
+    USE_LOCAL=false
+    USE_REMOTE=false
     SPECIFIC_AGENT=""
     
     while [[ $# -gt 0 ]]; do
@@ -229,6 +283,18 @@ main() {
             --agent)
                 SPECIFIC_AGENT="$2"
                 shift 2
+                ;;
+            --local)
+                USE_LOCAL=true
+                shift
+                ;;
+            --remote)
+                USE_REMOTE=true
+                shift
+                ;;
+            --version)
+                echo "all-in-mvp installer v2.7.0"
+                exit 0
                 ;;
             --help)
                 show_help
@@ -245,6 +311,7 @@ main() {
     # 显示欢迎信息
     print_header "============================"
     print_header "  all-in-mvp 技能安装脚本"
+    print_header "  v2.7.0"
     print_header "============================"
     echo ""
     

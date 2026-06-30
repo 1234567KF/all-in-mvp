@@ -1,83 +1,74 @@
 # all-in-mvp 技能安装与分发指南
 
-一个完整的多 Agent 并行 MVP 开发流水线技能集，支持一键安装到多个 AI Agent 平台。
+一个完整的多 Agent 并行 MVP 开发流水线技能集，支持 `npx giget` 一键拉取项目模板，开箱即用。
 
 ---
 
-## 🚀 快速安装（推荐）
+## 🚀 快速开始（giget 一键拉取 — 推荐）
 
-### 方式一：一键安装所有技能
+> **最简方式**：用 `npx giget` 把 all-in-mvp 拉到本地作为 MVP 项目模板，然后运行 install.sh 安装技能到 AI Agent。
 
-使用 `npx giget` 命令，直接将技能下载并安装到对应 AI Agent 的全局配置目录中：
+### Step 1：拉取项目模板
 
-#### macOS / Linux / Git Bash / WSL
+```bash
+# macOS / Linux / WSL
+npx giget gh:1234567KF/all-in-mvp my-mvp-project
+cd my-mvp-project
 
-* **Qoder：**
-  ```bash
-  npx giget github:your-username/all-in-mvp/skills ~/.qoder/skills --force
-  ```
+# Windows (PowerShell)
+npx giget gh:1234567KF/all-in-mvp my-mvp-project
+cd my-mvp-project
+```
 
-* **Claude Code：**
-  ```bash
-  npx giget github:your-username/all-in-mvp/skills ~/.claude/skills --force
-  ```
+> 💡 `npx giget` 自动去除 `.git` 目录，拿到一个干净的项目模板。指定 `#v2.8.0` 可锁定版本。
 
-* **Gemini / Antigravity：**
-  ```bash
-  npx giget github:your-username/all-in-mvp/skills ~/.gemini/config/skills --force
-  ```
+### Step 2：安装技能到 AI Agent
 
-#### Windows (PowerShell)
+```bash
+# macOS / Linux / WSL
+chmod +x install.sh && ./install.sh
 
-* **Qoder：**
-  ```powershell
-  npx giget github:your-username/all-in-mvp/skills "$HOME\.qoder\skills" --force
-  ```
+# Windows (PowerShell)
+.\install.ps1
+```
 
-* **Claude Code：**
-  ```powershell
-  npx giget github:your-username/all-in-mvp/skills "$HOME\.claude\skills" --force
-  ```
+脚本会自动检测你安装的 AI Agent（Qoder / Claude Code / Gemini），并将技能安装到对应全局配置目录。
 
-* **Gemini / Antigravity：**
-  ```powershell
-  npx giget github:your-username/all-in-mvp/skills "$HOME\.gemini\config\skills" --force
-  ```
+### Step 3：开始使用
 
-#### Windows (CMD - 命令提示符)
+```bash
+# 在项目目录中启动 AI Agent
+qoder    # 或 claude
 
-* **Qoder：**
-  ```cmd
-  npx giget github:your-username/all-in-mvp/skills "%USERPROFILE%\.qoder\skills" --force
-  ```
+# 激活技能
+> 使用 all-in-mvp 创建一个 CRM 系统
+```
 
-* **Claude Code：**
-  ```cmd
-  npx giget github:your-username/all-in-mvp/skills "%USERPROFILE%\.claude\skills" --force
-  ```
+---
 
-* **Gemini / Antigravity：**
-  ```cmd
-  npx giget github:your-username/all-in-mvp/skills "%USERPROFILE%\.gemini\config\skills" --force
-  ```
+### 手动安装：只安装技能到 AI Agent
+
+如果你已有项目，只需要把技能安装到 AI Agent 全局配置目录：
+
+| 平台 | 命令 |
+|------|------|
+| **所有 Agent（自动检测）** | `curl -fsSL https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/install.sh \| bash` |
+| **Qoder** | `npx giget gh:1234567KF/all-in-mvp/skills ~/.qoder/skills --force` |
+| **Claude Code** | `npx giget gh:1234567KF/all-in-mvp/skills ~/.claude/skills --force` |
+| **Gemini** | `npx giget gh:1234567KF/all-in-mvp/skills ~/.gemini/config/skills --force` |
+| **Windows Qoder** | `npx giget gh:1234567KF/all-in-mvp/skills "$HOME\.qoder\skills" --force` |
+| **Windows Claude** | `npx giget gh:1234567KF/all-in-mvp/skills "$HOME\.claude\skills" --force` |
 
 > 💡 **提示**：若技能后续有更新，只需重新运行上述对应助手的命令即可完成覆盖升级。
 
----
-
-### 方式二：安装单个技能
-
-如果你只需要特定的技能，可以单独安装：
+### 安装单个技能
 
 ```bash
-# 安装 all-in-mvp 主技能
-npx giget github:your-username/all-in-mvp/skills/all-in-mvp ~/.qoder/skills/all-in-mvp --force
+# 只安装 all-in-mvp 主技能
+npx giget gh:1234567KF/all-in-mvp/skills/all-in-mvp ~/.qoder/skills/all-in-mvp --force
 
-# 安装 Pipeline Coordinator
-npx giget github:your-username/all-in-mvp/skills/kf-pipeline-coordinator ~/.qoder/skills/kf-pipeline-coordinator --force
-
-# 安装 E2E 测试技能
-npx giget github:your-username/all-in-mvp/skills/kf-mvp-test-e2e ~/.qoder/skills/kf-mvp-test-e2e --force
+# 只安装 Pipeline Coordinator
+npx giget gh:1234567KF/all-in-mvp/skills/kf-pipeline-coordinator ~/.qoder/skills/kf-pipeline-coordinator --force
 ```
 
 ---
@@ -299,37 +290,52 @@ skills/all-in-mvp/
 
 ## 🎯 使用示例
 
-### 示例 1：创建新项目
+### 示例 1：从零创建 MVP 项目（giget 模式）
 
 ```bash
-# 1. 安装技能
-npx giget github:your-username/all-in-mvp/skills ~/.qoder/skills --force
+# 1. 拉取项目模板
+npx giget gh:1234567KF/all-in-mvp my-crm-project
+cd my-crm-project
 
-# 2. 在新项目目录中启动 AI 助手
-cd my-new-project
+# 2. 安装技能到 AI Agent
+./install.sh
+
+# 3. 启动 AI Agent 并激活技能
 qoder
-
-# 3. 激活技能
 > 使用 all-in-mvp 创建一个 CRM 系统
 ```
 
-### 示例 2：更新技能
+### 示例 2：安装技能到已有项目
+
+```bash
+# 在你的项目目录中
+cd my-existing-project
+
+# 一键安装（远程）
+curl -fsSL https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/install.sh | bash -- --agent qoder
+```
+
+### 示例 3：更新技能到最新版
 
 ```bash
 # 重新运行安装命令即可覆盖升级
-npx giget github:your-username/all-in-mvp/skills ~/.qoder/skills --force
+npx giget gh:1234567KF/all-in-mvp/skills ~/.qoder/skills --force
+
+# 或拉取最新模板后运行 sync
+npx giget gh:1234567KF/all-in-mvp#v2.8.0 .
+./install.sh
 ```
 
-### 示例 3：团队协作
+### 示例 4：锁定版本（团队协作）
 
 ```bash
-# 团队成员各自安装
-npx giget github:your-username/all-in-mvp/skills ~/.claude/skills --force
+# 指定 tag 确保团队使用相同版本
+npx giget gh:1234567KF/all-in-mvp#v2.8.0 my-project
+cd my-project && ./install.sh
 
-# 确保使用相同版本
-git clone https://github.com/your-username/all-in-mvp.git
-cd all-in-mvp
-node scripts/sync-skills.js
+# 或直接 clone 仓库
+git clone https://github.com/1234567KF/all-in-mvp.git
+cd all-in-mvp && npm run sync
 ```
 
 ---
@@ -348,14 +354,11 @@ node scripts/sync-skills.js
 
 ```bash
 # 克隆仓库
-git clone https://github.com/your-username/all-in-mvp.git
+git clone https://github.com/1234567KF/all-in-mvp.git
 cd all-in-mvp
 
-# 安装依赖
-npm install
-
 # 同步技能到本地 AI Agent
-npm run sync-skills
+npm run sync
 
 # 测试技能
 cd test-project
@@ -367,15 +370,17 @@ qoder
 
 ```bash
 # 1. 更新技能内容
-# 2. 提交更改
+# 2. 更新版本号（package.json）
+# 3. 提交更改
 git add .
 git commit -m "feat: 添加新功能"
 
-# 3. 推送到远程
-git push origin main
+# 4. 打 tag（与 package.json 版本对应）
+git tag v2.8.0
+git push origin all-in-mvp --tags
 
-# 4. 团队成员更新
-npx giget github:your-username/all-in-mvp/skills ~/.qoder/skills --force
+# 5. 用户通过 tag 拉取
+# npx giget gh:1234567KF/all-in-mvp#v2.8.0 my-project
 ```
 
 ---
@@ -432,5 +437,5 @@ MIT License
 
 ## 📞 支持
 
-- GitHub Issues: https://github.com/your-username/all-in-mvp/issues
-- 文档: https://github.com/your-username/all-in-mvp/wiki
+- GitHub Issues: https://github.com/1234567KF/all-in-mvp/issues
+- 版本历史: https://github.com/1234567KF/all-in-mvp/tags

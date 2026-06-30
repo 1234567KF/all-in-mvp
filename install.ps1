@@ -1,13 +1,29 @@
-# all-in-mvp 技能快速安装脚本 (Windows PowerShell)
+# ============================================================
+#  all-in-mvp 一键安装分发脚本 (Windows PowerShell)
+# ============================================================
 # 
-# 使用方法：
-#   irm https://raw.githubusercontent.com/your-username/all-in-mvp/main/install.ps1 | iex
-#   
-#   或者下载后运行：
-#   .\install.ps1
+#  三种用法：
+# 
+#  ① giget 拉取后本地安装（推荐）：
+#     npx giget gh:1234567KF/all-in-mvp my-mvp-project
+#     cd my-mvp-project
+#     .\install.ps1
+# 
+#  ② 已 clone 仓库直接安装：
+#     git clone https://github.com/1234567KF/all-in-mvp.git
+#     cd all-in-mvp
+#     .\install.ps1
+# 
+#  ③ 远程一键安装：
+#     irm https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/install.ps1 | iex
+# 
+# ============================================================
 
 param(
     [string]$Agent = "",
+    [switch]$Local,
+    [switch]$Remote,
+    [switch]$Version,
     [switch]$Help
 )
 
@@ -139,13 +155,42 @@ function Install-ToAgent {
         New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
     }
     
-    # 使用 npx giget 下载
-    if (Test-Command "npx") {
-        npx giget github:your-username/all-in-mvp/skills $targetDir --force
-        Write-Success "$AgentName 技能安装完成"
+    # 智能检测：优先使用本地 skills/，其次使用 sync 脚本，最后远程下载
+    if ($Local -and (Test-Path "$SCRIPT_DIR\skills")) {
+        # 方案 A：本地 skills 目录存在 → 使用 sync 脚本（含 overlay 融合）
+        if ((Test-Path "$SCRIPT_DIR\scripts\sync-skills.js") -and (Test-Command "node")) {
+            Write-Info "检测到本地仓库，使用 sync 脚本（含 overlay 融合）..."
+            node "$SCRIPT_DIR\scripts\sync-skills.js" --mode push --target "$AgentName" --force
+            Write-Success "$AgentName 技能安装完成（本地 sync）"
+        } else {
+            # 降级：直接复制
+            Write-Info "使用本地 skills/ 目录直接复制..."
+            Copy-Item -Path "$SCRIPT_DIR\skills\*" -Destination "$targetDir\" -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Success "$AgentName 技能安装完成（本地复制）"
+        }
+    } elseif ($Remote) {
+        # 方案 B：远程下载（irm 管道场景）
+        if (Test-Command "npx") {
+            Write-Info "从 GitHub 远程下载 skills..."
+            npx giget "gh:1234567KF/all-in-mvp/skills" $targetDir --force
+            Write-Success "$AgentName 技能安装完成（远程下载）"
+        } else {
+            Write-Error "未找到 npx，请先安装 npm"
+            return
+        }
     } else {
-        Write-Error "未找到 npx，请先安装 npm"
-        return
+        # 方案 C：自动检测
+        if (Test-Path "$SCRIPT_DIR\skills") {
+            $script:Local = $true
+            Install-ToAgent $AgentName
+        } elseif (Test-Command "npx") {
+            $script:Remote = $true
+            Install-ToAgent $AgentName
+        } else {
+            Write-Error "未找到本地 skills/ 目录，且 npx 不可用"
+            Write-Info "请先运行: npx giget gh:1234567KF/all-in-mvp"
+            return
+        }
     }
 }
 
@@ -181,6 +226,10 @@ function Install-All {
     Write-Host "     - 使用 all-in-mvp 创建一个 CRM 系统"
     Write-Host "     - 搭建 MVP 脚手架"
     Write-Host ""
+    Write-Info "快速创建新项目（giget 一键拉取）："
+    Write-Host "  npx giget gh:1234567KF/all-in-mvp my-new-project"
+    Write-Host "  cd my-new-project ; .\install.ps1"
+    Write-Host ""
     Write-Info "更新技能："
     Write-Host "  重新运行此脚本即可更新到最新版本"
     Write-Host ""
@@ -194,15 +243,19 @@ function Show-Help {
     Write-Host "  .\install.ps1 [options]"
     Write-Host ""
     Write-Host "选项："
-    Write-Host "  -Agent <name>  指定安装到的 Agent (qoder/claude/gemini)"
-    Write-Host "  -Help          显示此帮助信息"
+    Write-Host "  -Agent <name>    指定安装到的 Agent (qoder/claude/gemini)"
+    Write-Host "  -Local           强制使用本地 skills/ 目录安装"
+    Write-Host "  -Remote          强制从 GitHub 远程下载安装"
+    Write-Host "  -Version         显示版本信息"
+    Write-Host "  -Help            显示此帮助信息"
     Write-Host ""
     Write-Host "示例："
-    Write-Host "  # 安装到所有检测到的 Agent"
-    Write-Host "  .\install.ps1"
+    Write-Host "  # giget 拉取后本地安装（推荐）"
+    Write-Host "  npx giget gh:1234567KF/all-in-mvp my-project"
+    Write-Host "  cd my-project ; .\install.ps1"
     Write-Host ""
-    Write-Host "  # 只安装到 Qoder"
-    Write-Host "  .\install.ps1 -Agent qoder"
+    Write-Host "  # 远程一键安装"
+    Write-Host "  irm https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/install.ps1 | iex"
     Write-Host ""
     Write-Host "  # 只安装到 Claude Code"
     Write-Host "  .\install.ps1 -Agent claude"
@@ -210,6 +263,15 @@ function Show-Help {
 
 # 主函数
 function Main {
+    # 获取脚本所在目录
+    $script:SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Path
+    
+    # 显示版本
+    if ($Version) {
+        Write-Host "all-in-mvp installer v2.7.0"
+        return
+    }
+    
     # 显示帮助
     if ($Help) {
         Show-Help
@@ -219,6 +281,7 @@ function Main {
     # 显示欢迎信息
     Write-Header "============================"
     Write-Header "  all-in-mvp 技能安装脚本"
+    Write-Header "  v2.7.0"
     Write-Header "============================"
     Write-Host ""
     

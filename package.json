@@ -1,8 +1,13 @@
 {
   "name": "all-in-mvp",
-  "version": "2.7.0",
-  "description": "多 Agent 并行 MVP 开发流水线技能集",
+  "version": "2.8.0",
+  "description": "多 Agent 并行 MVP 开发流水线技能集 — npx giget 一键拉取，开箱即用",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/1234567KF/all-in-mvp.git"
+  },
   "scripts": {
+    "setup": "node scripts/sync-skills.js --mode push --force",
     "sync": "node scripts/sync-skills.js --mode push",
     "sync:pull": "node scripts/sync-skills.js --mode pull",
     "sync:merge": "node scripts/sync-skills.js --mode merge",
@@ -22,7 +27,21 @@
   "devDependencies": {
     "concurrently": "^9.2.1"
   },
-  "keywords": ["mvp", "multi-agent", "pipeline", "tdd", "e2e-testing"],
-  "author": "",
-  "license": "MIT"
+  "keywords": [
+    "mvp",
+    "multi-agent",
+    "pipeline",
+    "tdd",
+    "e2e-testing",
+    "starter",
+    "giget",
+    "claude-code",
+    "qoder",
+    "prototype"
+  ],
+  "author": "1234567KF",
+  "license": "MIT",
+  "giget": {
+    "description": "使用 npx giget gh:1234567KF/all-in-mvp 一键拉取 MVP 项目模板"
+  }
 }

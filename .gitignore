@@ -6,3 +6,6 @@ MVP白皮书.md
 *.vite/
 node_modules/
 nul
+
+# embedded repo
+ultra-cost-effective/
