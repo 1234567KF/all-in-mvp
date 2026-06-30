@@ -12,15 +12,15 @@
 
 ```bash
 # macOS / Linux / WSL
-npx giget gh:1234567KF/all-in-mvp my-mvp-project
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project
 cd my-mvp-project
 
 # Windows (PowerShell)
-npx giget gh:1234567KF/all-in-mvp my-mvp-project
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project
 cd my-mvp-project
 ```
 
-> 💡 `npx giget` 自动去除 `.git` 目录，拿到一个干净的项目模板。指定 `#v2.8.0` 可锁定版本。
+> 💡 `npx giget` 自动去除 `.git` 目录，拿到一个干净的项目模板。**注意**：仓库默认分支为 `all-in-mvp`（非 `main`），因此 URL 必须显式指定 `#all-in-mvp`。指定 `#v2.8.0` 可锁定版本。
 
 ### Step 2：安装技能到 AI Agent
 
@@ -53,11 +53,11 @@ qoder    # 或 claude
 | 平台 | 命令 |
 |------|------|
 | **所有 Agent（自动检测）** | `curl -fsSL https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/install.sh \| bash` |
-| **Qoder** | `npx giget gh:1234567KF/all-in-mvp/skills ~/.qoder/skills --force` |
-| **Claude Code** | `npx giget gh:1234567KF/all-in-mvp/skills ~/.claude/skills --force` |
-| **Gemini** | `npx giget gh:1234567KF/all-in-mvp/skills ~/.gemini/config/skills --force` |
-| **Windows Qoder** | `npx giget gh:1234567KF/all-in-mvp/skills "$HOME\.qoder\skills" --force` |
-| **Windows Claude** | `npx giget gh:1234567KF/all-in-mvp/skills "$HOME\.claude\skills" --force` |
+| **Qoder** | `npx giget gh:1234567KF/all-in-mvp#all-in-mvp/skills ~/.qoder/skills --force` |
+| **Claude Code** | `npx giget gh:1234567KF/all-in-mvp#all-in-mvp/skills ~/.claude/skills --force` |
+| **Gemini** | `npx giget gh:1234567KF/all-in-mvp#all-in-mvp/skills ~/.gemini/config/skills --force` |
+| **Windows Qoder** | `npx giget gh:1234567KF/all-in-mvp#all-in-mvp/skills "$HOME\.qoder\skills" --force` |
+| **Windows Claude** | `npx giget gh:1234567KF/all-in-mvp#all-in-mvp/skills "$HOME\.claude\skills" --force` |
 
 > 💡 **提示**：若技能后续有更新，只需重新运行上述对应助手的命令即可完成覆盖升级。
 
@@ -65,10 +65,10 @@ qoder    # 或 claude
 
 ```bash
 # 只安装 all-in-mvp 主技能
-npx giget gh:1234567KF/all-in-mvp/skills/all-in-mvp ~/.qoder/skills/all-in-mvp --force
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp/skills/all-in-mvp ~/.qoder/skills/all-in-mvp --force
 
 # 只安装 Pipeline Coordinator
-npx giget gh:1234567KF/all-in-mvp/skills/kf-pipeline-coordinator ~/.qoder/skills/kf-pipeline-coordinator --force
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp/skills/kf-pipeline-coordinator ~/.qoder/skills/kf-pipeline-coordinator --force
 ```
 
 ---
@@ -294,7 +294,7 @@ skills/all-in-mvp/
 
 ```bash
 # 1. 拉取项目模板
-npx giget gh:1234567KF/all-in-mvp my-crm-project
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-crm-project
 cd my-crm-project
 
 # 2. 安装技能到 AI Agent
@@ -319,7 +319,7 @@ curl -fsSL https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/ins
 
 ```bash
 # 重新运行安装命令即可覆盖升级
-npx giget gh:1234567KF/all-in-mvp/skills ~/.qoder/skills --force
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp/skills ~/.qoder/skills --force
 
 # 或拉取最新模板后运行 sync
 npx giget gh:1234567KF/all-in-mvp#v2.8.0 .
@@ -386,6 +386,10 @@ git push origin all-in-mvp --tags
 ---
 
 ## ❓ 常见问题
+
+### Q: 为什么 giget URL 需要 `#all-in-mvp`？
+
+A: 本仓库的默认分支是 `all-in-mvp`，而不是 GitHub 常见的 `main`。如果不指定分支，giget 默认尝试拉取 `main` 分支，会导致 404。`gh:1234567KF/all-in-mvp#all-in-mvp` 中的 `#all-in-mvp` 就是显式告诉 giget 去拉取哪个分支。
 
 ### Q: 为什么需要同步三个目录？
 

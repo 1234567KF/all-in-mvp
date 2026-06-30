@@ -42,6 +42,6 @@
   "author": "1234567KF",
   "license": "MIT",
   "giget": {
-    "description": "使用 npx giget gh:1234567KF/all-in-mvp 一键拉取 MVP 项目模板"
+    "description": "使用 npx giget gh:1234567KF/all-in-mvp#all-in-mvp 一键拉取 MVP 项目模板（仓库默认分支为 all-in-mvp）"
   }
 }
