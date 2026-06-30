@@ -1,4 +1,17 @@
 {
+  "name": "all-in-mvp",
+  "version": "2.7.0",
+  "description": "多 Agent 并行 MVP 开发流水线技能集",
+  "scripts": {
+    "sync": "node scripts/sync-skills.js --mode push",
+    "sync:pull": "node scripts/sync-skills.js --mode pull",
+    "sync:merge": "node scripts/sync-skills.js --mode merge",
+    "sync:interactive": "node scripts/sync-skills.js --mode interactive",
+    "sync:claude": "node scripts/sync-skills.js --mode push --target claude",
+    "sync:qoder": "node scripts/sync-skills.js --mode push --target qoder",
+    "sync:dry-run": "node scripts/sync-skills.js --mode push --dry-run",
+    "sync:backup": "node scripts/sync-skills.js --mode push --backup"
+  },
   "dependencies": {
     "@vitejs/plugin-vue": "^6.0.7",
     "typescript": "^6.0.3",
@@ -8,5 +21,8 @@
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
-  }
+  },
+  "keywords": ["mvp", "multi-agent", "pipeline", "tdd", "e2e-testing"],
+  "author": "",
+  "license": "MIT"
 }

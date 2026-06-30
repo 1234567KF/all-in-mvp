@@ -220,6 +220,111 @@
 
 > 升级时保留已产出代码，补充执行全量模式的 Stage1（PRD）→ Stage2（架构+模块定义）→ 将已有代码纳入模块体系。
 
+### 0.10 MSVP验证协议（v2.6 新增）
+
+> **测试通过 ≠ 应用能跑。** 必须由独立验证Agent，从零冷启动，用真实浏览器点击核心流程，截图证据。
+
+#### 0.10.1 A类阻塞Bug清单（零容忍）
+
+| 编号 | 判定标准 | 检测方式 | 典型表现 |
+|------|---------|---------|----------|
+| A1 | 应用无法启动 | `npm run dev` 报错退出 | 端口冲突、依赖缺失、编译错误 |
+| A2 | 首页/登录页白屏 | 导航到首页，截图全白或无内容 | JS 报错阻断渲染、路由配置错误 |
+| A3 | 核心菜单 404 | 逐一点击所有菜单项 | 路由未注册、路径拼写错误 |
+| A4 | 登录流程不可用 | 输入凭证→点击登录→失败 | API 未启动、CORS 错误、Token 存储失败 |
+| A5 | 核心 CRUD 不可用 | 创建→查看列表→编辑→删除 任一步失败 | API 返回 500、数据库写入失败 |
+| A6 | Console 红色 Error | DevTools Console 中出现 `error` 级别日志 | 未捕获的异常、网络请求失败 |
+| A7 | 页面布局错乱 | 按钮重叠、文字溢出、组件未对齐 | CSS 未加载、样式冲突 |
+| A8 | 环境变量/配置缺失 | 应用启动但功能异常 | `.env` 文件缺失或值错误 |
+
+> **门禁**：A1-A8 必须全部为零。任何 A 类 Bug → 不通过 → 修复 → 重新 MSVP → 清零才放行。
+
+#### 0.10.2 MSVP验证流程
+
+```
+Step 1: 冷启动
+  ├── 全新 clone 或 git clean -fd
+  ├── npm install / pnpm install（从零安装依赖）
+  ├── npm run db:push（初始化数据库）
+  ├── npm run db:seed（种子数据）
+  └── npm run dev（启动开发服务器）
+
+Step 2: 打开浏览器
+  ├── 使用 Playwright（有头模式）
+  ├── 打开 Chrome DevTools Console（捕获所有 error/warning）
+  └── 设置视口为 1920x1080（标准桌面分辨率）
+
+Step 3: 执行冒烟路径
+  ├── 导航到首页 → 截图
+  ├── 遍历所有菜单项（逐一检查是否可访问、是否 404）
+  ├── 执行核心用户旅程
+  └── 每个关键步骤 → 截图
+
+Step 4: A 类阻塞 Bug 检查
+  ├── Console 是否有 error → P0
+  ├── 是否有 404 请求 → P0
+  ├── 菜单项是否完整可点击 → P0
+  ├── 核心流程是否走通 → P0
+  └── 页面布局是否明显异常 → P0
+
+Step 5: 输出验证报告
+```
+
+#### 0.10.3 MSVP报告模板
+
+```markdown
+# MSVP 验证报告
+
+- **验证时间**：<ISO 8601>
+- **应用版本**：<git commit hash>
+- **环境**：Node vXX, npm vXX, Chrome vXX
+
+## 冷启动结果
+- npm install: ✅ 成功 / ❌ 失败
+- npm run db:push: ✅ 成功 / ❌ 失败
+- npm run db:seed: ✅ 成功 / ❌ 失败
+- npm run dev: ✅ 成功（端口 XXXX）/ ❌ 失败
+
+## 菜单完整性检查
+| 序号 | 菜单项 | 目标路由 | 点击结果 | 截图 |
+|------|--------|---------|---------|------|
+| 1 | 首页 | / | ✅ 正常 | [screenshot] |
+| 2 | 产品管理 | /products | ✅ 正常 | [screenshot] |
+| 3 | 用户管理 | /users | ❌ 404 | [screenshot] |
+
+## 核心用户旅程
+| 步骤 | 操作 | 预期结果 | 实际结果 | 截图 |
+|------|------|---------|---------|------|
+| 1 | 打开登录页 | 显示登录表单 | ✅ | [screenshot] |
+| 2 | 输入凭证点击登录 | 跳转到首页 | ✅ | [screenshot] |
+| 3 | 点击“产品管理”菜单 | 显示产品列表 | ❌ 页面白屏 | [screenshot] |
+
+## Console 日志
+| 级别 | 消息 | 来源 |
+|------|------|------|
+| 🔴 ERROR | Uncaught TypeError: Cannot read properties of undefined | products.js:42 |
+| 🟡 WARNING | [Vue warn]: Failed to resolve component | App.vue |
+
+## A 类 Bug 清单
+| 编号 | 类型 | 描述 | 严重程度 |
+|------|------|------|----------|
+| 1 | A3 | /users 菜单返回 404 | 阻塞 |
+| 2 | A2 | /products 页面白屏 | 阻塞 |
+
+## 判定
+- A 类 Bug 数量：<N>
+- 判定结果：✅ 通过 / ❌ 不通过
+- 阻塞项：<如有，列出>
+- 修复后需重新执行 MSVP
+```
+
+#### 0.10.4 MSVP验证Agent约束
+
+- **不能是开发Agent**：写代码的Agent不能验证自己的代码
+- **只能读产物，不能读代码**：只看PRD、spec、验收标准——不看实现代码
+- **只报告事实，不分析根因**：报告“点击X → 页面白屏 → Console显示TypeError”，不分析哪个文件哪一行
+- **截图不可省略**：每个检查步骤必须有截图证据
+
 ---
 
 ## 一、Stage1：需求对齐阶段（串行，1 个 Agent）
@@ -455,6 +560,592 @@ MVP v2.0           ：补充安全加固（XSS/CSRF/限流/防重放）
 | Stage4→交付 | 集成测试报告非空；0个P0/P1 Bug | 文件内容解析 |
 
 > 校验失败 → 门禁拒绝 → 输出具体缺失/损坏项清单。
+
+### 2.9 契约锁定验证机制（v2.6 新增）
+
+> **目标**：确保Stage2产出物锁定后的完整性、一致性，以及Stage3/4开发过程中契约的符合性。
+
+#### 1. Stage2产出物锁定验证
+
+**锁定时刻基线快照**：
+
+```javascript
+// 产出物锁定时自动创建基线快照
+const LOCKED_ARTIFACTS_BASELINE = {
+  // 快照元数据
+  metadata: {
+    lockedAt: 'ISO8601',
+    lockedBy: 'grill-with-docs',
+    grillRound: 2, // ↺循环轮次
+    prdVersion: 'v1.0',
+    lockId: 'uuid' // 唯一锁定标识
+  },
+  
+  // 产出物清单及哈希
+  artifacts: {
+    'PRD.md': {
+      hash: 'sha256',
+      size: 1234,
+      lastModified: 'ISO8601',
+      sections: ['项目背景', '术语定义', '风险与约束', '业务主流程', 'ER关系', '功能需求', '复杂/核心专题', '核心实体状态图', '验收标准']
+    },
+    'spec.md': {
+      hash: 'sha256',
+      size: 5678,
+      lastModified: 'ISO8601',
+      version: 'v1.0.locked'
+    },
+    'schema.sql': {
+      hash: 'sha256',
+      size: 890,
+      lastModified: 'ISO8601',
+      tables: ['users', 'products', 'orders'],
+      syntaxValid: true
+    },
+    'api-contract.yaml': {
+      hash: 'sha256',
+      size: 2345,
+      lastModified: 'ISO8601',
+      endpoints: 15,
+      syntaxValid: true
+    },
+    'task.md': {
+      hash: 'sha256',
+      size: 678,
+      lastModified: 'ISO8601',
+      modules: ['user', 'product', 'order']
+    },
+    'modules/*.md': {
+      hash: 'sha256',
+      count: 3,
+      lastModified: 'ISO8601'
+    }
+  },
+  
+  // 校验和
+  checksum: 'sha256_of_all_artifacts'
+};
+```
+
+**锁定验证函数**：
+
+```javascript
+// 验证产出物完整性
+async function validateLockedArtifacts(lockId) {
+  const baseline = await loadBaseline(lockId);
+  const validationResults = [];
+  
+  // 1. 文件存在性检查
+  for (const [artifact, config] of Object.entries(baseline.artifacts)) {
+    const exists = await fileExists(artifact);
+    if (!exists) {
+      validationResults.push({
+        artifact,
+        status: 'MISSING',
+        message: `锁定产出物 ${artifact} 不存在`
+      });
+      continue;
+    }
+    
+    // 2. 文件哈希校验
+    const currentHash = await calculateFileHash(artifact);
+    if (currentHash !== config.hash) {
+      validationResults.push({
+        artifact,
+        status: 'MODIFIED',
+        message: `锁定产出物 ${artifact} 已被修改`,
+        expected: config.hash,
+        actual: currentHash
+      });
+    }
+    
+    // 3. 文件格式校验
+    if (artifact.endsWith('.yaml') || artifact.endsWith('.yml')) {
+      const isValidYaml = await validateYamlSyntax(artifact);
+      if (!isValidYaml) {
+        validationResults.push({
+          artifact,
+          status: 'INVALID_FORMAT',
+          message: `YAML文件 ${artifact} 语法错误`
+        });
+      }
+    }
+    
+    if (artifact.endsWith('.sql')) {
+      const isValidSql = await validateSqlSyntax(artifact);
+      if (!isValidSql) {
+        validationResults.push({
+          artifact,
+          status: 'INVALID_FORMAT',
+          message: `SQL文件 ${artifact} 语法错误`
+        });
+      }
+    }
+    
+    // 4. 文件大小检查（防止空文件）
+    const stats = await getFileStats(artifact);
+    if (stats.size < 100) { // 小于100字节
+      validationResults.push({
+        artifact,
+        status: 'TOO_SMALL',
+        message: `产出物 ${artifact} 文件过小 (${stats.size} bytes)，可能不完整`
+      });
+    }
+  }
+  
+  // 5. 产出物间一致性检查
+  const consistencyChecks = await validateArtifactConsistency(baseline);
+  validationResults.push(...consistencyChecks);
+  
+  return {
+    lockId,
+    validatedAt: new Date().toISOString(),
+    passed: validationResults.every(r => r.status === 'OK'),
+    results: validationResults
+  };
+}
+
+// 产出物间一致性检查
+async function validateArtifactConsistency(baseline) {
+  const results = [];
+  
+  // 检查1: spec.md中的接口是否在api-contract.yaml中定义
+  const specEndpoints = await extractEndpointsFromSpec(baseline.artifacts['spec.md']);
+  const contractEndpoints = await extractEndpointsFromContract(baseline.artifacts['api-contract.yaml']);
+  
+  const missingInContract = specEndpoints.filter(ep => !contractEndpoints.includes(ep));
+  if (missingInContract.length > 0) {
+    results.push({
+      artifact: 'spec.md ↔ api-contract.yaml',
+      status: 'INCONSISTENT',
+      message: `spec.md中定义的接口在api-contract.yaml中缺失: ${missingInContract.join(', ')}`
+    });
+  }
+  
+  // 检查2: schema.sql中的表是否在spec.md中引用
+  const schemaTables = await extractTablesFromSchema(baseline.artifacts['schema.sql']);
+  const specTables = await extractTablesFromSpec(baseline.artifacts['spec.md']);
+  
+  const orphanTables = schemaTables.filter(t => !specTables.includes(t));
+  if (orphanTables.length > 0) {
+    results.push({
+      artifact: 'schema.sql ↔ spec.md',
+      status: 'INCONSISTENT',
+      message: `schema.sql中定义的表在spec.md中未引用: ${orphanTables.join(', ')}`
+    });
+  }
+  
+  // 检查3: PRD中的功能需求是否在spec.md中覆盖
+  const prdRequirements = await extractRequirementsFromPRD(baseline.artifacts['PRD.md']);
+  const specCoverage = await extractCoverageFromSpec(baseline.artifacts['spec.md']);
+  
+  const uncoveredRequirements = prdRequirements.filter(req => !specCoverage.includes(req));
+  if (uncoveredRequirements.length > 0) {
+    results.push({
+      artifact: 'PRD.md ↔ spec.md',
+      status: 'INCOMPLETE_COVERAGE',
+      message: `PRD中的功能需求在spec.md中未覆盖: ${uncoveredRequirements.join(', ')}`
+    });
+  }
+  
+  // 检查4: task.md中的模块是否与modules/*.md一致
+  const taskModules = await extractModulesFromTask(baseline.artifacts['task.md']);
+  const moduleFiles = await glob('modules/*.md');
+  const moduleNames = moduleFiles.map(f => path.basename(f, '.md'));
+  
+  const missingModules = taskModules.filter(m => !moduleNames.includes(m));
+  if (missingModules.length > 0) {
+    results.push({
+      artifact: 'task.md ↔ modules/*.md',
+      status: 'INCONSISTENT',
+      message: `task.md中定义的模块在modules/目录中缺失: ${missingModules.join(', ')}`
+    });
+  }
+  
+  if (results.length === 0) {
+    results.push({ artifact: 'ALL', status: 'OK', message: '所有产出物一致性检查通过' });
+  }
+  
+  return results;
+}
+```
+
+#### 2. Stage3开发前契约一致性预检
+
+**预检时机**：Backend Agent开始开发前，由Pipeline Coordinator执行
+
+```javascript
+// Stage3开发前契约预检
+async function preDevelopmentContractCheck(moduleName) {
+  console.log(`[契约预检] 检查模块 ${moduleName} 的契约一致性`);
+  
+  const checks = [];
+  
+  // 1. 读取模块定义
+  const moduleDoc = await readFile(`modules/${moduleName}.md`);
+  const moduleSpec = await parseModuleSpec(moduleDoc);
+  
+  // 2. 检查模块接口是否在api-contract.yaml中定义
+  const contractEndpoints = await loadContractEndpoints();
+  const moduleEndpoints = moduleSpec.apis;
+  
+  const missingEndpoints = moduleEndpoints.filter(ep => 
+    !contractEndpoints.some(ce => 
+      ce.method === ep.method && ce.path === ep.path
+    )
+  );
+  
+  if (missingEndpoints.length > 0) {
+    checks.push({
+      type: 'MISSING_CONTRACT',
+      severity: 'BLOCK',
+      message: `模块 ${moduleName} 的接口在api-contract.yaml中未定义`,
+      details: missingEndpoints
+    });
+  }
+  
+  // 3. 检查模块依赖的表是否在schema.sql中定义
+  const schemaTables = await loadSchemaTables();
+  const moduleTables = moduleSpec.tables;
+  
+  const missingTables = moduleTables.filter(t => !schemaTables.includes(t));
+  if (missingTables.length > 0) {
+    checks.push({
+      type: 'MISSING_SCHEMA',
+      severity: 'BLOCK',
+      message: `模块 ${moduleName} 依赖的表在schema.sql中未定义`,
+      details: missingTables
+    });
+  }
+  
+  // 4. 检查模块依赖是否满足
+  const moduleDependencies = moduleSpec.depends_on;
+  const completedModules = await getCompletedModules();
+  
+  const unmetDependencies = moduleDependencies.filter(dep => 
+    !completedModules.includes(dep)
+  );
+  
+  if (unmetDependencies.length > 0) {
+    checks.push({
+      type: 'UNMET_DEPENDENCY',
+      severity: 'BLOCK',
+      message: `模块 ${moduleName} 的依赖模块未完成`,
+      details: unmetDependencies
+    });
+  }
+  
+  // 5. 检查模块边界是否与其他模块冲突
+  const otherModules = await getAllModuleSpecs();
+  const conflicts = detectModuleConflicts(moduleSpec, otherModules);
+  
+  if (conflicts.length > 0) {
+    checks.push({
+      type: 'MODULE_CONFLICT',
+      severity: 'WARNING',
+      message: `模块 ${moduleName} 与其他模块存在潜在冲突`,
+      details: conflicts
+    });
+  }
+  
+  // 6. 生成预检报告
+  const report = {
+    module: moduleName,
+    checkedAt: new Date().toISOString(),
+    passed: checks.every(c => c.severity !== 'BLOCK'),
+    checks,
+    recommendation: checks.some(c => c.severity === 'BLOCK') 
+      ? 'BLOCKED: 请先解决上述阻塞问题再开始开发'
+      : 'CLEAR: 可以开始开发'
+  };
+  
+  // 保存预检报告
+  await writeFile(`reports/contract-precheck-${moduleName}.json`, JSON.stringify(report, null, 2));
+  
+  return report;
+}
+```
+
+#### 3. Stage4集成前契约符合性验证
+
+**验证时机**：Stage4集成测试开始前，由Stage4 Coordinator执行
+
+```javascript
+// Stage4集成前契约符合性验证
+async function integrationContractVerification() {
+  console.log('[契约验证] 开始Stage4集成前契约符合性验证');
+  
+  const verificationResults = [];
+  
+  // 1. 验证所有模块的实现是否符合契约
+  const modules = await getAllModules();
+  
+  for (const module of modules) {
+    const moduleResult = await verifyModuleContractCompliance(module);
+    verificationResults.push(moduleResult);
+  }
+  
+  // 2. 验证跨模块接口一致性
+  const crossModuleResult = await verifyCrossModuleConsistency(modules);
+  verificationResults.push(crossModuleResult);
+  
+  // 3. 验证数据流一致性
+  const dataFlowResult = await verifyDataFlowConsistency(modules);
+  verificationResults.push(dataFlowResult);
+  
+  // 4. 生成验证报告
+  const report = {
+    verifiedAt: new Date().toISOString(),
+    totalModules: modules.length,
+    passedModules: verificationResults.filter(r => r.passed).length,
+    failedModules: verificationResults.filter(r => !r.passed).length,
+    results: verificationResults,
+    overallPassed: verificationResults.every(r => r.passed)
+  };
+  
+  // 保存验证报告
+  await writeFile('reports/contract-verification.json', JSON.stringify(report, null, 2));
+  
+  return report;
+}
+
+// 验证单个模块的契约符合性
+async function verifyModuleContractCompliance(moduleName) {
+  const checks = [];
+  
+  // 1. 读取模块实现代码
+  const moduleCode = await readModuleCode(moduleName);
+  
+  // 2. 读取模块契约
+  const moduleContract = await loadModuleContract(moduleName);
+  
+  // 3. 检查API路由是否符合契约
+  const implementedRoutes = extractRoutesFromCode(moduleCode);
+  const contractRoutes = moduleContract.apis;
+  
+  const routeMismatches = implementedRoutes.filter(ir => 
+    !contractRoutes.some(cr => 
+      cr.method === ir.method && 
+      cr.path === ir.path &&
+      cr.responseSchema === ir.responseSchema
+    )
+  );
+  
+  if (routeMismatches.length > 0) {
+    checks.push({
+      type: 'ROUTE_MISMATCH',
+      severity: 'BLOCK',
+      message: `模块 ${moduleName} 的API路由实现与契约不一致`,
+      details: routeMismatches
+    });
+  }
+  
+  // 4. 检查数据模型是否符合schema
+  const implementedModels = extractModelsFromCode(moduleCode);
+  const contractModels = await loadContractModels(moduleName);
+  
+  const modelMismatches = implementedModels.filter(im => 
+    !contractModels.some(cm => 
+      cm.name === im.name &&
+      JSON.stringify(cm.fields) === JSON.stringify(im.fields)
+    )
+  );
+  
+  if (modelMismatches.length > 0) {
+    checks.push({
+      type: 'MODEL_MISMATCH',
+      severity: 'BLOCK',
+      message: `模块 ${moduleName} 的数据模型与schema不一致`,
+      details: modelMismatches
+    });
+  }
+  
+  // 5. 检查错误处理是否符合契约
+  const implementedErrors = extractErrorHandlersFromCode(moduleCode);
+  const contractErrors = moduleContract.errorCodes;
+  
+  const errorMismatches = implementedErrors.filter(ie => 
+    !contractErrors.some(ce => 
+      ce.code === ie.code &&
+      ce.message === ie.message
+    )
+  );
+  
+  if (errorMismatches.length > 0) {
+    checks.push({
+      type: 'ERROR_MISMATCH',
+      severity: 'WARNING',
+      message: `模块 ${moduleName} 的错误处理与契约不一致`,
+      details: errorMismatches
+    });
+  }
+  
+  // 6. 生成模块验证结果
+  return {
+    module: moduleName,
+    verifiedAt: new Date().toISOString(),
+    passed: checks.every(c => c.severity !== 'BLOCK'),
+    checks
+  };
+}
+```
+
+#### 4. 契约验证配置
+
+```javascript
+// 契约验证配置
+const CONTRACT_VERIFICATION_CONFIG = {
+  // 验证时机
+  timing: {
+    stage2Lock: true,           // Stage2锁定时验证
+    stage3PreDev: true,         // Stage3开发前验证
+    stage4PreIntegration: true, // Stage4集成前验证
+    stage4PostBugFix: true      // Bug修复后验证
+  },
+  
+  // 验证严格度
+  strictness: {
+    apiRoutes: 'STRICT',        // API路由必须完全匹配
+    dataModels: 'STRICT',       // 数据模型必须完全匹配
+    errorCodes: 'LENIENT',      // 错误码允许扩展
+    responseFormat: 'STRICT',   // 响应格式必须匹配
+    validationRules: 'MODERATE' // 验证规则允许合理扩展
+  },
+  
+  // 自动修复策略
+  autoFix: {
+    enabled: false,             // 默认关闭自动修复
+    allowedFixes: [
+      'SYNC_MOCK_DATA',         // 同步Mock数据
+      'UPDATE_TEST_ASSERTIONS', // 更新测试断言
+      'GENERATE_TYPE_DEFINITIONS' // 生成类型定义
+    ],
+    blockedFixes: [
+      'MODIFY_CONTRACT',        // 不允许修改契约
+      'CHANGE_SCHEMA',          // 不允许修改Schema
+      'ALTER_API_SIGNATURE'     // 不允许修改API签名
+    ]
+  },
+  
+  // 告警配置
+  alerts: {
+    onMismatch: true,           // 不匹配时告警
+    onWarning: false,           // 警告不告警
+    notificationChannel: 'CONSOLE' // 告警渠道
+  },
+  
+  // 报告配置
+  reporting: {
+    generateReport: true,
+    reportFormat: 'JSON',
+    reportPath: 'reports/contract-verification/',
+    includeDetails: true,
+    includeRecommendations: true
+  }
+};
+```
+
+#### 5. 契约变更影响分析
+
+```javascript
+// 契约变更影响分析
+async function analyzeContractChangeImpact(changeRequest) {
+  console.log('[影响分析] 分析契约变更的影响范围');
+  
+  const impact = {
+    changeId: generateChangeId(),
+    requestedAt: new Date().toISOString(),
+    changeDescription: changeRequest.description,
+    affectedComponents: [],
+    riskLevel: 'LOW',
+    recommendations: []
+  };
+  
+  // 1. 分析直接影响
+  const directImpact = await analyzeDirectImpact(changeRequest);
+  impact.affectedComponents.push(...directImpact);
+  
+  // 2. 分析间接影响
+  const indirectImpact = await analyzeIndirectImpact(changeRequest);
+  impact.affectedComponents.push(...indirectImpact);
+  
+  // 3. 计算风险等级
+  impact.riskLevel = calculateRiskLevel(impact.affectedComponents);
+  
+  // 4. 生成建议
+  impact.recommendations = generateChangeRecommendations(impact);
+  
+  // 5. 生成影响分析报告
+  await writeFile(
+    `reports/change-impact-${impact.changeId}.json`,
+    JSON.stringify(impact, null, 2)
+  );
+  
+  return impact;
+}
+
+// 分析直接影响
+async function analyzeDirectImpact(changeRequest) {
+  const impacts = [];
+  
+  // 分析API变更影响
+  if (changeRequest.type === 'API_CHANGE') {
+    const affectedEndpoints = changeRequest.endpoints;
+    
+    // 查找使用这些API的前端页面
+    const frontendPages = await findPagesUsingEndpoints(affectedEndpoints);
+    impacts.push({
+      component: 'FRONTEND',
+      type: 'API_CONSUMER',
+      details: frontendPages,
+      impactLevel: 'HIGH'
+    });
+    
+    // 查找相关的测试用例
+    const affectedTests = await findTestsForEndpoints(affectedEndpoints);
+    impacts.push({
+      component: 'TESTS',
+      type: 'TEST_COVERAGE',
+      details: affectedTests,
+      impactLevel: 'MEDIUM'
+    });
+    
+    // 查找Mock数据
+    const mockData = await findMockDataForEndpoints(affectedEndpoints);
+    impacts.push({
+      component: 'MOCK_SERVICE',
+      type: 'MOCK_DATA',
+      details: mockData,
+      impactLevel: 'MEDIUM'
+    });
+  }
+  
+  // 分析Schema变更影响
+  if (changeRequest.type === 'SCHEMA_CHANGE') {
+    const affectedTables = changeRequest.tables;
+    
+    // 查找使用这些表的模块
+    const affectedModules = await findModulesUsingTables(affectedTables);
+    impacts.push({
+      component: 'BACKEND_MODULES',
+      type: 'DATA_ACCESS',
+      details: affectedModules,
+      impactLevel: 'HIGH'
+    });
+    
+    // 查找相关的数据库迁移
+    const migrations = await findMigrationsForTables(affectedTables);
+    impacts.push({
+      component: 'DATABASE',
+      type: 'MIGRATION',
+      details: migrations,
+      impactLevel: 'HIGH'
+    });
+  }
+  
+  return impacts;
+}
+```
 
 ---
 
@@ -999,6 +1690,490 @@ src/
 
 > 增量测试 ≈ 每模块DONE后10秒级快速反馈；全量测试 ≈ Stage3末分钟级门禁关卡。
 
+### 3.4 增量测试窗口详细设计（v2.6 新增）
+
+> **目标**：在Stage3开发过程中提供快速反馈，尽早发现集成问题，减少Stage4的集成风险。
+
+#### 1. 模块级增量测试
+
+**触发时机**：每个Backend Agent标记模块DONE后立即执行
+
+```javascript
+// 模块级增量测试执行器
+async function executeModuleIncrementalTest(moduleName) {
+  console.log(`[增量测试] 执行模块 ${moduleName} 的增量测试`);
+  
+  const testResults = {
+    module: moduleName,
+    executedAt: new Date().toISOString(),
+    tests: []
+  };
+  
+  // 1. 执行模块单元测试
+  const unitTestResult = await runModuleUnitTests(moduleName);
+  testResults.tests.push({
+    type: 'UNIT',
+    name: `${moduleName} 单元测试`,
+    passed: unitTestResult.passed,
+    duration: unitTestResult.duration,
+    coverage: unitTestResult.coverage
+  });
+  
+  // 2. 执行模块API集成测试
+  const apiTestResult = await runModuleApiTests(moduleName);
+  testResults.tests.push({
+    type: 'API_INTEGRATION',
+    name: `${moduleName} API集成测试`,
+    passed: apiTestResult.passed,
+    duration: apiTestResult.duration,
+    endpoints: apiTestResult.endpoints
+  });
+  
+  // 3. 执行模块数据库测试
+  const dbTestResult = await runModuleDatabaseTests(moduleName);
+  testResults.tests.push({
+    type: 'DATABASE',
+    name: `${moduleName} 数据库测试`,
+    passed: dbTestResult.passed,
+    duration: dbTestResult.duration,
+    transactions: dbTestResult.transactions
+  });
+  
+  // 4. 执行模块边界测试
+  const boundaryTestResult = await runModuleBoundaryTests(moduleName);
+  testResults.tests.push({
+    type: 'BOUNDARY',
+    name: `${moduleName} 边界测试`,
+    passed: boundaryTestResult.passed,
+    duration: boundaryTestResult.duration,
+    edgeCases: boundaryTestResult.edgeCases
+  });
+  
+  // 5. 计算总体结果
+  testResults.overallPassed = testResults.tests.every(t => t.passed);
+  testResults.totalDuration = testResults.tests.reduce((sum, t) => sum + t.duration, 0);
+  
+  // 6. 保存测试报告
+  await saveTestReport(`reports/incremental/${moduleName}-incremental.json`, testResults);
+  
+  // 7. 如果失败，通知对应Agent
+  if (!testResults.overallPassed) {
+    await notifyAgentOfFailure(moduleName, testResults);
+  }
+  
+  return testResults;
+}
+```
+
+#### 2. 跨模块场景测试
+
+**触发条件**：当模块的所有依赖模块都已完成时
+
+```javascript
+// 跨模块场景测试执行器
+async function executeCrossModuleScenarioTests(moduleName) {
+  console.log(`[增量测试] 执行模块 ${moduleName} 的跨模块场景测试`);
+  
+  const moduleSpec = await loadModuleSpec(moduleName);
+  const dependencies = moduleSpec.depends_on;
+  
+  // 检查依赖是否满足
+  const completedModules = await getCompletedModules();
+  const allDependenciesMet = dependencies.every(dep => completedModules.includes(dep));
+  
+  if (!allDependenciesMet) {
+    console.log(`[增量测试] 模块 ${moduleName} 的依赖未满足，跳过跨模块测试`);
+    return null;
+  }
+  
+  const testResults = {
+    module: moduleName,
+    dependencies: dependencies,
+    executedAt: new Date().toISOString(),
+    scenarios: []
+  };
+  
+  // 1. 查找涉及该模块的场景测试
+  const relevantScenarios = await findScenariosInvolvingModule(moduleName);
+  
+  // 2. 执行每个相关场景
+  for (const scenario of relevantScenarios) {
+    const scenarioResult = await runScenarioTest(scenario, [moduleName, ...dependencies]);
+    testResults.scenarios.push({
+      name: scenario.name,
+      passed: scenarioResult.passed,
+      duration: scenarioResult.duration,
+      steps: scenarioResult.steps
+    });
+  }
+  
+  // 3. 计算总体结果
+  testResults.overallPassed = testResults.scenarios.every(s => s.passed);
+  testResults.totalDuration = testResults.scenarios.reduce((sum, s) => sum + s.duration, 0);
+  
+  // 4. 保存测试报告
+  await saveTestReport(`reports/incremental/${moduleName}-cross-module.json`, testResults);
+  
+  return testResults;
+}
+```
+
+#### 3. 领域级集成测试
+
+**触发条件**：当某个领域的所有模块都已完成时
+
+```javascript
+// 领域级集成测试执行器
+async function executeDomainIntegrationTests(domainName) {
+  console.log(`[增量测试] 执行领域 ${domainName} 的集成测试`);
+  
+  const domainModules = await getModulesByDomain(domainName);
+  const completedModules = await getCompletedModules();
+  
+  // 检查领域内所有模块是否完成
+  const allDomainModulesCompleted = domainModules.every(m => completedModules.includes(m));
+  
+  if (!allDomainModulesCompleted) {
+    console.log(`[增量测试] 领域 ${domainName} 的模块未全部完成，跳过领域集成测试`);
+    return null;
+  }
+  
+  const testResults = {
+    domain: domainName,
+    modules: domainModules,
+    executedAt: new Date().toISOString(),
+    integrationTests: []
+  };
+  
+  // 1. 执行领域内模块间集成测试
+  for (let i = 0; i < domainModules.length; i++) {
+    for (let j = i + 1; j < domainModules.length; j++) {
+      const moduleA = domainModules[i];
+      const moduleB = domainModules[j];
+      
+      const integrationResult = await runModulePairIntegrationTest(moduleA, moduleB);
+      testResults.integrationTests.push({
+        modules: [moduleA, moduleB],
+        passed: integrationResult.passed,
+        duration: integrationResult.duration,
+        issues: integrationResult.issues
+      });
+    }
+  }
+  
+  // 2. 执行领域数据一致性测试
+  const dataConsistencyResult = await runDomainDataConsistencyTest(domainName);
+  testResults.integrationTests.push({
+    type: 'DATA_CONSISTENCY',
+    domain: domainName,
+    passed: dataConsistencyResult.passed,
+    duration: dataConsistencyResult.duration,
+    inconsistencies: dataConsistencyResult.inconsistencies
+  });
+  
+  // 3. 执行领域业务流程测试
+  const businessFlowResult = await runDomainBusinessFlowTest(domainName);
+  testResults.integrationTests.push({
+    type: 'BUSINESS_FLOW',
+    domain: domainName,
+    passed: businessFlowResult.passed,
+    duration: businessFlowResult.duration,
+    flowSteps: businessFlowResult.steps
+  });
+  
+  // 4. 计算总体结果
+  testResults.overallPassed = testResults.integrationTests.every(t => t.passed);
+  testResults.totalDuration = testResults.integrationTests.reduce((sum, t) => sum + t.duration, 0);
+  
+  // 5. 保存测试报告
+  await saveTestReport(`reports/incremental/domain-${domainName}.json`, testResults);
+  
+  return testResults;
+}
+```
+
+#### 4. 全量集成测试门禁
+
+**触发时机**：Stage3全部模块完成后，进入Stage4前
+
+```javascript
+// 全量集成测试门禁
+async function executeFullIntegrationTestGate() {
+  console.log('[门禁检查] 执行全量集成测试门禁');
+  
+  const gateResults = {
+    executedAt: new Date().toISOString(),
+    checks: [],
+    overallPassed: false
+  };
+  
+  // 1. 检查所有模块是否完成
+  const allModules = await getAllModules();
+  const completedModules = await getCompletedModules();
+  const incompleteModules = allModules.filter(m => !completedModules.includes(m));
+  
+  if (incompleteModules.length > 0) {
+    gateResults.checks.push({
+      type: 'MODULE_COMPLETENESS',
+      passed: false,
+      message: `以下模块未完成: ${incompleteModules.join(', ')}`
+    });
+    return gateResults;
+  }
+  
+  gateResults.checks.push({
+    type: 'MODULE_COMPLETENESS',
+    passed: true,
+    message: '所有模块已完成'
+  });
+  
+  // 2. 执行全量单元测试
+  const unitTestResult = await runAllUnitTests();
+  gateResults.checks.push({
+    type: 'UNIT_TESTS',
+    passed: unitTestResult.passed,
+    total: unitTestResult.total,
+    passedCount: unitTestResult.passedCount,
+    failedCount: unitTestResult.failedCount,
+    coverage: unitTestResult.coverage
+  });
+  
+  // 3. 执行全量API集成测试
+  const apiTestResult = await runAllApiTests();
+  gateResults.checks.push({
+    type: 'API_TESTS',
+    passed: apiTestResult.passed,
+    total: apiTestResult.total,
+    passedCount: apiTestResult.passedCount,
+    failedCount: apiTestResult.failedCount
+  });
+  
+  // 4. 执行全量场景测试
+  const scenarioTestResult = await runAllScenarioTests();
+  gateResults.checks.push({
+    type: 'SCENARIO_TESTS',
+    passed: scenarioTestResult.passed,
+    total: scenarioTestResult.total,
+    passedCount: scenarioTestResult.passedCount,
+    failedCount: scenarioTestResult.failedCount
+  });
+  
+  // 5. 执行跨模块集成测试
+  const crossModuleResult = await runAllCrossModuleTests();
+  gateResults.checks.push({
+    type: 'CROSS_MODULE_TESTS',
+    passed: crossModuleResult.passed,
+    total: crossModuleResult.total,
+    passedCount: crossModuleResult.passedCount,
+    failedCount: crossModuleResult.failedCount
+  });
+  
+  // 6. 执行性能基准测试
+  const performanceResult = await runPerformanceBaselineTests();
+  gateResults.checks.push({
+    type: 'PERFORMANCE_TESTS',
+    passed: performanceResult.passed,
+    responseTime: performanceResult.responseTime,
+    throughput: performanceResult.throughput,
+    errorRate: performanceResult.errorRate
+  });
+  
+  // 7. 计算总体结果
+  gateResults.overallPassed = gateResults.checks.every(c => c.passed);
+  
+  // 8. 生成门禁报告
+  await saveTestReport('reports/integration-gate.json', gateResults);
+  
+  // 9. 如果通过，允许进入Stage4
+  if (gateResults.overallPassed) {
+    console.log('[门禁检查] 全量集成测试通过，允许进入Stage4');
+    await unlockStage4();
+  } else {
+    console.log('[门禁检查] 全量集成测试未通过，阻止进入Stage4');
+    await blockStage4(gateResults);
+  }
+  
+  return gateResults;
+}
+```
+
+#### 5. 增量测试配置
+
+```javascript
+// 增量测试配置
+const INCREMENTAL_TEST_CONFIG = {
+  // 模块级测试配置
+  moduleLevel: {
+    enabled: true,
+    triggerOn: 'MODULE_DONE',
+    timeout: 30000, // 30秒超时
+    retryCount: 2,
+    failFast: true, // 快速失败
+    notifyOnFailure: true
+  },
+  
+  // 跨模块测试配置
+  crossModule: {
+    enabled: true,
+    triggerOn: 'ALL_DEPENDENCIES_MET',
+    timeout: 60000, // 1分钟超时
+    retryCount: 1,
+    scenarioSubsetSize: 5, // 每次最多执行5个场景
+    prioritizeByRisk: true
+  },
+  
+  // 领域级测试配置
+  domainLevel: {
+    enabled: true,
+    triggerOn: 'ALL_DOMAIN_MODULES_DONE',
+    timeout: 120000, // 2分钟超时
+    retryCount: 1,
+    testTypes: ['INTEGRATION', 'DATA_CONSISTENCY', 'BUSINESS_FLOW']
+  },
+  
+  // 全量门禁配置
+  fullGate: {
+    enabled: true,
+    triggerOn: 'ALL_MODULES_DONE',
+    timeout: 300000, // 5分钟超时
+    requiredCoverage: 80, // 最低覆盖率80%
+    requiredPassRate: 100, // 100%通过率
+    blockOnFailure: true
+  },
+  
+  // 报告配置
+  reporting: {
+    generateReport: true,
+    reportFormat: 'JSON',
+    reportPath: 'reports/incremental/',
+    includeDetails: true,
+    includeMetrics: true
+  },
+  
+  // 通知配置
+  notifications: {
+    onFailure: true,
+    onSuccess: false,
+    channel: 'CONSOLE',
+    includeDetails: true
+  }
+};
+```
+
+#### 6. 增量测试指标
+
+```javascript
+// 增量测试指标收集
+const INCREMENTAL_TEST_METRICS = {
+  // 测试执行指标
+  execution: {
+    totalTests: 0,
+    passedTests: 0,
+    failedTests: 0,
+    skippedTests: 0,
+    totalDuration: 0,
+    averageDuration: 0
+  },
+  
+  // 覆盖率指标
+  coverage: {
+    lineCoverage: 0,
+    branchCoverage: 0,
+    functionCoverage: 0,
+    statementCoverage: 0
+  },
+  
+  // 质量指标
+  quality: {
+    defectDetectionRate: 0, // 缺陷发现率
+    falsePositiveRate: 0,   // 误报率
+    testEffectiveness: 0,   // 测试有效性
+    regressionRisk: 0       // 回归风险
+  },
+  
+  // 效率指标
+  efficiency: {
+    feedbackTime: 0,        // 反馈时间（从DONE到测试完成）
+    fixTime: 0,             // 修复时间（从失败到修复）
+    retestTime: 0,          // 重测时间
+    cycleTime: 0            // 周期时间
+  },
+  
+  // 收集指标
+  async collectMetrics(testResults) {
+    // 更新执行指标
+    this.execution.totalTests++;
+    if (testResults.overallPassed) {
+      this.execution.passedTests++;
+    } else {
+      this.execution.failedTests++;
+    }
+    this.execution.totalDuration += testResults.totalDuration;
+    this.execution.averageDuration = this.execution.totalDuration / this.execution.totalTests;
+    
+    // 计算质量指标
+    this.quality.defectDetectionRate = this.execution.failedTests / this.execution.totalTests;
+    
+    // 保存指标
+    await this.saveMetrics();
+  },
+  
+  async saveMetrics() {
+    await writeFile('metrics/incremental-test-metrics.json', JSON.stringify(this, null, 2));
+  }
+};
+```
+
+#### 7. 增量测试报告模板
+
+```markdown
+# 增量测试报告
+
+- **报告时间**：<ISO 8601>
+- **测试阶段**：<模块级/跨模块/领域级/全量门禁>
+- **触发事件**：<DONE/依赖满足/领域完成/全部完成>
+
+## 测试概览
+- **总测试数**：<数量>
+- **通过数**：<数量>
+- **失败数**：<数量>
+- **跳过数**：<数量>
+- **总耗时**：<时间>
+- **通过率**：<百分比>
+
+## 模块级测试详情
+| 模块 | 单元测试 | API测试 | 数据库测试 | 边界测试 | 总体结果 |
+|------|---------|--------|-----------|---------|----------|
+| user | ✅ | ✅ | ✅ | ✅ | ✅ |
+| product | ✅ | ❌ | ✅ | ✅ | ❌ |
+
+## 跨模块测试详情
+| 场景 | 涉及模块 | 结果 | 耗时 |
+|------|---------|------|------|
+| 用户创建产品 | user, product | ✅ | 1.2s |
+| 产品下单 | product, order | ❌ | 2.1s |
+
+## 失败详情
+| 测试名称 | 失败原因 | 影响范围 | 建议修复 |
+|---------|---------|---------|----------|
+| product-api-create | 状态码不匹配 | 产品创建功能 | 检查API实现 |
+
+## 覆盖率报告
+- **行覆盖率**：<百分比>
+- **分支覆盖率**：<百分比>
+- **函数覆盖率**：<百分比>
+
+## 性能指标
+- **平均响应时间**：<毫秒>
+- **95%响应时间**：<毫秒>
+- **吞吐量**：<请求/秒>
+- **错误率**：<百分比>
+
+## 建议
+1. <建议1>
+2. <建议2>
+```
+
 ---
 
 ## 四、Stage4：集成与验收（串行收敛）
@@ -1149,6 +2324,189 @@ delivery/
   └── integration-tests/
       ├── modules/
       └── scenarios/
+```
+
+### 4.6 E2E测试门禁（v2.6 新增）
+
+> **目标**：确保真实用户使用时不遇到阻塞问题。E2E测试必须覆盖所有关键业务路径。
+
+#### 4.6.1 E2E覆盖率最低标准
+
+| 模块类型 | 最低 E2E 用例数 | 说明 |
+|---------|:-----------:|------|
+| 登录认证 | 12+ | 正常登录(每角色) + 错误密码 + 入口匹配 + 改密(3场景) + 找回密码 + 退出 |
+| 角色管理 | 6+ | CRUD + 启用/禁用 + 权限分配 + 非管理员拒绝 |
+| 账号管理 | 8+ | CRUD + 启用/禁用 + 重置密码 + 权限查看 + 手机号校验 + 非管理员拒绝 + 禁用后不可登录 |
+| 渠道管理 | 10+ | CRUD + 企业/个人类型 + 启用/禁用 + 重置密码 + 重复手机号 + 关联弹窗 + 销售可创建 |
+| 客户管理 | 8+ | CRUD + 单/多联系人 + 关联弹窗 + 渠道人员隔离 + 搜索 |
+| 商机管理 | 15+ | 创建+审核(通过/驳回/撤销)+跟进+状态流转+调配+编辑退回+汇总+伙伴报备+隔离 |
+| 首页仪表盘 | 3+ | KPI卡片 + 图表 + 按角色数据正确 |
+| 导航与布局 | 5+ | 菜单权限(每角色) + 页面跳转 + 用户信息显示 |
+| **合计最低** | **70+** | 覆盖所有 PRD 验收标准 + 所有角色 + 所有错误路径 |
+
+> 实际用例数按模块复杂度等比放大。如商机管理含状态机+审批流，应 20+。
+
+#### 4.6.2 阻塞场景必测清单
+
+**1. 登录流程（12+ 用例）**
+```typescript
+// 登录测试矩阵
+const LOGIN_TEST_MATRIX = [
+  // 正常登录
+  { scenario: '管理员正常登录', role: 'admin', expect: 'success' },
+  { scenario: '销售人员正常登录', role: 'sales', expect: 'success' },
+  { scenario: '渠道人员正常登录', role: 'partner', expect: 'success' },
+  
+  // 错误路径
+  { scenario: '错误密码', role: 'admin', password: 'wrong', expect: 'error' },
+  { scenario: '空手机号', phone: '', expect: 'validation_error' },
+  { scenario: '无效手机号格式', phone: '123', expect: 'validation_error' },
+  
+  // 入口匹配
+  { scenario: '管理员入口登录', entryType: 'admin', expect: 'redirect_admin' },
+  { scenario: '销售入口登录', entryType: 'sales', expect: 'redirect_sales' },
+  
+  // 改密场景
+  { scenario: '首次登录强制改密', firstLogin: true, expect: 'change_password' },
+  { scenario: '修改密码成功', action: 'change_password', expect: 'success' },
+  { scenario: '修改密码-旧密码错误', action: 'change_password', oldPwd: 'wrong', expect: 'error' },
+  
+  // 找回密码
+  { scenario: '找回密码流程', action: 'forgot_password', expect: 'success' },
+  
+  // 退出
+  { scenario: '退出登录', action: 'logout', expect: 'success' }
+];
+```
+
+**2. 菜单导航（5+ 用例）**
+```typescript
+// 菜单测试矩阵
+const MENU_TEST_MATRIX = [
+  { scenario: '管理员菜单完整性', role: 'admin', expectedMenus: ['dashboard', 'users', 'roles', 'products', 'orders'] },
+  { scenario: '销售人员菜单完整性', role: 'sales', expectedMenus: ['dashboard', 'customers', 'opportunities'] },
+  { scenario: '渠道人员菜单完整性', role: 'partner', expectedMenus: ['dashboard', 'my_customers', 'my_opportunities'] },
+  { scenario: '菜单权限校验', role: 'sales', forbiddenMenu: 'users', expect: '403' },
+  { scenario: '菜单跳转功能', menu: 'products', expect: 'page_load' },
+  { scenario: '404页面处理', path: '/nonexistent', expect: '404_page' },
+  { scenario: '面包屑导航', page: 'products', expect: 'breadcrumb_visible' }
+];
+```
+
+**3. CRUD 闭环（7+ 用例/模块）**
+```typescript
+// CRUD测试模板
+const CRUD_TEST_TEMPLATE = {
+  // 创建
+  create: {
+    success: '表单填写完整 → 提交 → 成功 → 列表可见',
+    validation_error: '必填字段为空 → 提交 → 显示验证错误',
+    duplicate: '重复数据提交 → 显示唯一性错误'
+  },
+  
+  // 读取
+  read: {
+    list: '列表页加载 → 分页 → 搜索 → 筛选',
+    detail: '点击列表项 → 详情页加载 → 数据完整'
+  },
+  
+  // 更新
+  update: {
+    success: '编辑表单 → 修改数据 → 提交成功 → 列表更新',
+    cancel: '编辑表单 → 取消 → 数据不变',
+    validation_error: '编辑 → 清空必填字段 → 提交 → 显示错误'
+  },
+  
+  // 删除
+  delete: {
+    success: '点击删除 → 确认 → 成功 → 列表更新',
+    cancel: '点击删除 → 取消 → 数据不变',
+    undo: '删除后 → 撤销删除 → 数据恢复'
+  }
+};
+```
+
+#### 4.6.3 全流程深度测试
+
+| 角色 | 必测全流程 | 最少用例 |
+|------|-----------|:------:|
+| 管理员 | 登录 → 查看统计 → 创建角色 → 创建账号 → 审核商机(通过+驳回+撤销) → 商机调配 → 查看汇总 | 8 |
+| 销售人员 | 登录 → 创建渠道 → 创建客户(关联渠道) → 创建商机 → 查看我的商机 → 商机跟进 → 查看汇总 | 7 |
+| 渠道人员 | 登录 → 创建客户 → 报备商机 → 查看商机列表 → 查看商机状态 → 验证数据隔离 | 6 |
+
+#### 4.6.4 账号准备自修复模式
+
+```typescript
+// 账号准备自修复函数
+export async function ensureAccountReady(request, phone, entry) {
+  // 尝试 1: 直接登录
+  let resp = await request.post(`${API}/auth/login`, { 
+    data: { phone, password: '123456', entryType: entry } 
+  });
+  
+  // 尝试 2: 密码被改 → 自动重置
+  if (!resp.token) {
+    await request.post(`${API}/auth/forgot-password`, { data: { phone } });
+    resp = await request.post(`${API}/auth/login`, {
+      data: { phone, password: '123456', entryType: entry }
+    });
+  }
+  
+  // 尝试 3: 仍失败 → 抛出明确错误
+  if (!resp.token) {
+    throw new Error(`Login failed for ${phone}`);
+  }
+  
+  // 处理后 firstLogin
+  if (resp.firstLogin) {
+    await request.post(`${API}/auth/change-password`, {
+      data: { oldPassword: '123456', newPassword: 'newPassword123' }
+    });
+  }
+  
+  return resp;
+}
+```
+
+#### 4.6.5 E2E测试文件组织
+
+```
+tests/e2e/
+├── helpers.ts              # 共享辅助函数（账号准备、登录、导航）
+├── auth.spec.ts            # 登录认证（每角色 + 错误路径 + 改密）
+├── dashboard-navigation.spec.ts  # 首页 + 导航 + 布局
+├── roles-accounts.spec.ts  # 角色管理 + 账号管理
+├── channels.spec.ts        # 渠道管理
+├── customers.spec.ts       # 客户管理
+├── opportunities.spec.ts   # 商机管理（最复杂，用例最多）
+├── workflows-internal.spec.ts  # 内部全流程（管理员+销售）
+└── workflows-partner.spec.ts   # 合作伙伴全流程（渠道人员）
+```
+
+#### 4.6.6 E2E门禁检查清单
+
+```markdown
+# E2E 门禁检查清单
+
+## 覆盖率检查
+- [ ] 总用例数 ≥ 70（全量模式）
+- [ ] 登录流程 ≥ 12 用例
+- [ ] 菜单导航 ≥ 5 用例
+- [ ] 每个模块 CRUD ≥ 7 用例
+- [ ] 工作流测试 ≥ 21 用例（管理员8+销售7+渠道6）
+
+## 质量检查
+- [ ] 每个API端点至少1个Happy Path + 1个Error Path
+- [ ] 每个角色至少1个权限校验用例
+- [ ] 每个表单至少1个空字段提交 + 1个正常提交
+- [ ] 状态机每个状态转换至少1个用例
+- [ ] 数据隔离至少1个跨角色验证用例
+
+## 执行检查
+- [ ] ensureAccountReady 函数正常工作
+- [ ] 测试数据隔离（beforeAll重置）
+- [ ] 失败测试自动截图
+- [ ] 无flaky tests（连续3次通过）
 ```
 
 ---
@@ -1520,6 +2878,15 @@ Coordinator在Stage4完成后自动采集到 `pipeline-metrics.json`：
 | **P0问题密度** | P0总数 / 模块数 | ≤ 1/模块 | ≥ 3/模块 |
 | **Bug逃逸率** | Stage4发现的Bug / 全流程Bug总数 | ≤ 20% | ≥ 50% |
 | **并行度利用率** | 实际并行Agent数 / 最大并行Agent数 | ≥ 80% | < 50% |
+| **E2E覆盖率** | E2E用例数 / 最低标准(70+) | ≥ 100% | < 80% |
+| **登录流程覆盖** | 登录用例数 / 最低标准(12) | ≥ 100% | < 90% |
+| **菜单导航覆盖** | 菜单用例数 / 最低标准(5) | ≥ 100% | < 80% |
+| **CRUD闭环覆盖** | 模块CRUD用例数 / 最低标准(7/模块) | ≥ 100% | < 70% |
+| **工作流覆盖** | 工作流用例数 / 最低标准(21) | ≥ 100% | < 85% |
+| **MSVP通过率** | A类Bug数 / 总检查项 | 0 A类Bug | 任何A类Bug |
+| **增量测试反馈时间** | 模块DONE到测试完成的时间 | ≤ 30秒 | > 2分钟 |
+| **契约一致性** | 通过契约检查的模块数 / 总模块数 | 100% | < 90% |
+| **跨模块调用合规** | 通过跨模块检查的模块数 / 总模块数 | 100% | < 85% |
 
 ### 12.2 错误根因分类
 
