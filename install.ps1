@@ -6,7 +6,7 @@
 #
 # ① giget 拉取后本地安装（推荐）：
 #    npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-project `
-#      --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"
+#      --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**,skills/**"
 #    cd my-project
 #    .\install.ps1
 #
@@ -42,7 +42,7 @@ function Clear-Root {
     }
     Remove-Item "$Root\all-in-mvp-*.md" -Force -ErrorAction SilentlyContinue
     Remove-Item "$Root\MVP*" -Force -ErrorAction SilentlyContinue
-    @("shadcn","tools","overlays","ultra-cost-effective") | ForEach-Object {
+    @("shadcn","tools","overlays","ultra-cost-effective","skills") | ForEach-Object {
         Remove-Item "$Root\$_" -Recurse -Force -ErrorAction SilentlyContinue
     }
     Write-Success "根目录清理完成"
@@ -109,7 +109,7 @@ function Show-Help {
     Write-Host "示例："
     Write-Host "  # giget 拉取后安装（推荐）"
     Write-Host "  npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-project ``"
-    Write-Host "    --ignore `"AGENTS.md,...ultra-cost-effective/**`""
+    Write-Host "    --ignore `"AGENTS.md,...skills/**`""
     Write-Host "  cd my-project ; .\install.ps1"
     Write-Host ""
     Write-Host "  # 远程一键安装"

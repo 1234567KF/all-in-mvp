@@ -36,29 +36,31 @@
 **macOS / Linux / WSL：**
 
 ```bash
-npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**" && cd my-mvp-project && chmod +x install.sh && ./install.sh
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**,skills/**" && cd my-mvp-project && chmod +x install.sh && ./install.sh
 ```
 
 **Windows PowerShell：**
 
 ```powershell
-npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"; cd my-mvp-project; .\install.ps1
+npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**,skills/**"; cd my-mvp-project; .\install.ps1
 ```
 
-> 拉取模板 + 安装技能，一条命令完成。`--ignore` 排除根目录文档/白皮书/截图，install.sh 还有兜底清理。
+> 拉取模板 + 安装技能，一条命令完成。`--ignore` 排除根目录文档/白皮书/截图/源 skills，install.sh 还有兜底清理。
+
+> 💡 **嫌长？** 加到 `~/.bashrc`：`alias mvp-init='npx giget gh:1234567KF/all-in-mvp#all-in-mvp . --force --ignore "..." && chmod +x install.sh && ./install.sh'`，之后只需 `mvp-init`。
 
 ### 已切到项目根目录
 
 **macOS / Linux / WSL：**
 
 ```bash
-npx giget gh:1234567KF/all-in-mvp#all-in-mvp . --force --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**" && chmod +x install.sh && ./install.sh
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp . --force --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**,skills/**" && chmod +x install.sh && ./install.sh
 ```
 
 **Windows PowerShell：**
 
 ```powershell
-npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp . --force --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"; .\install.ps1
+npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp . --force --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**,skills/**"; .\install.ps1
 ```
 
 ### 分步操作
@@ -71,14 +73,14 @@ npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp . --force --ignore "AGENTS.md,C
 **macOS / Linux / WSL：**
 
 ```bash
-npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**,skills/**"
 cd my-mvp-project
 ```
 
 **Windows PowerShell：**
 
 ```powershell
-npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"
+npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-mvp-project --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**,skills/**"
 cd my-mvp-project
 ```
 
@@ -237,7 +239,7 @@ git push origin all-in-mvp --tags
 用户通过 tag 锁定版本：
 
 ```bash
-npx giget gh:1234567KF/all-in-mvp#v2.9.0 my-project --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"
+npx giget gh:1234567KF/all-in-mvp#v2.9.0 my-project --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**,skills/**"
 ```
 
 ---
@@ -246,7 +248,7 @@ npx giget gh:1234567KF/all-in-mvp#v2.9.0 my-project --ignore "AGENTS.md,CLAUDE.m
 
 ### Q: 为什么 giget 拉取后的项目没有 README 等文档？
 
-A: `--ignore` 参数排除了根目录的文档/白皮书/截图等元数据，只下载 `.claude/` `.qoder/` `.trae/` 等核心文件。install.sh 也有兜底清理。文档在 [GitHub 仓库](https://github.com/1234567KF/all-in-mvp) 随时可查。
+A: `--ignore` 参数排除了根目录的文档/白皮书/截图/源 skills 等元数据，只下载 `.claude/` `.qoder/` `.trae/` 等核心文件。install.sh 也有兜底清理。文档在 [GitHub 仓库](https://github.com/1234567KF/all-in-mvp) 随时可查。
 
 ### Q: 安装一次后，其他项目还需要再运行 install.sh 吗？
 

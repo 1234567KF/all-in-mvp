@@ -8,7 +8,7 @@
 #
 # ① giget 拉取后本地安装（推荐）：
 #    npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-project \
-#      --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"
+#      --ignore "AGENTS.md,CLAUDE.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**,skills/**"
 #    cd my-project
 #    chmod +x install.sh && ./install.sh
 #
@@ -44,7 +44,7 @@ cleanup_root() {
           "$root/all-in-mvp-workflow-plan.md" \
           "$root/MVP"* "$root/CLAUDE.md" 2>/dev/null || true
     rm -rf "$root/shadcn" "$root/tools" "$root/overlays" \
-           "$root/ultra-cost-effective" 2>/dev/null || true
+           "$root/ultra-cost-effective" "$root/skills" 2>/dev/null || true
     print_success "根目录清理完成"
 }
 
@@ -108,7 +108,7 @@ show_help() {
     echo "示例："
     echo "  # giget 拉取后安装（推荐）"
     echo "  npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-project \\"
-    echo "    --ignore \"AGENTS.md,...ultra-cost-effective/**\""
+    echo "    --ignore \"AGENTS.md,...skills/**\""
     echo "  cd my-project && ./install.sh"
     echo ""
     echo "  # 远程一键安装"
