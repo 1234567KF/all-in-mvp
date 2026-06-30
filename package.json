@@ -7,6 +7,7 @@
     "url": "https://github.com/1234567KF/all-in-mvp.git"
   },
   "scripts": {
+    "prepare": "node scripts/setup-hooks.js",
     "setup": "node scripts/sync-skills.js --mode push --force",
     "sync": "node scripts/sync-skills.js --mode push",
     "sync:pull": "node scripts/sync-skills.js --mode pull",
@@ -14,6 +15,7 @@
     "sync:interactive": "node scripts/sync-skills.js --mode interactive",
     "sync:claude": "node scripts/sync-skills.js --mode push --target claude",
     "sync:qoder": "node scripts/sync-skills.js --mode push --target qoder",
+    "sync:trae": "node scripts/sync-skills.js --mode push --target trae",
     "sync:dry-run": "node scripts/sync-skills.js --mode push --dry-run",
     "sync:backup": "node scripts/sync-skills.js --mode push --backup"
   },

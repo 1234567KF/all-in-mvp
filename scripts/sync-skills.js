@@ -38,6 +38,7 @@ const CONFIG = {
   targets: {
     claude: path.join(__dirname, '..', '.claude', 'skills'),
     qoder:  path.join(__dirname, '..', '.qoder', 'skills'),
+    trae:   path.join(__dirname, '..', '.trae', 'skills'),
   },
   backupDir: path.join(__dirname, '..', '.backups', 'skills'),
   ignore: ['.git', '.DS_Store', 'node_modules', '*.tmp', '*.bak', '.overlay'],
