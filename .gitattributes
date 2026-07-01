@@ -4,34 +4,34 @@
 # ============================================================
 
 # --- 源技能仓库（用户不需，已融合到 .claude/.qoder/.trae/skills/）---
-skills/          export-ignore
+/skills/          export-ignore
 
 # --- 内部 overlay 配置（含 pipeline-monitor node_modules 等）---
-overlays/        export-ignore
+/overlays/        export-ignore
 
 # --- 根目录文档/白皮书/截图 ---
-AGENTS.md        export-ignore
-CLAUDE.md        export-ignore
-README.md        export-ignore
-INSTALL.md       export-ignore
-WhyMe.md         export-ignore
-MVP*             export-ignore
-screenshot-1-full.png  export-ignore
-nul              export-ignore
-all-in-mvp-*.md  export-ignore
+/AGENTS.md        export-ignore
+/CLAUDE.md        export-ignore
+/README.md        export-ignore
+/INSTALL.md       export-ignore
+/WhyMe.md         export-ignore
+/MVP*             export-ignore
+/screenshot-1-full.png  export-ignore
+/nul              export-ignore
+/all-in-mvp-*.md  export-ignore
 
 # --- 非分发目录 ---
-shadcn/          export-ignore
-tools/           export-ignore
-ultra-cost-effective/  export-ignore
-scripts/         export-ignore
-.idea/           export-ignore
-.vite/           export-ignore
-node_modules/    export-ignore
+/shadcn/          export-ignore
+/tools/           export-ignore
+/ultra-cost-effective/  export-ignore
+/scripts/         export-ignore
+/.idea/           export-ignore
+/.vite/           export-ignore
+/node_modules/    export-ignore
 
 # --- 开发者依赖 ---
-package.json     export-ignore
-package-lock.json  export-ignore
+/package.json     export-ignore
+/package-lock.json  export-ignore
 
 # --- .claude/ 只保留 skills/ ---
 .claude/helpers/   export-ignore
