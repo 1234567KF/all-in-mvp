@@ -1,0 +1,131 @@
+{
+  "timestamp": "2026-06-17T03:54:48.017Z",
+  "results": [
+    {
+      "name": "CLI输出",
+      "type": "output",
+      "level": "medium",
+      "inputSize": 5320,
+      "outputSize": 3887,
+      "origTokens": 1330,
+      "compTokens": 975,
+      "saved": 355,
+      "pct": 26.7,
+      "compressed": "PASS src/components/Button.test.tsx\nPASS src/components/Modal.test.tsx\nPASS src/utils/api.test.ts\nFAIL src/services/auth.test.ts\n  ● AuthService › login › should handle invalid credentials\n\n    expect..."
+    },
+    {
+      "name": "CLI输出",
+      "type": "output",
+      "level": "aggressive",
+      "inputSize": 5320,
+      "outputSize": 1807,
+      "origTokens": 1330,
+      "compTokens": 455,
+      "saved": 875,
+      "pct": 65.8,
+      "compressed": "PASS src/components/Button.test.tsx\nPASS src/components/Modal.test.tsx\nPASS src/utils/api.test.ts\nFAIL src/services/auth.test.ts\n  ● AuthService › login › should handle invalid credentials\n\n    expect..."
+    },
+    {
+      "name": "代码-react",
+      "type": "code",
+      "level": "medium",
+      "inputSize": 2753,
+      "outputSize": 2392,
+      "origTokens": 708,
+      "compTokens": 627,
+      "saved": 81,
+      "pct": 11.4,
+      "compressed": "import React, { useState, useEffect, useCallback, useMemo } from 'react';\nimport { useQuery, useMutation } from '@tanstack/react-query';\nimport { Button, Modal, Form, Input, Select, Table, Card, Space..."
+    },
+    {
+      "name": "代码-go",
+      "type": "code",
+      "level": "medium",
+      "inputSize": 3847,
+      "outputSize": 3215,
+      "origTokens": 986,
+      "compTokens": 866,
+      "saved": 120,
+      "pct": 12.2,
+      "compressed": "package service\n\nimport (\n    \"context\"\n    \"database/sql\"\n    \"encoding/json\"\n    \"fmt\"\n    \"sync\"\n    \"time\"\n\n    \"github.com/redis/go-redis/v9\"\n    \"github.com/rs/zerolog/log\"\n)\n\n// ProductService ..."
+    },
+    {
+      "name": "代码-python",
+      "type": "code",
+      "level": "medium",
+      "inputSize": 3619,
+      "outputSize": 2360,
+      "origTokens": 924,
+      "compTokens": 635,
+      "saved": 289,
+      "pct": 31.3,
+      "compressed": "#!/usr/bin/env python3\n\"\"\"产品服务模块 - 异步数据库 + Redis缓存\"\"\"\n\nimport json\nimport hashlib\nfrom dataclasses import dataclass, field\nfrom datetime import datetime\nfrom typing import Optional, List, Dict, Any\nfr..."
+    },
+    {
+      "name": "JSON-API",
+      "type": "json",
+      "level": "medium",
+      "inputSize": 25370,
+      "outputSize": 10193,
+      "origTokens": 6672,
+      "compTokens": 2715,
+      "saved": 3957,
+      "pct": 59.3,
+      "compressed": "{\n \"code\": 0,\n \"message\": \"success\",\n \"data\": {\n  \"total\": 1287,\n  \"page\": 1,\n  \"pageSize\": 20,\n  \"items\": [\n   {\n    \"id\": \"prod_000001\",\n    \"name\": \"产品名称 1 - 这是一段比较长的描述文本用于测试JSON压缩效果\",\n    \"price\":..."
+    },
+    {
+      "name": "JSON-API",
+      "type": "json",
+      "level": "aggressive",
+      "inputSize": 25370,
+      "outputSize": 2914,
+      "origTokens": 6672,
+      "compTokens": 790,
+      "saved": 5882,
+      "pct": 88.2,
+      "compressed": "{\n \"code\": 0,\n \"message\": \"success\",\n \"data\": {\n  \"total\": 1287,\n  \"page\": 1,\n  \"pageSize\": 20,\n  \"items\": [\n   {\n    \"id\": \"prod_000001\",\n    \"name\": \"产品名称 1 - 这是一段比较长的描述文本用于测试JSON压缩效果\",\n    \"price\":..."
+    },
+    {
+      "name": "对话历史",
+      "type": "context",
+      "level": "light",
+      "inputSize": 3821,
+      "outputSize": 3821,
+      "origTokens": 1019,
+      "compTokens": 1019,
+      "saved": 0,
+      "pct": 0,
+      "compressed": "User: 请给我写一个用户登录的API接口，包含JWT认证\n\nAssistant: 好的，我来为你设计一个完整的用户登录API。首先定义数据模型...xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx..."
+    },
+    {
+      "name": "对话历史",
+      "type": "context",
+      "level": "medium",
+      "inputSize": 3821,
+      "outputSize": 3441,
+      "origTokens": 1019,
+      "compTokens": 930,
+      "saved": 89,
+      "pct": 8.7,
+      "compressed": "[对话历史摘要: 2 条早期消息]\nUser: 请给我写一个用户登录的API接口，包含JWT认证 \nAssistant: 好的，我来为你设计一个完整的用户登录API。首先定义数据模型...xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n--- 最近对话 ---\nUs..."
+    },
+    {
+      "name": "组合场景",
+      "type": "auto",
+      "level": "medium",
+      "inputSize": 40913,
+      "outputSize": 2938,
+      "origTokens": 10620,
+      "compTokens": 780,
+      "saved": 9840,
+      "pct": 92.7,
+      "compressed": "\u001b[32mPASS\u001b[0m src/components/Button.test.tsx\n\u001b[32mPASS\u001b[0m src/components/Modal.test.tsx\n\u001b[32mPASS\u001b[0m src/utils/api.test.ts\n\u001b[31mFAIL\u001b[0m src/services/auth.test.ts\n  ● AuthService › login › should ha..."
+    }
+  ],
+  "summary": {
+    "avgPct": "39.6",
+    "totalSaved": 21488,
+    "totalPct": "68.7",
+    "scenarioCount": 10
+  }
+}

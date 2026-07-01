@@ -1,0 +1,24 @@
+{
+  "name": "quick",
+  "version": "1.0.0",
+  "description": "快速启动预设 — 仅 L1 输出压缩，零配置，即刻生效",
+  "layers": {
+    "L0_monitor": false,
+    "L1_tokenforge": { "enabled": true, "level": "medium", "autoInject": true },
+    "L1_lean_ctx": { "enabled": true, "mode": "mcp" },
+    "L2_shared_prefix": false,
+    "L3_warmup": false,
+    "L4_skill_loader": false,
+    "L5_ccp_skip": false,
+    "L6_a2a_compress": false,
+    "L7_router": false
+  },
+  "modelConfig": {
+    "default": "deepseek-v4-flash",
+    "available": ["deepseek-v4-pro", "deepseek-v4-flash"],
+    "routing": "manual"
+  },
+  "estimatedSavings": "50-70%",
+  "suitableFor": ["日常编码", "轻量项目", "快速启动"],
+  "install": "即开即用，无需额外配置"
+}

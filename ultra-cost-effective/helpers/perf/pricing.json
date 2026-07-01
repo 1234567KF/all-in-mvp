@@ -1,0 +1,64 @@
+{
+  "version": "1.0.0",
+  "updated": "2026-06-13",
+  "provider": "DeepSeek",
+  "models": {
+    "deepseek-v4-pro": {
+      "description": "DeepSeek V4 Pro — 旗舰推理模型，适合架构设计、复杂Agent协作",
+      "inputPrice": 3.0,
+      "outputPrice": 15.0,
+      "cacheHitPrice": 0.025,
+      "cacheMissPrice": 3.0,
+      "currency": "CNY",
+      "unit": "per_1M_tokens",
+      "contextWindow": 131072,
+      "cacheTTL": 300,
+      "cacheMultiplier": 120,
+      "useCases": ["architecture", "design", "planning", "complex_reasoning", "multi_agent"],
+      "priority": "high_quality"
+    },
+    "deepseek-v4-flash": {
+      "description": "DeepSeek V4 Flash — 性价比模型，适合编码、测试、文档",
+      "inputPrice": 1.0,
+      "outputPrice": 5.0,
+      "cacheHitPrice": 0.02,
+      "cacheMissPrice": 1.0,
+      "currency": "CNY",
+      "unit": "per_1M_tokens",
+      "contextWindow": 131072,
+      "cacheTTL": 300,
+      "cacheMultiplier": 50,
+      "useCases": ["coding", "testing", "code_review", "documentation", "qa"],
+      "priority": "cost_efficient"
+    }
+  },
+  "cacheStrategy": {
+    "prefixShared": {
+      "enabled": true,
+      "prefixLength": "200-500 tokens",
+      "targetHitRate": 0.9,
+      "leverage": "120x (Pro) / 50x (Flash)"
+    },
+    "warmup": {
+      "enabled": true,
+      "description": "预热长文档进入KV Cache"
+    }
+  },
+  "costEstimation": {
+    "quickDiscount": "无缓存优化时不可用",
+    "standardEstimate": {
+      "per1KRequests_Pro": {
+        "tokensPerRequest": 4000,
+        "cacheHitRate": 0.7,
+        "costPerRequest": "= 400×(0.7×0.025 + 0.3×3.0)/1000 + 3600×3.0/1000",
+        "estimatedCNY": 0.01117
+      },
+      "per1KRequests_Flash": {
+        "tokensPerRequest": 4000,
+        "cacheHitRate": 0.7,
+        "costPerRequest": "= 400×(0.7×0.02 + 0.3×1.0)/1000 + 3600×1.0/1000",
+        "estimatedCNY": 0.003726
+      }
+    }
+  }
+}

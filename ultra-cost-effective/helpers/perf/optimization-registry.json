@@ -1,0 +1,101 @@
+{
+  "version": "1.0.0",
+  "description": "UltraCostEffective 优化机制注册表 — 各层节省机制与收益归因",
+  "layers": [
+    {
+      "id": "L0",
+      "name": "成本监控",
+      "mechanism": "perf-tracker",
+      "type": "tracking",
+      "outputQualityImpact": "none",
+      "estimatedSaving": "N/A (监控层)",
+      "enabledByDefault": true
+    },
+    {
+      "id": "L1",
+      "name": "输出压缩",
+      "mechanisms": [
+        {
+          "name": "tokenforge",
+          "type": "output_compression",
+          "subTypes": ["output", "json", "code", "context"],
+          "levels": ["light", "medium", "aggressive"],
+          "outputQualityImpact": "none — 仅压缩工具输出，不影响LLM推理",
+          "estimatedSaving": "50-95%",
+          "verification": "GSM8K基准: 准确率 ±0.000 (matching Headroom benchmark)"
+        },
+        {
+          "name": "lean-ctx",
+          "type": "context_compression",
+          "mode": "mcp_tool_override",
+          "outputQualityImpact": "minimal — 缓存命中返回相同内容，无信息丢失",
+          "estimatedSaving": "35-95%",
+          "verification": "重读同一文件: ~13 tokens vs 数千 tokens"
+        }
+      ]
+    },
+    {
+      "id": "L2",
+      "name": "共享前缀KV Cache",
+      "mechanism": "shared-prefix + prefix-validator",
+      "type": "cache_optimization",
+      "outputQualityImpact": "none — 纯成本优化，提示内容不变",
+      "estimatedSaving": "120x 输入成本杠杆 (DeepSeek Pro)",
+      "prerequisite": "DeepSeek API",
+      "verification": "cache_hit_tokens in API response"
+    },
+    {
+      "id": "L3",
+      "name": "长上下文预热",
+      "mechanism": "cache-optimization warmup",
+      "type": "cache_warmup",
+      "outputQualityImpact": "none — 预热不影响后续请求内容",
+      "estimatedSaving": "80-90% 后续请求输入成本",
+      "cost": "一次性预热请求 (~10 token output)"
+    },
+    {
+      "id": "L4",
+      "name": "技能按需加载",
+      "mechanism": "skill-loader",
+      "type": "prompt_compression",
+      "outputQualityImpact": "minimal — 非活跃技能不影响当前任务质量",
+      "estimatedSaving": "85-96%",
+      "verification": "24技能场景: stage-0 >95%, stage-5 >85%"
+    },
+    {
+      "id": "L5",
+      "name": "阶段智能跳过",
+      "mechanism": "CCP Skip",
+      "type": "process_optimization",
+      "outputQualityImpact": "none — 仅在无变更时跳过，不影响有变更的阶段",
+      "estimatedSaving": "30-50% 总会话Token",
+      "note": "extreme预设专属"
+    },
+    {
+      "id": "L6",
+      "name": "Agent间通信压缩",
+      "mechanism": "λ-lang compact protocol",
+      "type": "protocol_optimization",
+      "outputQualityImpact": "minimal — 结构化信息无损传递",
+      "estimatedSaving": "60-70% A2A通信",
+      "note": "extreme预设专属"
+    },
+    {
+      "id": "L7",
+      "name": "模型智能路由",
+      "mechanism": "ultra-cost-effective-router",
+      "type": "model_selection",
+      "outputQualityImpact": "task-dependent — 复杂任务仍用Pro，简单任务用Flash",
+      "estimatedSaving": "40-60% 模型成本",
+      "safeguards": ["成本保护", "熔断降级", "上下文感知"]
+    }
+  ],
+  "qualitySafeguard": {
+    "principle": "所有压缩发生在输出侧和上下文侧，不修改LLM推理逻辑",
+    "benchmarks": [
+      { "name": "GSM8K", "impact": "±0.000", "source": "Headroom benchmark" },
+      { "name": "TruthfulQA", "impact": "+0.030", "source": "Headroom benchmark" },
+      { "name": "Code output correctness", "impact": "无影响", "note": "仅压缩Shell输出，不影响生成的代码" }
+    ]
+  }
+}

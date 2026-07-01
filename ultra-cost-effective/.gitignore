@@ -1,0 +1,32 @@
+# Node.js
+node_modules/
+npm-debug.log*
+
+# 系统文件
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# IDE
+.idea/
+.vscode/
+*.sublime-*
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+
+# 测试产出物（运行时生成）
+ultra-cost-effective/bench/bench-results.json
+
+# 安装脚本内部标记
+_rename.*
+
+# 环境文件（如有自定义）
+.env
+.env.local
+
+# Token追踪数据（运行时生成，不应提交）
+.ultra-cost-effective-tracker.json

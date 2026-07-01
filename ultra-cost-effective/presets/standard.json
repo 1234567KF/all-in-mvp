@@ -1,0 +1,35 @@
+{
+  "name": "standard",
+  "version": "1.0.0",
+  "description": "标准配置 — L1+L2+L3 全开，推荐大多数项目使用",
+  "layers": {
+    "L0_monitor": { "enabled": true, "tracking": "session" },
+    "L1_tokenforge": { "enabled": true, "level": "medium", "autoInject": true },
+    "L1_lean_ctx": { "enabled": true, "mode": "mcp" },
+    "L2_shared_prefix": { "enabled": true, "prefixFile": "rules/shared-prefix.md", "validator": "helpers/prefix-validator.cjs" },
+    "L3_warmup": { "enabled": true, "warmupDocs": ["spec.md", "design.md"], "autoWarmup": true },
+    "L4_skill_loader": { "enabled": true, "stubSize": 25, "loader": "helpers/skill-loader.cjs" },
+    "L5_ccp_skip": false,
+    "L6_a2a_compress": false,
+    "L7_router": { "enabled": true, "routing": "auto", "costProtection": true, "circuitBreaker": true }
+  },
+  "modelConfig": {
+    "default": "deepseek-v4-flash",
+    "available": ["deepseek-v4-pro", "deepseek-v4-flash"],
+    "routing": {
+      "semanticClassification": true,
+      "contextAwareness": true,
+      "costProtection": true,
+      "circuitBreaker": true,
+      "budgetLimit": 50000
+    }
+  },
+  "pricing": {
+    "deepseek-v4-pro": { "input": 3.0, "output": 15.0, "cacheHit": 0.025, "currency": "CNY" },
+    "deepseek-v4-flash": { "input": 1.0, "output": 5.0, "cacheHit": 0.02, "currency": "CNY" }
+  },
+  "estimatedSavings": "70-85%",
+  "estimatedCostSavings": "80-90%",
+  "suitableFor": ["标准项目开发", "日常团队协作", "⭐ 推荐默认配置"],
+  "install": "lean-ctx 需安装: npm install -g lean-ctx-bin && lean-ctx init"
+}

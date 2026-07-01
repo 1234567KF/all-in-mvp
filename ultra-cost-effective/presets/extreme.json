@@ -1,0 +1,51 @@
+{
+  "name": "extreme",
+  "version": "1.0.0",
+  "description": "极致配置 — 全七层开启，含 Headroom 可选增强。适合大型项目和长会话。",
+  "layers": {
+    "L0_monitor": { "enabled": true, "tracking": "session+task+project" },
+    "L1_tokenforge": { "enabled": true, "level": "aggressive", "autoInject": true },
+    "L1_lean_ctx": { "enabled": true, "mode": "mcp", "fallback": "tokenforge" },
+    "L2_shared_prefix": { "enabled": true, "prefixFile": "rules/shared-prefix.md", "validator": "helpers/prefix-validator.cjs", "checkInterval": "every-request" },
+    "L3_warmup": { "enabled": true, "warmupDocs": ["spec.md", "design.md", "architecture.md", "api.md"], "autoWarmup": true, "preemptiveWarmup": true },
+    "L4_skill_loader": { "enabled": true, "stubSize": 25, "loader": "helpers/skill-loader.cjs", "aggressiveStub": true },
+    "L5_ccp_skip": { "enabled": true, "skipRules": ["no_code_change", "config_only", "docs_only"] },
+    "L6_a2a_compress": { "enabled": true, "compressionRatio": 3, "protocol": "compact" },
+    "L7_router": { "enabled": true, "routing": "auto", "costProtection": "aggressive", "circuitBreaker": true, "budgetLimit": 30000 }
+  },
+  "extensions": {
+    "headroom": {
+      "enabled": true,
+      "adapter": "helpers/headroom-adapter.cjs",
+      "selector": "helpers/compressor-selector.cjs",
+      "mode": "CCR (Composable Compression with Retrieval)",
+      "install": "pip install headroom-ai[all]",
+      "features": ["ccr_reversible_compress", "ast_aware_code_compress", "cross_agent_memory", "smart_crusher_json"],
+      "activation": "export ULTRA_COST_EFFECTIVE_HEADROOM=1 或由 compressor-selector 自动检测",
+      "autoSelect": true,
+      "selectOn": ["code", "context", "large-output"],
+      "retrieveTtl": "30min",
+      "degradeTo": "tokenforge"
+    }
+  },
+  "modelConfig": {
+    "default": "deepseek-v4-flash",
+    "available": ["deepseek-v4-pro", "deepseek-v4-flash"],
+    "routing": {
+      "semanticClassification": true,
+      "contextAwareness": true,
+      "costProtection": "aggressive",
+      "circuitBreaker": true,
+      "budgetLimit": 30000,
+      "proMaxRatio": 0.3
+    }
+  },
+  "pricing": {
+    "deepseek-v4-pro": { "input": 3.0, "output": 15.0, "cacheHit": 0.025, "currency": "CNY" },
+    "deepseek-v4-flash": { "input": 1.0, "output": 5.0, "cacheHit": 0.02, "currency": "CNY" }
+  },
+  "estimatedSavings": "85-95%",
+  "estimatedCostSavings": "90-97%",
+  "suitableFor": ["大型项目", "长会话(20+轮)", "多Agent协作", "极致节省需求"],
+  "install": "lean-ctx: npm install -g lean-ctx-bin && lean-ctx init\nHeadroom(可选): pip install headroom-ai[all]"
+}

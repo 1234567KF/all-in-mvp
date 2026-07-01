@@ -1,0 +1,71 @@
+{
+  "_comment": "UltraCostEffective 极致节能 — Qoder settings.json 合并补丁",
+  "_description": "将此文件内容合并到 Qoder 的 settings.json 中。不要直接替换。",
+  "_version": "1.2.0",
+
+  "models": ["deepseek-v4-pro", "deepseek-v4-flash"],
+
+  "rules": [
+    "ultra-cost-effective/rules/main.md",
+    "ultra-cost-effective/rules/shared-prefix.md",
+    "ultra-cost-effective/rules/cache-optimization.md",
+    "ultra-cost-effective/rules/lean-ctx.md",
+    "ultra-cost-effective/rules/compression-default.md",
+    "ultra-cost-effective/rules/interceptor-aop.md",
+    "ultra-cost-effective/rules/workflow-compress.md"
+  ],
+
+  "skills": [
+    "ultra-cost-effective/skills/ultra-cost-effective-output",
+    "ultra-cost-effective/skills/ultra-cost-effective-cache",
+    "ultra-cost-effective/skills/ultra-cost-effective-router",
+    "ultra-cost-effective/skills/ultra-cost-effective-monitor"
+  ],
+
+  "mcpServers": {
+    "lean-ctx": {
+      "command": "lean-ctx",
+      "args": ["mcp"]
+    }
+  },
+
+  "hooks": {
+    "preToolUse": [
+      {
+        "matcher": "Bash",
+        "command": "node ultra-cost-effective/adapters/qoder/hook-adapter.cjs",
+        "timeout": 5000
+      },
+      {
+        "matcher": "Agent",
+        "command": "node ultra-cost-effective/helpers/agent-spawn-guard.cjs",
+        "timeout": 5000
+      }
+    ],
+    "postToolUse": [
+      {
+        "matcher": "",
+        "command": "node ultra-cost-effective/helpers/perf/perf-tracker.cjs --capture",
+        "timeout": 3000
+      },
+      {
+        "matcher": "",
+        "command": "node ultra-cost-effective/helpers/context-interceptor.cjs post-tool-use",
+        "timeout": 3000
+      }
+    ],
+    "userPromptSubmit": [
+      {
+        "matcher": "",
+        "command": "node ultra-cost-effective/helpers/model-router.cjs hook",
+        "timeout": 5000
+      }
+    ]
+  },
+
+  "environment": {
+    "ULTRA_COST_EFFECTIVE_PLATFORM": "qoder",
+    "ULTRA_COST_EFFECTIVE_LEVEL": "medium",
+    "ULTRA_COST_EFFECTIVE_PRESET": "standard"
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "_comment": "UltraCostEffective 极致节能 — Claude Code settings.json 模板",
+  "_description": "合并此文件到 .claude/settings.json。ultra-cost-effective/ 目录需在项目根目录下。",
+  "_version": "1.2.0",
+  "_changelog": "v1.2.0: 新增 Agent spawn guard (L6) + 模型路由建议 (L7) + 一键集成 setup.cjs",
+
+  "env": {
+    "ULTRA_COST_EFFECTIVE_PLATFORM": "claude",
+    "ULTRA_COST_EFFECTIVE_LEVEL": "medium",
+    "ULTRA_COST_EFFECTIVE_PRESET": "standard"
+  },
+
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ultra-cost-effective/helpers/tokenforge-hook.cjs",
+            "timeout": 5000
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ultra-cost-effective/helpers/agent-spawn-guard.cjs",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ultra-cost-effective/helpers/perf/perf-tracker.cjs --capture",
+            "timeout": 3000
+          },
+          {
+            "type": "command",
+            "command": "node ultra-cost-effective/helpers/context-interceptor.cjs post-tool-use",
+            "timeout": 3000
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ultra-cost-effective/helpers/model-router.cjs hook",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  },
+
+  "mcpServers": {
+    "lean-ctx": {
+      "command": "lean-ctx",
+      "args": ["mcp"]
+    }
+  },
+
+  "permissions": {
+    "allow": [
+      "Bash(node ultra-cost-effective/helpers/*.cjs:*)",
+      "Bash(node ultra-cost-effective/helpers/perf/*.cjs:*)",
+      "Bash(npm install -g lean-ctx-bin:*)",
+      "Bash(lean-ctx:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run lint:*)",
+      "Bash(cargo test:*)",
+      "Bash(cargo build:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(pytest:*)",
+      "Bash(go test:*)",
+      "Bash(go build:*)",
+      "Bash(go vet:*)"
+    ]
+  }
+}
