@@ -1,0 +1,123 @@
+/* ===========================
+   Liquid Glass Design System — 入口文件
+   ===========================
+   适配: Vue 3 + Vite + Tailwind CSS v4 + shadcn/vue
+
+   使用方法:
+   1. 将此文件复制到项目 src/index.css
+   2. 确保已安装: tailwindcss @tailwindcss/vite tw-animate-css
+   3. 在 vite.config.ts 中配置 tailwindcss 插件
+   4. 在 main.ts 中 import './index.css'
+
+   字体文件 (Manrope, Inter, JetBrains Mono) 需放在 src/assets/fonts/
+   或通过 Google Fonts / CDN 加载。
+   =========================== */
+
+/* ── Tailwind CSS v4 ── */
+@import "tailwindcss";
+
+/* ── 动画插件 ── */
+@import "tw-animate-css";
+
+/* ── shadcn/vue 主题基础 ── */
+/* 注意: shadcn/vue 初始化时会生成 shadcn/tailwind.css，
+   如果不存在此文件，请运行 npx shadcn-vue@latest init */
+
+/* ── 字体 ── */
+/* 方案 A: 本地字体文件 (推荐)
+   @import "./assets/fonts/fonts.css"; */
+
+/* 方案 B: Google Fonts CDN (开发阶段便捷)
+   在 index.html 中添加:
+   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+*/
+
+/* ── Liquid Glass Design Tokens ── */
+@import "./theme-tokens.css";
+
+/* ── Liquid Glass Utility Classes ── */
+@import "./design-utils.css";
+
+/* ===========================
+   颜色方案声明
+   =========================== */
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+/* ===========================
+   浏览器自动填充 (Autofill) 样式重写
+   ===========================
+   用超长 transition-delay 冻结浏览器注入的背景色，
+   避免使用 box-shadow 遮罩（会与半透明 glass-input 背景冲突产生色差遮挡） */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--lg-text-primary) !important;
+  caret-color: var(--lg-text-primary);
+  transition:
+    background-color 9999s ease-in-out 0s,
+    color 9999s ease-in-out 0s;
+}
+
+/* ===========================
+   Page Transition Animations (View Transitions API)
+   =========================== */
+
+/* 仅在用户没有启用系统"减弱动态效果"时展示动效 */
+@media (prefers-reduced-motion: no-preference) {
+  /* 定制页面退出时的动画：旧页面淡出并轻微缩小 */
+  ::view-transition-old(root) {
+    animation:
+      180ms cubic-bezier(0.4, 0, 1, 1) both fade-out,
+      180ms cubic-bezier(0.4, 0, 0.2, 1) both scale-down;
+  }
+
+  /* 定制新页面进入时的动画：新页面淡入并从下方升起 */
+  ::view-transition-new(root) {
+    animation:
+      220ms cubic-bezier(0, 0, 0.2, 1) both fade-in,
+      220ms cubic-bezier(0.16, 1, 0.3, 1) both slide-up;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-down {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(0.993);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(6px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}

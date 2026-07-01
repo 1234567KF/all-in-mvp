@@ -1,0 +1,509 @@
+/* ===========================
+   Liquid Glass Design Utilities
+   ===========================
+   适配: Vue 3 + Vite + Tailwind CSS v4 + shadcn/vue
+   依赖 theme-tokens.css 中的 CSS 变量。
+   提供毛玻璃卡片、表格行、按钮、输入框、排版等工具类。
+   =========================== */
+
+/* ===========================
+   Base Layer
+   =========================== */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html,
+  body,
+  #app {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.6;
+    background-image: radial-gradient(
+      circle at 50% -20%,
+      var(--lg-primary-dim) 0%,
+      transparent 50%
+    );
+    background-attachment: fixed;
+  }
+
+  html {
+    @apply font-body;
+  }
+}
+
+/* ===========================
+   Scrollbar 自定义
+   =========================== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--lg-text-muted);
+  opacity: 0.5;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--lg-text-muted);
+  opacity: 0.8;
+}
+
+::selection {
+  background: var(--lg-primary);
+  color: var(--lg-on-primary);
+}
+
+/* ===========================
+   Material Symbols Icons (可选)
+   =========================== */
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined", sans-serif;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+  font-size: 20px;
+  line-height: 1;
+  vertical-align: middle;
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  overflow: hidden;
+}
+
+.icon-fill {
+  font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+/* ===========================
+   Glass Panels & Cards — 毛玻璃面板/卡片
+   =========================== */
+
+/* 基础毛玻璃面板类。适用于通用容器、行、布局面板。 */
+.liquid-glass,
+.liquid-card,
+.glass-card {
+  background: var(--lg-surface-glass);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--lg-border);
+  border-radius: var(--radius-glass-md);
+  background-image: linear-gradient(
+    to bottom,
+    var(--glass-gradient-top),
+    transparent
+  );
+}
+
+/* glass-card 变体：额外增加阴影。推荐用于页面布局卡片。 */
+.glass-card {
+  box-shadow: var(--shadow-card);
+}
+
+/* matte-card 变体：无光泽反射渐变且无阴影的平板玻璃面板。 */
+.matte-card {
+  background: var(--lg-surface-glass);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--lg-border);
+  border-radius: var(--radius-glass-md);
+}
+
+/* ===========================
+   Glass Row — 毛玻璃表格行
+   =========================== */
+.glass-row {
+  background: var(--glass-row-bg);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(61, 74, 61, 0.3);
+  transition: all 0.2s ease-in-out;
+}
+
+.glass-row:hover {
+  background: var(--glass-row-hover-bg);
+  border-left: 2px solid var(--lg-primary-light);
+}
+
+/* ===========================
+   Accent Bars — 强调竖条
+   =========================== */
+
+/* KPI 左侧发光竖条 (更宽、带 glow) */
+.kpi-accent {
+  position: relative;
+  padding-left: 16px;
+}
+
+.kpi-accent::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: var(--lg-primary);
+  border-radius: 2px;
+  box-shadow: var(--shadow-glow-primary);
+}
+
+/* 普通左侧竖条 (无 glow) */
+.liquid-accent {
+  position: relative;
+  padding-left: 16px;
+}
+
+.liquid-accent::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 80%;
+  width: 2px;
+  background: var(--lg-primary);
+  border-radius: 2px;
+}
+
+/* ===========================
+   Progress / Glow — 进度条辉光
+   =========================== */
+.progress-indicator {
+  box-shadow: var(--shadow-glow-primary);
+}
+
+.glow-progress {
+  box-shadow: 0 0 8px var(--lg-primary-glow);
+}
+
+.ambient-shadow {
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* ===========================
+   Buttons — 按钮
+   ===========================
+   适配 shadcn/vue Button 组件 (reka-ui Primitive)。
+   data-slot="button" 是 reka-ui 内部属性，用于精确定位。 */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--lg-primary);
+  color: var(--lg-on-primary);
+  font-weight: 600;
+  font-family: var(--font-body);
+  font-size: 14px;
+  border-radius: var(--radius-glass-sm);
+  padding: 8px 16px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.btn-primary:hover {
+  background: var(--lg-primary-hover);
+  color: var(--lg-on-primary-container);
+  box-shadow: 0 0 20px var(--lg-primary-glow);
+}
+
+/* Light 模式覆盖：保持文字白色，柔化背景 hover */
+.light .btn-primary:hover {
+  color: var(--lg-on-primary);
+  box-shadow: 0 4px 12px var(--lg-primary-glow);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--btn-secondary-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--lg-border);
+  color: var(--lg-text-primary);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 400;
+  border-radius: var(--radius-glass-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.btn-secondary:hover {
+  background: var(--btn-secondary-hover-bg);
+}
+
+/* ===========================
+   Glass Input — 毛玻璃输入框
+   =========================== */
+.glass-input {
+  width: 100%;
+  background: var(--glass-input-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--lg-border);
+  border-radius: var(--radius-glass-sm);
+  padding: 10px 14px;
+  color: var(--lg-text-primary);
+  font-family: var(--font-body);
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.glass-input::placeholder {
+  color: var(--glass-input-placeholder);
+}
+
+.glass-input:focus {
+  border-color: var(--lg-primary-light);
+  box-shadow: 0 0 0 1px var(--lg-primary-border);
+  background: var(--glass-input-focus-bg);
+}
+
+/* ===========================
+   Typography Helpers — 排版工具类
+   =========================== */
+
+/* 三字体系统：Manrope(标题) / Inter(正文) / JetBrains Mono(代码/数据) */
+
+.section-title {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--lg-text-primary);
+}
+
+.data-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--lg-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.form-label {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--lg-text-primary);
+  margin-bottom: 6px;
+}
+
+.font-h1 {
+  font-family: var(--font-heading);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.font-h2 {
+  font-family: var(--font-heading);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.font-data-display {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.font-label-mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+}
+
+/* ===========================
+   Status Badges — 状态徽章
+   =========================== */
+.badge-active {
+  background: var(--lg-primary-dim);
+  color: var(--lg-primary-light);
+  border: 1px solid var(--lg-primary-border);
+  border-radius: var(--radius-glass-sm);
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.badge-inactive {
+  background: rgba(134, 149, 133, 0.1);
+  color: var(--lg-text-muted);
+  border: 1px solid rgba(134, 149, 133, 0.2);
+  border-radius: var(--radius-glass-sm);
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* 彩色标签 */
+.tag-green {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--lg-primary-light);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.tag-blue {
+  background: var(--lg-accent-blue-dim);
+  color: var(--lg-accent-blue-light);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.tag-purple {
+  background: var(--lg-accent-purple-dim);
+  color: var(--lg-accent-purple-light);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.tag-red {
+  background: var(--lg-accent-red-dim);
+  color: var(--lg-accent-red-light);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+/* ===========================
+   Chart Container — 图表容器
+   =========================== */
+.chart-container {
+  background: var(--lg-surface-glass);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--lg-border);
+  border-radius: var(--radius-glass-md);
+  padding: var(--spacing-card);
+}
+
+/* ===========================
+   Sidebar Glass Override — 侧边栏毛玻璃
+   ===========================
+   适配 shadcn/vue Sidebar 组件 (reka-ui) */
+[data-slot="sidebar-inner"] {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+/* ===========================
+   Skeleton Loading — 骨架屏
+   =========================== */
+.skeleton-glass {
+  background: linear-gradient(
+    90deg,
+    var(--skeleton-from) 25%,
+    var(--skeleton-mid) 50%,
+    var(--skeleton-from) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.shimmer-glare {
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.6) 50%,
+    transparent 80%
+  );
+  background-size: 220% 100%;
+  animation: shimmer 1.6s infinite linear;
+}
+
+.dark .shimmer-glare {
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 80%
+  );
+  background-size: 220% 100%;
+}
+
+/* ===========================
+   Floating Animations — Blob 浮动动画
+   =========================== */
+@keyframes float {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+}
+
+.animate-blob {
+  animation: float 20s infinite alternate ease-in-out;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+/* ===========================
+   Search Highlight — 搜索高亮动画
+   =========================== */
+@keyframes search-highlight-pulse {
+  0% {
+    background-color: var(--lg-primary-highlight);
+    box-shadow: 0 0 0 2px var(--lg-primary-highlight-glow);
+  }
+  60% {
+    background-color: var(--lg-primary-highlight-pulse);
+    box-shadow: 0 0 0 2px var(--lg-primary-highlight-pulse-glow);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 2px transparent;
+  }
+}
+
+[data-search-highlight="true"] {
+  animation: search-highlight-pulse 2.4s ease-out forwards;
+  border-radius: 8px;
+}
