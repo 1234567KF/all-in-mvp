@@ -27,9 +27,18 @@ node scripts/sync-skills.js --mode push --force
 echo ""
 
 # Step 2: 运行 agents + pipeline-monitor 生成
-if powershell.exe -NoProfile -Command "exit 0" 2>/dev/null; then
+# 优先查找 powershell.exe（Windows），其次 pwsh（跨平台）
+PWSH=""
+if [ -f "$WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" ]; then
+    PWSH="$WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe"
+elif command -v pwsh >/dev/null 2>&1; then
+    PWSH="pwsh"
+elif command -v powershell >/dev/null 2>&1; then
+    PWSH="powershell"
+fi
+if [ -n "$PWSH" ]; then
     echo "→ 生成 agents + pipeline-monitor..."
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/generate.ps1 all
+    "$PWSH" -NoProfile -ExecutionPolicy Bypass -File tools/generate.ps1 all
 else
     echo "⚠ PowerShell 不可用，跳过 agents 生成"
     echo "   请手动运行: .\\tools\\generate.ps1 all"
