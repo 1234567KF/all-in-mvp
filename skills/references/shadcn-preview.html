@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>shadcn/ui Design System Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --background: #FFFFFF;
+    --foreground: #0A0A0A;
+    --card: #FFFFFF;
+    --card-foreground: #0A0A0A;
+    --popover: #FFFFFF;
+    --popover-foreground: #0A0A0A;
+    --primary: #0A0A0A;
+    --primary-foreground: #FAFAFA;
+    --secondary: #F5F5F5;
+    --secondary-foreground: #0A0A0A;
+    --muted: #F5F5F5;
+    --muted-foreground: #737373;
+    --accent: #F5F5F5;
+    --accent-foreground: #0A0A0A;
+    --destructive: #EF4444;
+    --destructive-foreground: #FAFAFA;
+    --border: #E5E5E5;
+    --input: #E5E5E5;
+    --ring: #0A0A0A;
+    --radius: 0.5rem;
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', SF Mono, Monaco, monospace;
+  }
+
+  .dark {
+    --background: #0A0A0A;
+    --foreground: #FAFAFA;
+    --card: #0A0A0A;
+    --card-foreground: #FAFAFA;
+    --popover: #0A0A0A;
+    --popover-foreground: #FAFAFA;
+    --primary: #FAFAFA;
+    --primary-foreground: #0A0A0A;
+    --secondary: #262626;
+    --secondary-foreground: #FAFAFA;
+    --muted: #262626;
+    --muted-foreground: #A3A3A3;
+    --accent: #262626;
+    --accent-foreground: #FAFAFA;
+    --destructive: #7F1D1D;
+    --destructive-foreground: #FAFAFA;
+    --border: #262626;
+    --input: #262626;
+    --ring: #D4D4D4;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--background);
+    color: var(--foreground);
+    line-height: 1.5;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2rem;
+  }
+
+  header h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; }
+  header p { color: var(--muted-foreground); font-size: 0.875rem; margin-top: 0.25rem; }
+
+  .theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.5rem;
+    width: 2.5rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--background);
+    color: var(--foreground);
+    cursor: pointer;
+    font-size: 1.125rem;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .theme-toggle:hover { background: var(--accent); }
+
+  .section { margin-bottom: 3rem; }
+  .section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.5rem;
+  }
+
+  /* Color Swatches */
+  .color-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+  .swatch { border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); }
+  .swatch-color { height: 60px; }
+  .swatch-info { padding: 0.75rem; }
+  .swatch-name { font-size: 0.875rem; font-weight: 500; }
+  .swatch-hex { font-size: 0.75rem; color: var(--muted-foreground); font-family: var(--font-mono); }
+
+  /* Typography */
+  .type-scale { display: flex; flex-direction: column; gap: 1rem; }
+  .type-row { display: flex; align-items: baseline; gap: 1rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
+  .type-label { font-size: 0.75rem; color: var(--muted-foreground); font-family: var(--font-mono); min-width: 100px; }
+  .h1-sample { font-size: 3rem; font-weight: 800; letter-spacing: -0.025em; line-height: 1; }
+  .h2-sample { font-size: 2.25rem; font-weight: 700; letter-spacing: -0.025em; line-height: 1.1; }
+  .h3-sample { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.025em; line-height: 1.2; }
+  .h4-sample { font-size: 1.25rem; font-weight: 600; line-height: 1.3; }
+  .body-sample { font-size: 1rem; font-weight: 400; }
+  .body-sm-sample { font-size: 0.875rem; font-weight: 400; }
+  .caption-sample { font-size: 0.75rem; font-weight: 400; }
+  .muted-sample { font-size: 0.875rem; font-weight: 400; color: var(--muted-foreground); }
+  .code-sample { font-family: var(--font-mono); font-size: 0.875em; background: var(--muted); padding: 0.125rem 0.25rem; border-radius: 0.25rem; }
+
+  /* Buttons */
+  .btn-group { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    font-weight: 500;
+    height: 2.5rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s, background 0.15s, border-color 0.15s;
+    white-space: nowrap;
+    font-family: var(--font-sans);
+  }
+  .btn:hover { opacity: 0.9; }
+  .btn:active { transform: scale(0.97); }
+  .btn:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .btn-primary { background: var(--primary); color: var(--primary-foreground); }
+  .btn-secondary { background: var(--secondary); color: var(--secondary-foreground); }
+  .btn-outline { background: transparent; color: var(--foreground); border-color: var(--border); }
+  .btn-outline:hover { background: var(--accent); }
+  .btn-ghost { background: transparent; color: var(--foreground); }
+  .btn-ghost:hover { background: var(--accent); }
+  .btn-destructive { background: var(--destructive); color: var(--destructive-foreground); }
+  .btn-link { background: transparent; color: var(--foreground); text-decoration: underline; text-underline-offset: 4px; }
+  .btn-link:hover { text-decoration: underline; }
+  .btn-sm { height: 2.25rem; padding: 0 0.75rem; font-size: 0.875rem; }
+  .btn-lg { height: 2.75rem; padding: 0 2rem; font-size: 1rem; }
+  .btn-icon { height: 2.5rem; width: 2.5rem; padding: 0; }
+
+  /* Cards */
+  .card-group { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+  .card {
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--card-foreground);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    padding: 1.5rem;
+    transition: box-shadow 0.15s;
+  }
+  .card-hover:hover { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+  .card-title { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem; }
+  .card-desc { font-size: 0.875rem; color: var(--muted-foreground); }
+
+  /* Inputs */
+  .input-group { display: flex; flex-direction: column; gap: 0.75rem; max-width: 400px; }
+  .input {
+    display: flex;
+    height: 2.5rem;
+    width: 100%;
+    border-radius: var(--radius);
+    border: 1px solid var(--input);
+    background: var(--background);
+    color: var(--foreground);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-family: var(--font-sans);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .input:focus { outline: 2px solid var(--ring); outline-offset: 0; border-color: transparent; }
+  .input::placeholder { color: var(--muted-foreground); }
+  .input:disabled { cursor: not-allowed; opacity: 0.5; }
+
+  /* Badges */
+  .badge-group { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 9999px;
+    padding: 0.125rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+    font-family: var(--font-sans);
+  }
+  .badge-default { background: var(--primary); color: var(--primary-foreground); }
+  .badge-secondary { background: var(--secondary); color: var(--secondary-foreground); }
+  .badge-outline { background: transparent; color: var(--foreground); border-color: var(--border); }
+  .badge-destructive { background: var(--destructive); color: var(--destructive-foreground); }
+
+  /* Alerts */
+  .alert {
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 0.75rem 1rem;
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+  }
+  .alert-destructive { border-left: 2px solid var(--destructive); background: color-mix(in srgb, var(--destructive) 10%, transparent); }
+  .alert-icon { flex-shrink: 0; width: 1rem; height: 1rem; margin-top: 0.125rem; }
+  .alert-title { font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem; }
+  .alert-desc { font-size: 0.875rem; color: var(--muted-foreground); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 1rem; }
+  .tab {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    font-family: var(--font-sans);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab:hover { color: var(--foreground); }
+  .tab.active { color: var(--foreground); border-bottom-color: var(--foreground); }
+
+  /* Neutral Gray Scale */
+  .gray-scale { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .gray-item { width: 60px; text-align: center; }
+  .gray-color { height: 40px; border-radius: var(--radius); margin-bottom: 0.25rem; border: 1px solid var(--border); }
+  .gray-label { font-size: 0.625rem; font-family: var(--font-mono); color: var(--muted-foreground); }
+
+  footer { border-top: 1px solid var(--border); padding-top: 1.5rem; margin-top: 2rem; text-align: center; font-size: 0.75rem; color: var(--muted-foreground); }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <header>
+    <div>
+      <h1>shadcn/ui Design System</h1>
+      <p>Clean. Minimal. Accessible. Built with Radix UI + Tailwind CSS.</p>
+    </div>
+    <button class="theme-toggle" onclick="document.body.classList.toggle('dark')" title="Toggle dark/light mode">🌓</button>
+  </header>
+
+  <!-- 1. Color Palette -->
+  <section class="section">
+    <h2 class="section-title">Color Palette & Roles</h2>
+    <div class="color-grid">
+      <div class="swatch"><div class="swatch-color" style="background:#FFFFFF"></div><div class="swatch-info"><div class="swatch-name">Background</div><div class="swatch-hex">#FFFFFF</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#0A0A0A"></div><div class="swatch-info"><div class="swatch-name" style="color:#fff">Foreground</div><div class="swatch-hex" style="color:#aaa">#0A0A0A</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#F5F5F5"></div><div class="swatch-info"><div class="swatch-name">Muted / Secondary / Accent</div><div class="swatch-hex">#F5F5F5</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#E5E5E5"></div><div class="swatch-info"><div class="swatch-name">Border / Input</div><div class="swatch-hex">#E5E5E5</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#737373"></div><div class="swatch-info"><div class="swatch-name" style="color:#fff">Muted Foreground</div><div class="swatch-hex" style="color:#aaa">#737373</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#EF4444"></div><div class="swatch-info"><div class="swatch-name" style="color:#fff">Destructive</div><div class="swatch-hex" style="color:#aaa">#EF4444</div></div></div>
+    </div>
+
+    <h3 style="font-size:0.875rem;font-weight:600;margin:1.5rem 0 0.75rem">Neutral Gray Scale</h3>
+    <div class="gray-scale">
+      <div class="gray-item"><div class="gray-color" style="background:#FAFAFA"></div><div class="gray-label">50</div></div>
+      <div class="gray-item"><div class="gray-color" style="background:#F5F5F5"></div><div class="gray-label">100</div></div>
+      <div class="gray-item"><div class="gray-color" style="background:#E5E5E5"></div><div class="gray-label">200</div></div>
+      <div class="gray-item"><div class="gray-color" style="background:#D4D4D4"></div><div class="gray-label">300</div></div>
+      <div class="gray-item"><div class="gray-color" style="background:#A3A3A3"></div><div class="gray-label">400</div></div>
+      <div class="gray-item"><div class="gray-color" style="background:#737373"></div><div class="gray-label">500</div></div>
+      <div class="gray-item"><div class="gray-color" style="background:#525252"></div><div class="gray-label">600</div></div>
+      <div class="gray-item"><div class="gray-color" style="background:#404040"></div><div class="gray-label">700</div></div>
+      <div class="gray-item"><div class="gray-color" style="background:#262626"></div><div class="gray-label" style="color:#fff">800</div></div>
+      <div class="gray-item"><div class="gray-color" style="background:#171717"></div><div class="gray-label" style="color:#fff">900</div></div>
+      <div class="gray-item"><div class="gray-color" style="background:#0A0A0A"></div><div class="gray-label" style="color:#fff">950</div></div>
+    </div>
+  </section>
+
+  <!-- 2. Typography -->
+  <section class="section">
+    <h2 class="section-title">Typography</h2>
+    <div class="type-scale">
+      <div class="type-row"><span class="type-label">H1 (800/3rem)</span><span class="h1-sample">The quick brown fox</span></div>
+      <div class="type-row"><span class="type-label">H2 (700/2.25rem)</span><span class="h2-sample">The quick brown fox</span></div>
+      <div class="type-row"><span class="type-label">H3 (600/1.5rem)</span><span class="h3-sample">The quick brown fox</span></div>
+      <div class="type-row"><span class="type-label">H4 (600/1.25rem)</span><span class="h4-sample">The quick brown fox</span></div>
+      <div class="type-row"><span class="type-label">Body (400/1rem)</span><span class="body-sample">The quick brown fox jumps over the lazy dog. Design is not just what it looks like.</span></div>
+      <div class="type-row"><span class="type-label">Body Small (400/0.875rem)</span><span class="body-sm-sample">The quick brown fox jumps over the lazy dog.</span></div>
+      <div class="type-row"><span class="type-label">Caption (400/0.75rem)</span><span class="caption-sample">The quick brown fox jumps over.</span></div>
+      <div class="type-row"><span class="type-label">Muted (400/0.875rem)</span><span class="muted-sample">The quick brown fox jumps over the lazy dog.</span></div>
+      <div class="type-row"><span class="type-label">Code</span><code class="code-sample">npx shadcn@latest add button</code></div>
+    </div>
+    <p style="margin-top:0.75rem;font-size:0.75rem;color:var(--muted-foreground)">Font: Inter (sans) · JetBrains Mono (code)</p>
+  </section>
+
+  <!-- 3. Buttons -->
+  <section class="section">
+    <h2 class="section-title">Buttons</h2>
+    <div class="btn-group" style="margin-bottom:1rem">
+      <button class="btn btn-primary">Primary</button>
+      <button class="btn btn-secondary">Secondary</button>
+      <button class="btn btn-outline">Outline</button>
+      <button class="btn btn-ghost">Ghost</button>
+      <button class="btn btn-destructive">Destructive</button>
+      <button class="btn btn-link">Link</button>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary btn-sm">Small</button>
+      <button class="btn btn-primary">Default</button>
+      <button class="btn btn-primary btn-lg">Large</button>
+      <button class="btn btn-outline btn-icon" title="Icon button">✦</button>
+    </div>
+    <p style="margin-top:0.75rem;font-size:0.75rem;color:var(--muted-foreground)">Radius: 0.5rem · Hover: opacity 90% · Active: scale 97% · Focus: ring-2</p>
+  </section>
+
+  <!-- 4. Cards -->
+  <section class="section">
+    <h2 class="section-title">Cards</h2>
+    <div class="card-group">
+      <div class="card card-hover">
+        <div class="card-title">Getting Started</div>
+        <div class="card-desc">Install the components you need with a single command. No complex setup required.</div>
+      </div>
+      <div class="card card-hover">
+        <div class="card-title">Customizable</div>
+        <div class="card-desc">Copy the source code and own it. Every component is yours to modify.</div>
+      </div>
+      <div class="card card-hover">
+        <div class="card-title">Accessible</div>
+        <div class="card-desc">Built on Radix UI primitives. Keyboard navigation and screen reader support out of the box.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Inputs -->
+  <section class="section">
+    <h2 class="section-title">Input Fields</h2>
+    <div class="input-group">
+      <input class="input" type="text" placeholder="Default input">
+      <input class="input" type="email" placeholder="Email address">
+      <input class="input" type="text" placeholder="Disabled input" disabled>
+    </div>
+    <p style="margin-top:0.5rem;font-size:0.75rem;color:var(--muted-foreground)">Height: 2.5rem · Border: 1px solid --input · Focus: ring-2 with --ring</p>
+  </section>
+
+  <!-- 6. Badges -->
+  <section class="section">
+    <h2 class="section-title">Badges</h2>
+    <div class="badge-group">
+      <span class="badge badge-default">Default</span>
+      <span class="badge badge-secondary">Secondary</span>
+      <span class="badge badge-outline">Outline</span>
+      <span class="badge badge-destructive">Destructive</span>
+    </div>
+  </section>
+
+  <!-- 7. Alerts -->
+  <section class="section">
+    <h2 class="section-title">Alerts</h2>
+    <div class="alert">
+      <div class="alert-icon">ℹ</div>
+      <div>
+        <div class="alert-title">Heads up!</div>
+        <div class="alert-desc">You can add components to your app using the CLI.</div>
+      </div>
+    </div>
+    <div class="alert alert-destructive">
+      <div class="alert-icon">⚠</div>
+      <div>
+        <div class="alert-title">Error</div>
+        <div class="alert-desc">This action cannot be undone. Please confirm before proceeding.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. Tabs -->
+  <section class="section">
+    <h2 class="section-title">Tabs</h2>
+    <div class="tabs">
+      <button class="tab active">Overview</button>
+      <button class="tab">Components</button>
+      <button class="tab">Settings</button>
+    </div>
+    <p style="font-size:0.875rem;color:var(--muted-foreground)">Active tab shows --foreground color with bottom border. Inactive tabs show --muted-foreground.</p>
+  </section>
+
+  <!-- 9. Shadow System -->
+  <section class="section">
+    <h2 class="section-title">Depth & Elevation</h2>
+    <div class="card-group">
+      <div class="card"><div class="card-title">Shadow: none</div><div class="card-desc">Flat surfaces (buttons, inputs)</div></div>
+      <div class="card" style="box-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05)"><div class="card-title">Shadow: sm</div><div class="card-desc">Cards, alerts — subtle elevation</div></div>
+      <div class="card" style="box-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1)"><div class="card-title">Shadow: md</div><div class="card-desc">Dropdowns, popovers</div></div>
+      <div class="card" style="box-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1)"><div class="card-title">Shadow: lg</div><div class="card-desc">Modals, dialogs</div></div>
+    </div>
+  </section>
+
+  <footer>
+    shadcn/ui Design System Preview · Built with CSS variables + Tailwind design tokens · Light/Dark toggle available
+  </footer>
+
+</div>
+</body>
+</html>
