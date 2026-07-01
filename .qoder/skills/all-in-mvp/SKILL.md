@@ -6,19 +6,14 @@ metadata:
   stage-gates: true
   max-parallel-agents: 3
   based_on: MVP白皮书 v2.5.0
-  platform: claude-code
+  platforms: [claude-code, qoder]
   workflow-ready: true
-  workflow-scripts:
-    - ".claude/workflows/stage1-prd.js"
-    - ".claude/workflows/stage2-planning.js"
-    - ".claude/workflows/stage3-execution.js"
-    - ".claude/workflows/stage4-integration.js"
 ---
 
-# Parallel MVP Pipeline — Claude Code Dynamic Workflow 版
+# Parallel MVP Pipeline — Multi-Platform 版
 
 > 基于《MVP 白皮书 v2.5》的多 Agent 并行工程方法论。3 种运行模式、严格门禁、最大并行度。增量变更强制走完整流水线（§0.2决策树）。
-> **Claude Code 特化版**：利用 Dynamic Workflows（`CLAUDE_CODE_WORKFLOWS=1`）实现脚本化编排，主 Agent 只触发 Workflow + 审查结果，中间状态不占上下文。
+> 支持 Claude Code（Dynamic Workflows）与 Qoder（Custom Subagents）双平台运行。
 
 ---
 

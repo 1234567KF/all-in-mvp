@@ -1,12 +1,12 @@
 ---
 name: ultra-cost-effective
-description: 极致节能 — Qoder平台专用适配。不降低LLM输出质量的Token节省体系，综合节省60-90%。
-version: 1.0.0
+description: 极致节能 — 不降低LLM输出质量的Token节省体系，综合节省60-90%。Claude Code & Qoder双平台通用。
+version: 1.1.0
 triggers: ultra-cost-effective, 节能, 省token, 节省, token report, 成本报告
 role: infrastructure
 scope: global
 always-on: true
-platform: qoder
+platforms: [claude-code, qoder]
 parent: ../SKILL.md
 ---
 
