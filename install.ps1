@@ -1,28 +1,25 @@
 # ============================================================
-#  all-in-mvp 一键安装脚本 - Windows PowerShell（简化版）
+#  all-in-mvp 项目级技能安装脚本 - Windows PowerShell
 # ============================================================
 #
 #  用法：
 #
-# ① giget 拉取后本地安装（推荐）：
-#    npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-project
-#    cd my-project
+# ① 一行命令（推荐）：
+#    npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp . --force
+#    → .claude/skills/ .qoder/skills/ .trae/skills/ 已在项目根目录
+#    → 启动 Qoder / Claude Code 即可使用
+#
+# ② 验证安装：
 #    .\install.ps1
 #
-# ② 当前目录安装（最常用）：
-#    npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp . --force; .\install.ps1
-#
-# ③ 远程一键安装：
+# ③ 远程一键安装（下载到当前目录）：
 #    irm https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/install.ps1 | iex
 #
-# 原理：推库前 pre-push hook 已自动同步 skills →
-# .claude/skills/ + .qoder/skills/ + .trae/skills/，
-# .gitattributes export-ignore 确保 GitHub tarball 自动过滤冗余文件，
-# 本脚本只需将已融合的技能复制到全局配置目录。
+# 原理：技能在项目级目录（.claude/.qoder/.trae/skills/），
+# Agent 自动识别，优先级高于全局。不污染全局配置。
 # ============================================================
 
 param(
-    [string]$Agent = "",
     [switch]$Version,
     [switch]$Help
 )
@@ -35,36 +32,40 @@ function Write-Header   { param([string]$M) Write-Host $M -ForegroundColor Cyan 
 
 function Test-Command { param([string]$C) return [bool](Get-Command -Name $C -ErrorAction SilentlyContinue) }
 
-# --- 安装技能（从本地目录复制）---
-function Install-Skills {
-    param([string]$AgentName)
+# --- 检测项目级技能目录 ---
+function Check-Skills {
+    Write-Host ""
+    Write-Info "检测项目级技能目录..."
+    $missing = $false
 
-    $srcDir = ""
-    $dstDir = ""
-
-    switch ($AgentName) {
-        "qoder"  { $srcDir = "$script:SCRIPT_DIR\.qoder\skills";  $dstDir = "$env:USERPROFILE\.qoder\skills" }
-        "claude" { $srcDir = "$script:SCRIPT_DIR\.claude\skills"; $dstDir = "$env:USERPROFILE\.claude\skills" }
-        default  { Write-Error "未知 Agent: $AgentName"; return }
+    foreach ($dir in @(".claude\skills", ".qoder\skills", ".trae\skills")) {
+        $full = Join-Path $script:SCRIPT_DIR $dir
+        if (Test-Path $full) {
+            $count = (Get-ChildItem $full -Directory -ErrorAction SilentlyContinue).Count
+            Write-Success "$dir 已就绪（$count 个技能）"
+        } else {
+            Write-Warning "$dir 缺失"
+            $missing = $true
+        }
     }
 
-    Write-Info "安装 $AgentName 技能..."
+    return -not $missing
+}
 
-    if (Test-Path $srcDir) {
-        # 方案 A：本地已有（giget 拉取的项目），直接复制
-        New-Item -ItemType Directory -Path $dstDir -Force | Out-Null
-        Copy-Item -Path "$srcDir\*" -Destination "$dstDir\" -Recurse -Force -ErrorAction SilentlyContinue
-        Write-Success "$AgentName 技能已安装 ($dstDir)"
-    } else {
-        # 方案 B：远程模式（irm 管道），用 giget 下载
-        if (Test-Command "npx") {
-            Write-Info "从 GitHub 下载 $AgentName 技能..."
-            npx.cmd giget "gh:1234567KF/all-in-mvp#all-in-mvp/skills" $dstDir --force `
-              --ignore "AGENTS.md,README.md,INSTALL.md,WhyMe.md,MVP*,screenshot-1-full.png,nul,all-in-mvp-*.md,shadcn/**,tools/**,overlays/**,ultra-cost-effective/**"
-            Write-Success "$AgentName 技能已安装（远程）"
-        } else {
-            Write-Error "未找到 npx，请先安装 Node.js"
-        }
+# --- 远程模式：下载技能到当前项目目录 ---
+function Download-Skills {
+    if (-not (Test-Command "npx")) {
+        Write-Error "需要 Node.js / npx，请先安装"
+        exit 1
+    }
+
+    Write-Info "从 GitHub 下载技能到项目目录..."
+
+    foreach ($target in @(".claude/skills", ".qoder/skills", ".trae/skills")) {
+        Write-Info "下载 $target..."
+        $dst = Join-Path $script:SCRIPT_DIR $target
+        npx.cmd giget "gh:1234567KF/all-in-mvp#all-in-mvp/$target" $dst --force
+        Write-Success "$target 下载完成"
     }
 }
 
@@ -75,70 +76,57 @@ function Get-Agents {
     if (Test-Path "$env:USERPROFILE\.claude") { $agents += "claude"; Write-Success "检测到 Claude Code" }
     if ($agents.Count -eq 0) {
         Write-Warning "未检测到已安装的 AI Agent"
-        Write-Info "请先安装 Qoder 或 Claude Code"
-        exit 1
+        Write-Info "技能已在项目目录，安装 Agent 后即可使用"
     }
     return $agents
 }
 
 # --- 帮助 ---
 function Show-Help {
-    Write-Host "all-in-mvp 技能安装脚本 (PowerShell)"
+    Write-Host "all-in-mvp 项目级技能安装 (PowerShell)"
     Write-Host ""
-    Write-Host "使用方法："
-    Write-Host "  .\install.ps1 [options]"
+    Write-Host "技能放在项目根目录 .claude\skills\ .qoder\skills\ .trae\skills\"
+    Write-Host "Agent 自动识别，项目级优先，不污染全局。"
     Write-Host ""
-    Write-Host "选项："
-    Write-Host "  -Agent <name>  指定平台 (qoder/claude)"
-    Write-Host "  -Version       显示版本"
-    Write-Host "  -Help          帮助"
-    Write-Host ""
-    Write-Host "示例："
-    Write-Host "  # giget 拉取后安装"
-    Write-Host "  npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-project"
-    Write-Host "  cd my-project ; .\install.ps1"
-    Write-Host ""
-    Write-Host "  # 当前目录安装（最常用）"
-    Write-Host "  npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp . --force; .\install.ps1"
-    Write-Host ""
-    Write-Host "  # 远程一键安装"
-    Write-Host "  irm https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/install.ps1 | iex"
+    Write-Host "一行命令："
+    Write-Host "  npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp . --force"
 }
 
 # --- 主函数 ---
 function Main {
     $script:SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-    if ($Version) { Write-Host "all-in-mvp installer v2.9.0"; return }
+    if ($Version) { Write-Host "all-in-mvp installer v2.9.1"; return }
     if ($Help)    { Show-Help; return }
 
     Write-Header "============================"
-    Write-Header "  all-in-mvp 技能安装 v2.9.0"
+    Write-Header "  all-in-mvp 项目级技能 v2.9.1"
     Write-Header "============================"
-    Write-Host ""
 
-    if ($Agent -ne "") {
-        Install-Skills $Agent
+    if (Check-Skills) {
+        Write-Host ""
+        Write-Success "所有技能已就绪！"
     } else {
-        $agents = Get-Agents
+        Write-Info "下载缺失的技能到项目目录..."
+        Download-Skills
         Write-Host ""
-        Write-Header "开始安装技能..."
-        Write-Host ""
-        foreach ($a in $agents) {
-            Install-Skills $a
-            Write-Host ""
-        }
+        Check-Skills | Out-Null
     }
 
-    Write-Header "========================"
-    Write-Success "安装完成！"
     Write-Host ""
-    Write-Info "使用方式："
-    Write-Host "  1. 进入你的项目目录"
-    Write-Host "  2. 启动 AI Agent"
-    Write-Host "  3. 输入指令激活技能，例如："
-    Write-Host "     - 使用 all-in-mvp 创建一个 CRM 系统"
+    $agents = Get-Agents
+    Write-Host ""
+    Write-Header "========================"
+    Write-Success "完成！"
+    Write-Host ""
+    Write-Info "技能目录（项目级）："
+    Write-Host "  .claude\skills\  .qoder\skills\  .trae\skills\"
+    Write-Host ""
+    Write-Info "使用方法："
+    Write-Host "  在本项目目录启动 Qoder / Claude Code"
+    Write-Host "  输入：使用 all-in-mvp 创建一个 CRM 系统"
     Write-Host ""
 }
 
 Main
+

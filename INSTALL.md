@@ -15,50 +15,50 @@
                       ▼ 自动提交
          .claude/skills/  .qoder/skills/  .trae/skills/
                       │
-                      ▼ git push
-                 GitHub 仓库（三平台目录已在仓库中且最新）
+                      ▼ git push + .gitattributes 自动过滤
+                 GitHub 仓库（仅三平台 skills/ + install 脚本）
                       │
-                      ▼ npx giget 拉取（.gitattributes 自动过滤）
-              用户项目（仅 .claude/.qoder/.trae/skills/ + install）
+                      ▼ npx giget 拉取
+              用户项目（.claude/.qoder/.trae/skills/ 项目级）
                       │
-                      ▼ install.sh
-              复制到全局 ~/.qoder/skills/ ~/.claude/skills/
+                      ▼ 启动 Agent
+              自动识别项目级技能（优先级高于全局）
 ```
 
-**核心原则**：推库前自动同步 → 用户只需复制，零额外步骤。
+**核心原则**：推库前自动同步 → 用户一行命令即可，项目级技能不污染全局。
 
 ---
 
 ## 🚀 快速开始
 
-### 一行命令（推荐）
+### 一行命令
 
 **macOS / Linux / WSL：**
 
 ```bash
-npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-project && cd my-project && chmod +x install.sh && ./install.sh
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp . --force
 ```
 
 **Windows PowerShell：**
 
 ```powershell
-npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-project; cd my-project; .\install.ps1
+npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp . --force
 ```
 
-> 拉取模板 + 安装技能，一条命令完成。`.gitattributes` 自动过滤冗余文件，下载即干净。
+> 在当前项目根目录执行。`.claude/skills/` `.qoder/skills/` `.trae/skills/` 直接出现在项目中，启动 Agent 即可使用。**项目级优先，不污染全局。**
 
-### 当前目录安装（最常用）
+### 新项目
 
 **macOS / Linux / WSL：**
 
 ```bash
-npx giget gh:1234567KF/all-in-mvp#all-in-mvp . --force && chmod +x install.sh && ./install.sh
+npx giget gh:1234567KF/all-in-mvp#all-in-mvp my-project && cd my-project
 ```
 
 **Windows PowerShell：**
 
 ```powershell
-npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp . --force; .\install.ps1
+npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-project; cd my-project
 ```
 
 ### 分步操作
@@ -66,7 +66,7 @@ npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp . --force; .\install.ps1
 <details>
 <summary>点击展开分步说明</summary>
 
-#### Step 1：拉取项目模板
+#### Step 1：拉取技能到项目
 
 **macOS / Linux / WSL：**
 
@@ -82,45 +82,38 @@ npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp my-project
 cd my-project
 ```
 
-> 💡 拉取后 `.claude/skills/` `.qoder/skills/` `.trae/skills/` 已是最新融合版本。`.gitattributes` 自动过滤源文件/文档，下载即干净。
+> 💡 `.claude/skills/` `.qoder/skills/` `.trae/skills/` 已在项目中，`.gitattributes` 自动过滤冗余文件。
 
-### Step 2：安装技能到 AI Agent
-
-**macOS / Linux / WSL：**
+#### Step 2：启动 Agent
 
 ```bash
-chmod +x install.sh && ./install.sh
-```
-
-**Windows PowerShell：**
-
-```powershell
-.\install.ps1
-```
-
-脚本自动检测 Qoder / Claude Code，将技能复制到全局配置目录。**只需这一次复制，之后其他项目无需再运行**。
-
-### Step 3：在其他项目中使用
-
-技能已安装到全局目录，直接在其他项目中启动 AI Agent 即可使用：
-
-```bash
-cd my-other-project
 qoder    # 或 claude
 > 使用 all-in-mvp 创建一个后台管理系统
 ```
+
+Agent 自动识别项目级技能（优先级高于全局），无需额外配置。
+
+#### 可选：验证安装
+
+```bash
+./install.sh    # macOS/Linux
+.\install.ps1   # Windows
+```
+
+脚本会检测技能目录是否就绪，缺失则自动下载补齐。
 
 </details>
 
 ---
 
-## 📋 手动安装（不拉取模板，只装技能）
+## 📋 远程安装（不通过 giget）
 
 | 平台 | 命令 |
 |------|------|
-| **所有 Agent** | `curl -fsSL https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/install.sh \| bash` |
-| **Qoder** | 直接复制 `.qoder/skills/*` → `~/.qoder/skills/` |
-| **Claude Code** | 直接复制 `.claude/skills/*` → `~/.claude/skills/` |
+| **macOS / Linux** | `curl -fsSL https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/install.sh \| bash` |
+| **Windows** | `irm https://raw.githubusercontent.com/1234567KF/all-in-mvp/all-in-mvp/install.ps1 \| iex` |
+
+> 下载技能到当前目录（项目级），不污染全局。
 
 ---
 
@@ -244,13 +237,13 @@ npx giget gh:1234567KF/all-in-mvp#v2.9.0 my-project
 
 ## ❓ 常见问题
 
-### Q: 为什么 giget 拉取后的项目没有 README 等文档？
+### Q: 为什么 giget 拉取后的项目只有 skills 目录？
 
-A: `.gitattributes` 的 `export-ignore` 规则让 GitHub tarball 自动排除文档/白皮书/源 skills 等文件，下载即干净。文档在 [GitHub 仓库](https://github.com/1234567KF/all-in-mvp) 随时可查。
+A: `.gitattributes` 的 `export-ignore` 规则让 GitHub tarball 自动排除文档/白皮书/源 skills 等文件。只保留 `.claude/skills/` `.qoder/skills/` `.trae/skills/` `install.sh` `install.ps1` `.gitignore`。文档在 [GitHub 仓库](https://github.com/1234567KF/all-in-mvp) 随时可查。
 
-### Q: 安装一次后，其他项目还需要再运行 install.sh 吗？
+### Q: 技能是全局的还是项目级的？
 
-A: **不需要**。技能已安装到全局目录（`~/.qoder/skills/`、`~/.claude/skills/`），所有项目共享。更新技能时重新运行 install.sh 即可覆盖升级。
+A: **项目级**。技能在项目根目录 `.claude/skills/` `.qoder/skills/` `.trae/skills/`，Agent 自动识别且优先级高于全局。每个项目独立拥有，互不影响。
 
 ### Q: 为什么 giget URL 需要 `#all-in-mvp`？
 
