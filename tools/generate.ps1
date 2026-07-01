@@ -102,6 +102,55 @@ foreach ($t in $targets) {
         Write-Host "  [COPY]    shared references/"
         robocopy $refSrc $refDst /E /NFL /NDL /NJH /NJS /NP /XO 2>&1 | Out-Null
     }
+    # Claude Code agents: 从源 agents 生成到 .claude/agents/
+    if ($t.Name -eq "claude-code") {
+        $srcAgentsDir = Join-Path $source "all-in-mvp\agents"
+        $claudeAgentsDir = Join-Path $t.RootDir "agents"
+        if (Test-Path $srcAgentsDir) {
+            Write-Host "  [AGENTS]  generate for .claude\agents\"
+            if (-not $DryRun) {
+                if (-not (Test-Path $claudeAgentsDir)) {
+                    New-Item -Path $claudeAgentsDir -ItemType Directory -Force | Out-Null
+                }
+                $agentDescs = @{
+                    "architect" = "System architect for MVP Stage 2.1. Designs architecture, DB schema, and API contracts based on locked PRD."
+                    "backend-tdd" = "Backend TDD expert for MVP Stage 3. Implements modules following Red-Green-Refactor cycle."
+                    "code-reviewer" = "Code reviewer for MVP Stage 3. Reviews backend code quality, contract compliance, and exception coverage."
+                    "debug-fixer" = "Debug expert for MVP Stage 4. Investigates test failures, locates root causes, and applies minimal fixes."
+                    "domain-expert" = "Domain expert for MVP Stage 2.2. Splits modules, defines boundaries, and creates acceptance criteria."
+                    "frontend-dev" = "Frontend dev expert for MVP Stage 3. Builds Vue 3 pages and components using Mock API."
+                    "grill-review" = "Cross-review auditor for MVP Stage 2.3. Bidirectionally validates architect and domain expert outputs against PRD."
+                    "mock-service" = "Mock service expert for MVP Stage 2. Creates complete mock API based on locked api-contract."
+                    "msvp-verifier" = "MSVP smoke verification agent. Performs cold-start, menu check, core journey, console error detection."
+                    "pipeline-coordinator" = "Pipeline coordinator for MVP Stage 3. Schedules and dispatches modules to agents based on dependency graph."
+                    "pipeline-monitor" = "Read-only pipeline monitor for MVP. Scans file system to output structured pipeline status reports."
+                    "pm-agent" = "Product manager agent for MVP Stage 1. Converts user requirements into MECE-complete PRD document."
+                    "retrospective-agent" = "Stage5 retrospective agent. Reviews multi-agent pipeline execution and generates retrospective report."
+                    "scenario-test" = "E2E scenario test agent for MVP Stage 2.6. Writes cross-module scenario tests based on PRD business flow."
+                    "single-module-test" = "Module API integration test agent for MVP Stage 2.5. Writes module-level integration tests from acceptance criteria."
+                    "stage4-coordinator" = "Stage4 integration coordinator. Orchestrates backend merge, frontend-backend integration, and bug fix cycles."
+                    "test-review" = "Test case review agent for MVP Stage 2.7. Performs static review of test cases for coverage and consistency."
+                }
+                Get-ChildItem -Path $srcAgentsDir -Filter "*.md" | ForEach-Object {
+                    $agentName = $_.BaseName
+                    $desc = if ($agentDescs.ContainsKey($agentName)) { $agentDescs[$agentName] } else { "MVP pipeline agent: $agentName" }
+                    $body = Get-Content -Path $_.FullName -Raw
+                    $frontmatter = @"
+---
+name: $agentName
+description: $desc
+tools: Read, Write, Edit, Bash, Grep, Glob
+---
+
+"@
+                    $outPath = Join-Path $claudeAgentsDir "$agentName.md"
+                    Set-Content -Path $outPath -Value ($frontmatter + $body) -Encoding UTF8
+                }
+                $count = (Get-ChildItem $claudeAgentsDir -File).Count
+                Write-Host "           $count agent files generated"
+            }
+        }
+    }
     # orphans
     if ((Test-Path $t.SkillsDir) -and -not $DryRun) {
         Get-ChildItem -Path $t.SkillsDir -Directory | ForEach-Object {

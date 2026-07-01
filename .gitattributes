@@ -49,5 +49,4 @@
 .claude/settings.json       export-ignore
 .claude/settings.local.json export-ignore
 
-# --- .qoder/ 只保留 skills/ ---
-.qoder/agents/    export-ignore
+# --- .qoder/ 保留 skills/ + agents/ ---
