@@ -33,6 +33,12 @@
 /package.json     export-ignore
 /package-lock.json  export-ignore
 
+# --- 安装脚本（giget 一行命令已足够，无需额外脚本）---
+/install.ps1      export-ignore
+/install.sh       export-ignore
+/.gitattributes   export-ignore
+/.gitignore       export-ignore
+
 # --- .claude/ 只保留 skills/ ---
 .claude/helpers/   export-ignore
 .claude/hooks/     export-ignore
