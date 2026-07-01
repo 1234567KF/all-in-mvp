@@ -27,11 +27,12 @@ node scripts/sync-skills.js --mode push --force
 echo ""
 
 # Step 2: 运行 agents + pipeline-monitor 生成
-if command -v powershell &> /dev/null; then
+if powershell.exe -NoProfile -Command "exit 0" 2>/dev/null; then
     echo "→ 生成 agents + pipeline-monitor..."
-    powershell -ExecutionPolicy Bypass -File tools/generate.ps1 all
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/generate.ps1 all
 else
-    echo "⚠ PowerShell 不可用，跳过 agents 生成（Windows 平台默认支持）"
+    echo "⚠ PowerShell 不可用，跳过 agents 生成"
+    echo "   请手动运行: .\\tools\\generate.ps1 all"
 fi
 
 echo ""

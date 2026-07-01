@@ -52,13 +52,8 @@ foreach ($t in $targets) {
             Write-Host "  [COPY]    $skillName"
         }
         if (-not $DryRun) {
-            # overlay 复制时排除 agents/（由后续逻辑独立复制到 .qoder/agents/）
+            # overlay 复制时排除 agents/（Custom Subagents 由后续逻辑独立复制到 .qoder/agents/）
             if (Test-Path $ovlFile) {
-                # 先清理技能目录中旧版 agents/ 残留
-                $agentsInSkill = Join-Path $dstDir "agents"
-                if (Test-Path $agentsInSkill) {
-                    Remove-Item -Path $agentsInSkill -Recurse -Force
-                }
                 robocopy $srcDir $dstDir /E /XD agents /NFL /NDL /NJH /NJS /NP /XO 2>&1 | Out-Null
             } else {
                 robocopy $srcDir $dstDir /E /NFL /NDL /NJH /NJS /NP /XO 2>&1 | Out-Null
@@ -77,6 +72,18 @@ foreach ($t in $targets) {
                     Get-ChildItem -Path $ovlAgents -Filter "mvp-*.md" | ForEach-Object {
                         Copy-Item -Path $_.FullName -Destination $agentsDst -Force
                     }
+                }
+            }
+            # Restore source agents from skills/ to skill dir (overlay excludes agents/)
+            $srcAgents = Join-Path $source "$skillName\agents"
+            if (Test-Path $srcAgents) {
+                $dstAgents = Join-Path $dstDir "agents"
+                Write-Host "  [AGENTS]  restore source agents to skill dir"
+                if (-not $DryRun) {
+                    if (-not (Test-Path $dstAgents)) {
+                        New-Item -Path $dstAgents -ItemType Directory -Force | Out-Null
+                    }
+                    robocopy $srcAgents $dstAgents /E /NFL /NDL /NJH /NJS /NP /XO 2>&1 | Out-Null
                 }
             }
         }
