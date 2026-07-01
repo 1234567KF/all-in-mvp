@@ -23,7 +23,6 @@
 # --- 非分发目录 ---
 /shadcn/          export-ignore
 /tools/           export-ignore
-/ultra-cost-effective/  export-ignore
 /scripts/         export-ignore
 /.idea/           export-ignore
 /.vite/           export-ignore
