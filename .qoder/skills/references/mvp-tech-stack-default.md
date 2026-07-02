@@ -25,16 +25,25 @@
 | 路由 | Vue Router | 4.x | |
 | 状态 | Pinia | 2.x | |
 | HTTP | Axios | 1.x | |
-| UI框架 | 6选1（见下） | | 选定后不可混用 |
+| UI组件库 | shadcn/vue | latest | 默认选择 |
+| 设计体系 | **Liquid Glass** | — | ★ 默认设计体系 (见 shadcn/DESIGN.md) |
+| CSS框架 | Tailwind CSS v4 | 4.x | |
 
-### UI 框架选择（按项目类型）
+### 设计体系 (默认不可协商)
+
+**所有 shadcn/vue 项目默认采用 Liquid Glass 设计体系**，除非用户显式指定其他：
+- 📐 规范文档: `shadcn/DESIGN.md`
+- 📁 源文件: `.qoder/skills/references/liquid-glass/` (theme-tokens.css, design-utils.css, index.css)
+- 🎨 默认主色: Qoder 绿 `#22c55e` / `#4be277`
+- 🖊️ 字体: Manrope (标题) + Inter (正文) + JetBrains Mono (数据)
+- 🌙 默认主题: Dark，`.light` 类切换 Light
+
+### UI 框架选择（按项目类型，当用户要求非 shadcn/vue 时）
 
 | 项目类型 | 推荐 | 备选 |
 |----------|------|------|
 | 企业后台/B端 | Ant Design Vue | Element Plus / Arco Design |
 | 通用管理/电商 | Element Plus | Ant Design Vue |
-| 现代品牌化Web | Tailwind CSS | shadcn/vue |
-| 自定义设计+预置组件 | shadcn/vue | Tailwind CSS |
 | H5移动端 | Vant | Tailwind CSS |
 
 ## 测试（不可协商）

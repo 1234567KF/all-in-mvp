@@ -1,293 +1,272 @@
-# Design System Inspired by shadcn/ui
+# 🟢 Liquid Glass Design System — all-in-mvp 默认设计体系
 
-> Category: Developer Tools
-> A beautifully designed component library built with Radix UI and Tailwind CSS. Clean, minimal, accessible, and customizable.
+> **适用范围**: 所有 all-in-mvp 流水线生成的前端项目
+> **UI 框架**: Vue 3 + Vite + Tailwind CSS v4 + shadcn/vue
+> **源设计**: [Liquid Glass Starter](http://192.168.110.2/starters/liquid-glass-starter)
+> **默认主色**: Qoder 绿 `#22c55e` / `#4be277`
+> **源文件**: `.qoder/skills/references/liquid-glass/` (theme-tokens.css, design-utils.css, index.css)
 
-## 1. Visual Theme & Atmosphere
+---
 
-- **Design Philosophy**: "Copy and paste" component distribution — no dependencies, full control. Radically simple, deeply customizable.
-- **Mood**: Clean, professional, minimal, approachable
-- **Density**: Comfortable — generous whitespace, clear visual hierarchy
-- **Visual Style**: Utility-first, CSS-variable-driven theming, subtle borders and shadows, soft rounded corners
-- **Tone**: Developer-friendly, unopinionated, neutral
-- **Key differentiator**: Components are not installed as a package — you copy the source code and own it
+## 1. 设计理念
 
-## 2. Color Palette & Roles
+"Liquid Glass"（毛玻璃拟态）是一种强调**深度、透明度和光折射**的视觉语言：
+- **Atmospheric Precision** — 通透、宽敞、技术精确
+- **Glassmorphism** — `backdrop-filter: blur()` + 半透明背景
+- **双主题** — Dark 为默认，Light 同样完整
+- **CSS 变量驱动** — 改一处全局生效，无需动组件代码
+- **主题一致性** — Dark/Light 切换只改颜色和透明度，布局/排版/间距/圆角绝对一致
 
-### Light Mode (Default)
+---
 
-| Token | Hex | Role |
-|-------|-----|------|
-| `--background` | `#FFFFFF` | Main page background |
-| `--foreground` | `#0A0A0A` | Primary text color |
-| `--card` | `#FFFFFF` | Card/surface background |
-| `--card-foreground` | `#0A0A0A` | Card text color |
-| `--popover` | `#FFFFFF` | Popover/dropdown background |
-| `--popover-foreground` | `#0A0A0A` | Popover text color |
-| `--primary` | `#0A0A0A` | Primary action background |
-| `--primary-foreground` | `#FAFAFA` | Primary action text |
-| `--secondary` | `#F5F5F5` | Secondary action background |
-| `--secondary-foreground` | `#0A0A0A` | Secondary action text |
-| `--muted` | `#F5F5F5` | Muted/de-emphasized background |
-| `--muted-foreground` | `#737373` | Muted text (secondary info) |
-| `--accent` | `#F5F5F5` | Accent/hover background |
-| `--accent-foreground` | `#0A0A0A` | Accent text color |
-| `--destructive` | `#EF4444` | Destructive action (red-500) |
-| `--destructive-foreground` | `#FAFAFA` | Destructive action text |
-| `--border` | `#E5E5E5` | Component borders |
-| `--input` | `#E5E5E5` | Input field borders |
-| `--ring` | `#0A0A0A` | Focus ring indicator |
-| `--radius` | `0.5rem` | Default border radius |
-
-### Dark Mode
-
-| Token | Hex | Role |
-|-------|-----|------|
-| `--background` | `#0A0A0A` | Main page background |
-| `--foreground` | `#FAFAFA` | Primary text color |
-| `--card` | `#0A0A0A` | Card/surface background |
-| `--card-foreground` | `#FAFAFA` | Card text color |
-| `--popover` | `#0A0A0A` | Popover/dropdown background |
-| `--popover-foreground` | `#FAFAFA` | Popover text color |
-| `--primary` | `#FAFAFA` | Primary action background |
-| `--primary-foreground` | `#0A0A0A` | Primary action text |
-| `--secondary` | `#262626` | Secondary action background |
-| `--secondary-foreground` | `#FAFAFA` | Secondary action text |
-| `--muted` | `#262626` | Muted/de-emphasized background |
-| `--muted-foreground` | `#A3A3A3` | Muted text (secondary info) |
-| `--accent` | `#262626` | Accent/hover background |
-| `--accent-foreground` | `#FAFAFA` | Accent text color |
-| `--destructive` | `#7F1D1D` | Destructive action (red-900) |
-| `--destructive-foreground` | `#FAFAFA` | Destructive action text |
-| `--border` | `#262626` | Component borders |
-| `--input` | `#262626` | Input field borders |
-| `--ring` | `#D4D4D4` | Focus ring indicator |
-
-### Semantic Accent (Neutral — Neutral Gray)
-
-| Weight | Hex | Usage |
-|--------|-----|-------|
-| 50 | `#FAFAFA` | Near-white backgrounds |
-| 100 | `#F5F5F5` | Subtle surface backgrounds |
-| 200 | `#E5E5E5` | Borders, dividers |
-| 300 | `#D4D4D4` | Disabled states |
-| 400 | `#A3A3A3` | Placeholder text |
-| 500 | `#737373` | Muted body text |
-| 600 | `#525252` | Secondary body text |
-| 700 | `#404040` | Body text |
-| 800 | `#262626` | Strong headings |
-| 900 | `#171717` | Dark surfaces |
-| 950 | `#0A0A0A` | Near-black backgrounds |
-
-## 3. Typography Rules
-
-| Level | Font Family | Weight | Size | Line Height | Letter Spacing |
-|-------|-------------|--------|------|-------------|----------------|
-| H1 | Inter / system-ui | 800 (ExtraBold) | 3rem (48px) | 1.0 | -0.025em |
-| H2 | Inter / system-ui | 700 (Bold) | 2.25rem (36px) | 1.1 | -0.025em |
-| H3 | Inter / system-ui | 600 (SemiBold) | 1.5rem (24px) | 1.2 | -0.025em |
-| H4 | Inter / system-ui | 600 (SemiBold) | 1.25rem (20px) | 1.3 | — |
-| Body (Large) | Inter / system-ui | 400 (Regular) | 1.125rem (18px) | 1.5 | — |
-| Body (Base) | Inter / system-ui | 400 (Regular) | 1rem (16px) | 1.5 | — |
-| Body (Small) | Inter / system-ui | 400 (Regular) | 0.875rem (14px) | 1.5 | — |
-| Caption | Inter / system-ui | 400 (Regular) | 0.75rem (12px) | 1.5 | — |
-| Muted | Inter / system-ui | 400 (Regular) | 0.875rem (14px) | 1.5 | — |
-| Inline Code | JetBrains Mono / monospace | 400 (Regular) | 0.875em | — | — |
-| Lead | Inter / system-ui | 400 (Regular) | 1.25rem (20px) | 1.4 | — |
-
-- **Font stack**: `Inter, system-ui, -apple-system, sans-serif` (default)
-- **Monospace**: `JetBrains Mono, SF Mono, Monaco, monospace`
-- **Weight system**: 400 (regular) for body, 500 (medium) for emphasis, 600 (semi-bold) for subheadings, 700+ (bold) for headings
-- **Line length**: 65–75 characters optimal for reading
-
-## 4. Component Stylings
-
-### Buttons
-
-| Variant | Background | Text | Border | Hover | Active | Shadow |
-|---------|-----------|------|--------|-------|--------|--------|
-| Default (Primary) | `--primary` | `--primary-foreground` | None | Opacity 90 | Scale 97% | None |
-| Secondary | `--secondary` | `--secondary-foreground` | None | Opacity 80 | Scale 97% | None |
-| Outline | Transparent | `--foreground` | `--border` | `--accent` bg | Scale 97% | None |
-| Ghost | Transparent | `--foreground` | None | `--accent` bg | Scale 97% | None |
-| Destructive | `--destructive` | `--destructive-foreground` | None | Opacity 90 | Scale 97% | None |
-| Link | Transparent | `--primary` | None (underline on hover) | Underline | — | None |
-
-- **Size**: Default `h-10 px-4 py-2`; SM `h-9 px-3 text-sm`; LG `h-11 px-8 text-base`; Icon `h-10 w-10`
-- **Radius**: `--radius` (0.5rem)
-- **Transition**: 150ms ease-in-out for background-color, 100ms for transform
-- **Focus**: Ring-2 with `--ring` color, ring-offset-2
-
-### Input Fields
-
-| Variant | Background | Border | Text | Focus |
-|---------|-----------|--------|------|-------|
-| Default | `--background` | `--input` (1px) | `--foreground` | Ring-2 `--ring`, no border change |
-| File | `--background` | `--input` (1px) | `--foreground` | Ring-2 `--ring` |
-- **Height**: `h-10` (2.5rem)
-- **Radius**: `--radius` (0.5rem)
-- **Padding**: `px-3 py-2`
-- **Placeholder**: `--muted-foreground`
-- **Disabled**: `cursor-not-allowed opacity-50`
-- **Transition**: 150ms ease-in-out for box-shadow, border-color
-
-### Cards
-
-- **Background**: `--card` (default, or --background for nested)
-- **Border**: 1px solid `--border`
-- **Radius**: `--radius` (0.5rem)
-- **Shadow**: `shadow-sm` (subtle)
-- **Padding**: `p-6`
-- **Header/Footer**: Separated by `flex-col gap-y-1.5` for header, `pt-0` footer
-- **Hover**: Optional `hover:shadow-md` for interactive cards
-
-### Badges
-
-| Variant | Background | Text | Border |
-|---------|-----------|------|--------|
-| Default | `--primary` | `--primary-foreground` | None |
-| Secondary | `--secondary` | `--secondary-foreground` | None |
-| Outline | Transparent | `--foreground` | `--border` |
-| Destructive | `--destructive` | `--destructive-foreground` | None |
-- **Radius**: Full (rounded-full / pill shape)
-- **Size**: `px-2.5 py-0.5 text-xs font-semibold`
-- **Inline**: Inline-flex, center alignment
-
-### Navigation Tabs
-
-- **Trigger (active)**: `--muted` bg, `--foreground` text, `shadow-sm`
-- **Trigger (inactive)**: Transparent bg, `--muted-foreground` text
-- **Content**: `mt-2`
-- **Radius**: `--radius` (0.5rem) on active tab
-- **Transition**: 150ms ease-in-out for all properties
-
-### Dialog / Modal
-
-- **Overlay**: `rgba(0,0,0,0.8)` (black at 80%)
-- **Content**: `--popover` bg, border `--border`, `shadow-lg`
-- **Radius**: `--radius` + `0.5rem` (1rem total, if configured)
-- **Close button**: Top-right, ghost variant
-- **Animation**: Fade in + scale (enter), fade out + scale (exit)
-
-### Dropdown Menu
-
-- **Content**: `--popover` bg, 1px `--border`, `shadow-md`
-- **Radius**: `--radius` (0.5rem)
-- **Item (default)**: `--popover-foreground`
-- **Item (hover)**: `--accent` bg, `--accent-foreground` text
-- **Item (active)**: `--accent` bg, `--accent-foreground` text
-- **Separator**: 1px `--muted` horizontal line
-- **Checkbox/Radio items**: Use `--primary` for checked state
-
-### Alerts
-
-| Variant | Border | Icon | Background |
-|---------|--------|------|------------|
-| Default | None / `--border` | Terminal icon | `--background` or `--muted` |
-| Destructive | `--destructive` (border-l) | Alert triangle | `--destructive` at 10% alpha |
-- **Title**: `font-medium text-sm`
-- **Description**: `text-sm text-muted-foreground`
-- **Layout**: Flex with icon on the left
-
-### Tables
-
-- **Header**: `--muted-foreground` text, `font-medium`, left-aligned
-- **Row**: `border-b border-border`
-- **Hover (optional)**: `--muted` bg on row
-- **Cell**: `p-4 align-middle text-sm`
-- **Caption**: `text-sm text-muted-foreground` at bottom
-
-## 5. Layout Principles
-
-- **Spacing Scale (Tailwind)**: 0, px, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 72, 80, 96 (in rem, where 1 = 0.25rem)
-- **Grid**: 12-column grid via Tailwind, or custom
-- **Container**: Max-width `1280px` centered (`mx-auto`)
-- **Whitespace**: Generous — components breathe with 16–24px internal padding
-- **Sizing scale**: Same as spacing (Tailwind's w-/h- utilities)
-- **Z-index**: Modal 50, Popover 50, Dropdown 50, Tooltip 50, Toast 100
-
-## 6. Depth & Elevation
-
-| Level | Shadow | Usage |
-|-------|--------|-------|
-| Base | `none` | Flat surfaces (buttons, inputs) |
-| Sm | `0 1px 2px 0 rgb(0 0 0 / 0.05)` | Cards, alerts |
-| Md | `0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)` | Dropdown menus, popovers |
-| Lg | `0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)` | Modals, dialogs |
-| Focus | `0 0 0 2px hsl(var(--ring))` | Focus ring (2px spread) |
-
-- **Ring offset**: `2px` from element edge
-- **No blur overlays** — elevation is communicated purely through shadows
-
-## 7. Do's and Don'ts
-
-### Do's
-- ✅ Use CSS variables for all colors — enables easy theme switching
-- ✅ Maintain consistent border-radius via `--radius` variable
-- ✅ Use Tailwind's spacing scale for consistent gaps and paddings
-- ✅ Prefer composition over configuration — copy source and customize
-- ✅ Use `sr-only` for screen-reader-only content
-- ✅ Use semantic HTML with Radix UI for accessibility (aria attributes)
-- ✅ Apply focus rings for keyboard navigation (`focus-visible`)
-- ✅ Support both light and dark mode via `.dark` class selector
-- ✅ Use `gap-*` utilities on flex/grid containers instead of margin on children
-- ✅ Keep interactive elements at minimum 44px touch target on mobile
-
-### Don'ts
-- ❌ Don't add new dependencies — components are self-contained
-- ❌ Don't override CSS variables globally unless theming
-- ❌ Don't use custom spacing outside the Tailwind scale
-- ❌ Don't remove focus ring styles — accessibility requirement
-- ❌ Don't hardcode color values — always use CSS variable / Tailwind token
-- ❌ Don't add animations that exceed 300ms — keep interactions snappy
-- ❌ Don't use RGB/HSL for colors — use OKLch or CSS variables
-- ❌ Don't forget `outline-none` on elements with custom focus ring
-- ❌ Don't nest interactive elements (button inside button, etc.)
-
-## 8. Responsive Behavior
-
-| Breakpoint | Width | Behavior |
-|------------|-------|----------|
-| Base (mobile) | < 640px | Single column, stacked layout, full-width inputs |
-| Sm | ≥ 640px | Two-column grids possible |
-| Md | ≥ 768px | Sidebar + main layout, multi-column cards |
-| Lg | ≥ 1024px | Full multi-column layout, max-width container |
-| Xl | ≥ 1280px | Maximum content width, abundant whitespace |
-| 2xl | ≥ 1536px | Extra-wide, optional max-width cap |
-
-- **Touch targets**: Minimum 44×44px for all interactive elements
-- **Navigation**: Mobile: hamburger/expandable; Desktop: horizontal bar
-- **Tables**: Horizontal scroll on small screens
-- **Grid**: Responsive columns via `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`
-- **Font scaling**: No font size changes at breakpoints — responsive via container width
-
-## 9. Agent Prompt Guide
-
-When generating UI with this design system:
+## 2. 文件结构 (生成项目中的 src/)
 
 ```
-Use shadcn/ui design system:
-- Neutral/grayscale palette with CSS variable tokens
-- Inter font family (default), JetBrains Mono for code
-- Border radius: 0.5rem via --radius variable
-- Clean, minimal aesthetic with generous whitespace
-- Light mode by default, support .dark class for dark mode
-- Tailwind CSS utility classes for all styling
-- CSS variables for colors (never hardcode hex values)
-- Subtle shadows (shadow-sm for cards, shadow-lg for modals)
-- Focus rings on all interactive elements
-- Responsive with Tailwind breakpoints (sm/md/lg/xl/2xl)
+src/
+├── index.css              ← 入口: 引入 tailwind + tokens + utils
+├── theme-tokens.css       ← ★ 核心: 全部 CSS 变量 (Dark/Light)
+├── design-utils.css       ← 工具类: .glass-card .btn-primary 等
+├── assets/fonts/          ← 字体文件 (Manrope/Inter/JetBrains Mono)
+│   └── fonts.css
+├── lib/
+│   └── utils.ts           ← cn() 工具函数 (clsx + tailwind-merge)
+└── components/
+    └── ui/                ← shadcn/vue 组件
 ```
 
-**Quick color reference:**
-- Page bg: `#FFFFFF` (light), `#0A0A0A` (dark)
-- Text: `#0A0A0A` (light), `#FAFAFA` (dark)
-- Borders: `#E5E5E5` (light), `#262626` (dark)
-- Primary: `#0A0A0A` bg, `#FAFAFA` text (light)
-- Muted text: `#737373` (light), `#A3A3A3` (dark)
+---
 
-**Component instantiation:**
-- Button: `<button class="inline-flex items-center justify-center rounded-md text-sm font-medium h-10 px-4 py-2">`
-- Card: `<div class="rounded-lg border bg-card text-card-foreground shadow-sm p-6">`
-- Input: `<input class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">`
-- Badge: `<span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold">`
+## 3. 颜色系统速查
+
+### Dark Theme (默认 `:root`)
+
+| Token | 值 | 用途 |
+|-------|-----|------|
+| `--background` | `#0e0e11` | 页面基础背景 |
+| `--foreground` | `#e4e1e6` | 默认文字色 |
+| `--card` | `rgba(27,27,30,0.7)` | 卡片背景 |
+| `--primary` | `#22c55e` | ★ 主色 |
+| `--primary-foreground` | `#000000` | 主色上文字 |
+| `--secondary` | `#571bc1` | 次要色 |
+| `--muted` | `#1f1f22` | 柔和背景 |
+| `--border` | `rgba(61,74,61,0.4)` | 边框 |
+| `--ring` | `rgba(75,226,119,0.5)` | 聚焦环 |
+| `--radius` | `0.75rem` | 基础圆角 |
+
+### Light Theme (`.light`)
+
+| Token | 值 | 用途 |
+|-------|-----|------|
+| `--background` | `#f7f9fb` | 页面基础背景 |
+| `--foreground` | `#191c1e` | 默认文字色 |
+| `--card` | `rgba(255,255,255,0.7)` | 卡片背景 |
+| `--primary` | `#006e2f` | ★ 主色 (Light) |
+| `--primary-foreground` | `#ffffff` | 主色上文字 |
+| `--secondary` | `#565e74` | 次要色 |
+| `--muted` | `#f2f4f6` | 柔和背景 |
+| `--border` | `rgba(109,123,108,0.3)` | 边框 |
+| `--ring` | `rgba(0,110,47,0.5)` | 聚焦环 |
+
+### Liquid Glass 专属 Token (`--lg-*`)
+
+#### 表面层级
+
+| Token | Dark | Light | 用途 |
+|-------|------|-------|------|
+| `--lg-surface-glass` | `rgba(27,27,30,0.7)` | `rgba(255,255,255,0.7)` | ★ 毛玻璃表面 |
+| `--lg-surface-container` | `#1f1f22` | `#eceef0` | 容器表面 |
+| `--lg-surface-high` | `#2a2a2d` | `#e6e8ea` | 高层级容器 |
+
+#### 主色系
+
+| Token | Dark | Light | 用途 |
+|-------|------|-------|------|
+| `--lg-primary` | `#22c55e` | `#006e2f` | ★ 主色 |
+| `--lg-primary-light` | `#4be277` | `#22c55e` | 主色浅变 |
+| `--lg-primary-glow` | `rgba(34,197,94,0.4)` | `rgba(0,110,47,0.3)` | 主色辉光 |
+| `--lg-primary-hover` | `#4be277` | `#16a34a` | 主色悬停 |
+
+#### 强调色
+
+| Token | Dark | Light | 色系 |
+|-------|------|-------|------|
+| `--lg-accent-blue` | `#36b6fb` | `#005ac2` | 蓝色 |
+| `--lg-accent-red` | `#ef4444` | `#ba1a1a` | 红色 |
+| `--lg-accent-purple` | `#a855f7` | `#571bc1` | 紫色 |
+| `--lg-accent-yellow` | `#eab308` | `#eab308` | 黄色 |
+
+#### 文字层级
+
+| Token | Dark | Light | 用途 |
+|-------|------|-------|------|
+| `--lg-text-primary` | `#e4e1e6` | `#191c1e` | 主要文字 |
+| `--lg-text-secondary` | `#bccbb9` | `#3d4a3d` | 次要文字 |
+| `--lg-text-muted` | `#869585` | `#6d7b6c` | 弱化文字 |
+| `--lg-danger` | `#ffb4ab` | `#ba1a1a` | 危险/错误 |
+
+---
+
+## 4. 排版体系 (三字体系统)
+
+| Token | 字体 | 用途 |
+|-------|------|------|
+| `--font-heading` | **Manrope** | 标题/Heading |
+| `--font-body` | **Inter** | 正文/Body |
+| `--font-mono` | **JetBrains Mono** | 代码/数据/KPI |
+
+| 规格 | 字体 | 大小 | 字重 | 行高 |
+|------|------|------|------|------|
+| H1 | Manrope | 36px | 700 | 1.2 |
+| H2 | Manrope | 24px | 600 | 1.3 |
+| Body | Inter | 14px | 400 | 1.5 |
+| Data Display | JetBrains Mono | 28px | 600 | 1 |
+| Label Mono | JetBrains Mono | 11px | 500 | 0.05em |
+
+---
+
+## 5. 间距 & 圆角
+
+| Token | 值 | 用途 |
+|-------|-----|------|
+| `--spacing-page` | `32px` (移动端 `16px`) | 页面外边距 |
+| `--spacing-card` | `24px` | 卡片内边距 |
+| `--spacing-element` | `16px` | 元素间距 |
+| `--radius` (Tailwind) | `0.75rem` | 基础圆角 |
+| `--radius-glass-sm` | `8px` | 按钮/输入框 |
+| `--radius-glass-md` | `12px` | ★ 卡片 (必须 12px) |
+| `--radius-glass-lg` | `16px` | 大面板 |
+
+---
+
+## 6. 工具类速查 (design-utils.css)
+
+| Class | 用途 |
+|-------|------|
+| `.glass-card` | ★ 毛玻璃卡片 (带阴影) |
+| `.liquid-glass` | 毛玻璃容器 (无阴影) |
+| `.matte-card` | 平板毛玻璃 (无反光渐变) |
+| `.glass-row` | 表格行 (hover 左侧主色条) |
+| `.btn-primary` | 主色按钮 |
+| `.btn-secondary` | 次要按钮 (幽灵玻璃) |
+| `.glass-input` | 毛玻璃输入框 |
+| `.skeleton-glass` | 骨架屏加载 |
+| `.section-title` | 章节标题 |
+| `.data-label` | 等宽大写标签 |
+| `.font-h1` / `.font-h2` | 标题字体 |
+| `.font-data-display` | 数据展示大字体 |
+| `.chart-container` | 图表容器 |
+
+---
+
+## 7. 组件规范
+
+### 卡片 (Card)
+
+- 1px 边框 + 12px 圆角 (`--radius-glass-md`) + 顶部光泽渐变
+- **Dark**: `bg-[#1b1b1e]/70` + `backdrop-blur-md` + `rgba(255,255,255,0.03)` 顶部渐变
+- **Light**: `bg-[#ffffff]/70` + `backdrop-blur-md` + `rgba(0,0,0,0.03)` 顶部渐变
+- 模板: `<div class="glass-card p-6">`
+
+### 主色按钮 (Primary Button)
+
+- **Dark**: 实色 `#22c55e`，黑字，hover → `#4be277` + 主色 glow
+- **Light**: 实色 `#006e2f`，白字，hover → `#16a34a` + 柔和绿影
+- 模板: `<button class="btn-primary">` 或 `<Button variant="default">`
+
+### 次要按钮 (Secondary Button)
+
+- 幽灵玻璃风格: 1px 边框 + 半透明背景 + hover 加深
+- 模板: `<button class="btn-secondary">` 或 `<Button variant="secondary">`
+
+### 输入框 (Input)
+
+- 8px 圆角，毛玻璃背景 (`--radius-glass-sm`)
+- Dark focus: 边框 `#4be277` + `rgba(34,197,94,0.3)` glow
+- Light focus: 边框 `#006e2f` + `rgba(0,110,47,0.2)` glow
+- 模板: `<input class="glass-input" />`
+
+### KPI 指标 (KPI)
+
+- 数值**必须**使用 JetBrains Mono 字体
+- 左侧 2px 主色竖条 + 辉光: `<div class="kpi-accent">`
+
+---
+
+## 8. 预设主题色切换
+
+搜索 `★★★` 标记快速定位变量组。替换 `:root` 和 `.light` 中的对应变量：
+
+| 色系 | `--primary` | `--lg-primary-light` |
+|------|-------------|---------------------|
+| 绿色 **(默认)** | `#22c55e` | `#4be277` |
+| 蓝色 | `#3b82f6` | `#60a5fa` |
+| 紫色 | `#8b5cf6` | `#a78bfa` |
+| 橙色 | `#f97316` | `#fb923c` |
+
+切换时需同步更新：`--ring`, `--chart-*`, `--sidebar-*`, `--shadow-*`, `--lg-*` (全部主色相关变量)。
+
+---
+
+## 9. DO's and DON'Ts
+
+### ✅ DO
+- 使用 CSS 变量 (`var(--primary)`, `var(--lg-surface-glass)`) 或工具类 (`.glass-card`)
+- 使用三字体系统: Manrope (标题) / Inter (正文) / JetBrains Mono (数据)
+- 卡片圆角固定 12px (`--radius-glass-md`)
+- KPI 数值必须用 `font-mono` / JetBrains Mono
+- 弹窗/浮层必须加 `backdrop-filter: blur(12px)`
+- 支持 Dark/Light 双主题
+
+### ❌ DON'T
+- **不要**在组件中硬编码 hex/rgba 颜色值
+- **不要**使用 Tailwind 默认圆角类 (如 `rounded-lg` 是 8px)，应使用 `rounded-[12px]` 或 CSS 变量
+- **不要**省略弹窗/浮层上的 `backdrop-filter`
+- **不要**在 KPI 数值上使用 Inter/Manrope 字体
+
+---
+
+## 10. 快速接入 (3 步)
+
+### 步骤 1: 初始化
+
+```bash
+npm create vite@latest my-app -- --template vue-ts
+cd my-app
+npm install tailwindcss @tailwindcss/vite tw-animate-css
+npx shadcn-vue@latest init
+```
+
+### 步骤 2: 复制设计系统文件
+
+```bash
+# 从 .qoder/skills/references/liquid-glass/ 复制到 src/
+cp .qoder/skills/references/liquid-glass/theme-tokens.css src/
+cp .qoder/skills/references/liquid-glass/design-utils.css src/
+cp .qoder/skills/references/liquid-glass/index.css src/
+```
+
+### 步骤 3: 引入并启动
+
+在 `main.ts` 中:
+```ts
+import './index.css'
+```
+
+```bash
+npm install clsx tailwind-merge lucide-vue-next class-variance-authority reka-ui vue-router
+npm run dev
+```
+
+---
+
+## 11. AI Agent 使用指南
+
+> **此节供 all-in-mvp 流水线中的所有 Agent 使用。** 当生成 Vue 3 前端代码时：
+
+1. **先读此文档** — 对齐 Liquid Glass 核心视觉原则，而非普通 shadcn 灰白风格
+2. **使用 CSS 变量引用颜色** — 永远不要硬编码 hex/rgba
+3. **优先使用共享工具类** — `.glass-card` `.liquid-glass` `.glass-row` `.btn-primary` `.btn-secondary` `.glass-input` 等
+4. **强制排版变量** — Manrope 标题 / Inter 正文 / JetBrains Mono 数据
+5. **KPI 数据展示** — 数值必须用 `font-mono`，卡片必须用 12px 圆角
+6. **Dark 优先** — `:root` 定义 Dark 主题，`.light` 类覆盖 Light 主题
+7. **源文件参考** — 设计系统源文件位于 `.qoder/skills/references/liquid-glass/`

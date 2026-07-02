@@ -2235,7 +2235,18 @@ const CONTRACT_CHECKS = [
 | **Drizzle ORM** | 数据库 ORM | 类型安全、Schema 即代码 |
 | **SQLite** | 数据库 | 零配置、原型阶段首选 |
 | **Vue 3 + Vite** | 前端框架 | 组合式 API、快速 HMR |
+| **shadcn/vue** | UI 组件库 | 默认选择，与 Liquid Glass 深度集成 |
+| **Liquid Glass** | ★ 默认设计体系 | 毛玻璃拟态，CSS 变量驱动，详见 `shadcn/DESIGN.md` |
 | **Vitest** | 测试框架 | 与 Vite 共享配置、高性能 |
 | **OpenAPI 3.0** | 接口契约 | 标准化的 API 描述格式 |
 
 以上仅为默认推荐。如用户指定其他技术栈，以用户指定为准。
+
+### 默认设计体系：Liquid Glass
+
+> **所有 all-in-mvp 生成的前端页面默认采用 Liquid Glass 设计体系。** 前端 Agent 在生成 Vue 组件时 MUST 遵循 `shadcn/DESIGN.md` 中的规范。
+
+- 📐 **规范文档**: `shadcn/DESIGN.md` — 完整 Token 速查 + 组件规范 + DO/DON'T
+- 📁 **CSS 源文件**: `.qoder/skills/references/liquid-glass/` — 直接复制到 `src/` 使用
+- 🎨 **核心特征**: 毛玻璃拟态 | 三字体系统 (Manrope/Inter/JetBrains Mono) | Dark 优先 | CSS 变量驱动
+- ❌ **严禁硬编码颜色**: 所有颜色值 MUST 通过 CSS 变量引用，不得在组件中写 hex/rgba
