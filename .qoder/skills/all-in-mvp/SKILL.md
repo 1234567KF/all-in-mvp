@@ -2247,6 +2247,15 @@ const CONTRACT_CHECKS = [
 > **所有 all-in-mvp 生成的前端页面默认采用 Liquid Glass 设计体系。** 前端 Agent 在生成 Vue 组件时 MUST 遵循 `shadcn/DESIGN.md` 中的规范。
 
 - 📐 **规范文档**: `shadcn/DESIGN.md` — 完整 Token 速查 + 组件规范 + DO/DON'T
-- 📁 **CSS 源文件**: `.qoder/skills/references/liquid-glass/` — 直接复制到 `src/` 使用
-- 🎨 **核心特征**: 毛玻璃拟态 | 三字体系统 (Manrope/Inter/JetBrains Mono) | Dark 优先 | CSS 变量驱动
+- 🏗️ **前端脚手架**: `starters/liquid-glass-frontend/` — ★ 项目起点。前端 Agent 应按此目录结构初始化项目（含 vite.config、Tailwind v4、useTheme、完整 CSS 三件套、防闪烁脚本）
+- 📁 **CSS 源文件**: `.qoder/skills/references/liquid-glass/` — 脚手架已内嵌，无需额外复制
+- 🎨 **核心特征**: 毛玻璃拟态 | 三字体系统 (Manrope/Inter/JetBrains Mono) | Dark/Light 双主题 | CSS 变量驱动
 - ❌ **严禁硬编码颜色**: 所有颜色值 MUST 通过 CSS 变量引用，不得在组件中写 hex/rgba
+
+### 前端项目初始化流程（Agent MUST）
+
+1. 复制 `starters/liquid-glass-frontend/` 到目标项目的 `frontend/` 目录
+2. `cd frontend && npm install`
+3. 删除 `src/views/HomePage.vue`（脚手架示例页）
+4. 在 `src/main.ts` 的 routes 数组中添加业务路由
+5. 在 `src/views/` 下创建业务页面，遵循 Liquid Glass 设计体系

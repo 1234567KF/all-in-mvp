@@ -33,7 +33,8 @@
 
 **所有 shadcn/vue 项目默认采用 Liquid Glass 设计体系**，除非用户显式指定其他：
 - 📐 规范文档: `shadcn/DESIGN.md`
-- 📁 源文件: `.qoder/skills/references/liquid-glass/` (theme-tokens.css, design-utils.css, index.css)
+- 📁 CSS 源文件: `.qoder/skills/references/liquid-glass/` (theme-tokens.css, design-utils.css, index.css)
+- 🏗️ 前端脚手架: `starters/liquid-glass-frontend/` — 复制此目录作为项目起点，含所有配置 + useTheme + 入口页
 - 🎨 默认主色: Qoder 绿 `#22c55e` / `#4be277`
 - 🖊️ 字体: Manrope (标题) + Inter (正文) + JetBrains Mono (数据)
 - 🌙 默认主题: Dark，`.light` 类切换 Light
