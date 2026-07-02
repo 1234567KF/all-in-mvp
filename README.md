@@ -89,9 +89,9 @@ npx.cmd giget gh:1234567KF/all-in-mvp#v2.10.0 .
 
 ## 常见问题
 
-### Q: 为什么 giget 拉取后只有 skills 目录和 ultra-cost-effective？
+### Q: 为什么 giget 拉取后只有 `.qoder/` 和 `ultra-cost-effective/`？
 
-A: `.gitattributes` 的 `export-ignore` 规则让 GitHub tarball 自动排除文档/白皮书等文件，只保留 `.qoder/skills/` `ultra-cost-effective/` `.gitignore`。完整源码在 [GitHub 仓库](https://github.com/1234567KF/all-in-mvp)。
+A: `.gitattributes` 的 `export-ignore` 规则让 GitHub tarball 自动排除文档/白皮书等文件，只保留 `.qoder/skills/`、`ultra-cost-effective/`。完整源码在 [GitHub 仓库](https://github.com/1234567KF/all-in-mvp)。
 
 ### Q: 技能是全局的还是项目级的？
 
