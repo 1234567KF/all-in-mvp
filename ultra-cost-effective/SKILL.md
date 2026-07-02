@@ -1,12 +1,12 @@
 ---
 name: ultra-cost-effective
-description: 极致节能 — 不降低LLM输出质量的Token节省体系，综合节省60-90%。基于ccmvp七层节能架构+Headroom/lean-ctx/RTK国际方案。Claude Code & Qoder双平台通用。
-version: 1.1.0
+description: 极致节能 — Qoder 专用 Token 节省体系。七层架构 + 项目级全链路监控（含A2A穿透），综合节省60-90%。
+version: 2.0.0
 triggers: ultra-cost-effective, 节能, 省token, 节省, token report, 成本报告, 极致节能, token报告
 role: infrastructure
-scope: global
+scope: project
 always-on: true
-platforms: [claude-code, qoder]
+platforms: [qoder]
 dependencies:
   skills:
     - ultra-cost-effective-output    # L1: 输出压缩
@@ -21,16 +21,16 @@ dependencies:
 
 > **省工** — AI编程Token节省体系。七层架构，不降低质量，综合节省 **60-90%** Token。
 
-## 自动生效机制（Claude Code）
+## 自动生效机制（Qoder）
 
-框架通过以下方式自动运行，无需手动触发：
+框架通过以下方式运行：
 
 | 机制 | 触发时机 | 效果 |
 |------|---------|------|
-| **PreToolUse Hook** | 每次 Bash 命令执行前 | 自动注入 `| node tokenforge.cjs compress` 管道 |
-| **PostToolUse Hook** | 每次工具调用后 | 追踪 token 消耗 + 评估上下文健康度 |
-| **lean-ctx MCP** | 文件读取/搜索/Shell | 自动缓存压缩，重读仅 ~13 tokens |
+| **JSONL 扫描** | 会话过程 | `project-monitor.cjs` 读取 `.qoder/cache/` 下 transcript |
+| **Hook 辅助** | 工具调用后 | `~/.qoder/hooks/*.cmd` 触发增量统计 |
 | **rules/main.md** | 会话始终 | LLM 行为指导：优先用 lean-ctx，引用 session-memory |
+| **项目配置** | `.qoder/settings.json` | 模型路由、环境变量、规则注入 |
 
 ## 核心理念
 
@@ -53,33 +53,28 @@ dependencies:
 
 ## 快速接入（目标项目）
 
-### 1. 复制引擎
+### 1. 项目已预装
+`.qoder/settings.json` 包含完整配置，`ultra-cost-effective/` 目录位于项目根。
+
+### 2. 部署 Hook（可选，用于实时增量监控）
+```powershell
+Copy-Item ultra-cost-effective/adapters/qoder/hook-post-tool.cmd $env:USERPROFILE\.qoder\hooks\
+```
+
+### 3. 查看报告
 ```bash
-cp -r ultra-cost-effective/ /path/to/your-project/
+node ultra-cost-effective/helpers/project-monitor.cjs
 ```
-
-### 2. 合并 settings.json
-将 `adapters/claude/settings.template.json` 的内容合并到 `.claude/settings.json`
-
-### 3. 在 CLAUDE.md 中导入规则
-```markdown
-@ultra-cost-effective/rules/main.md
-```
-
-### 4. 安装 lean-ctx（可选但推荐）
-```bash
-npm install -g lean-ctx-bin && lean-ctx init
-```
-
-### 5. 重启 Claude Code
 
 ## 快速命令
 
 | 命令 | 说明 |
 |------|------|
-| `token report` / `成本报告` | 查看本次会话Token消耗与节省统计 |
-| `节能` / `省token` | 开启/切换节能预设（quick/standard/extreme） |
-| `ultra-cost-effective status` | 查看各层运行状态与缓存命中率 |
+| `node ultra-cost-effective/helpers/project-monitor.cjs` | 项目级全链路报告（含A2A+子Agent） |
+| `node ultra-cost-effective/helpers/project-monitor.cjs --watch` | 实时监控模式 |
+| `node ultra-cost-effective/helpers/project-monitor.cjs --json` | JSON 格式输出 |
+| `node ultra-cost-effective/helpers/token-watcher.cjs` | 当前会话 Token 统计 |
+| `node ultra-cost-effective/helpers/project-monitor.cjs --reset` | 重置统计 |
 
 ## 三层预设
 

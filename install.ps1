@@ -21,7 +21,9 @@
 
 param(
     [switch]$Version,
-    [switch]$Help
+    [switch]$Help,
+    [ValidateSet('claude','qoder','trae','all')]
+    [string]$Platform = 'all'
 )
 
 function Write-Success { param([string]$M) Write-Host "鉁?$M" -ForegroundColor Green }

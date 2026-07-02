@@ -1,7 +1,7 @@
 {
-  "_comment": "UltraCostEffective 极致节能 — Qoder settings.json 合并补丁",
-  "_description": "将此文件内容合并到 Qoder 的 settings.json 中。不要直接替换。",
-  "_version": "1.2.0",
+  "_comment": "UltraCostEffective v2.0 — Qoder settings.json 参考模板",
+  "_description": "Qoder 项目已预装完整配置于 .qoder/settings.json。此文件为参考。",
+  "_version": "2.0.0",
 
   "models": ["deepseek-v4-pro", "deepseek-v4-flash"],
 

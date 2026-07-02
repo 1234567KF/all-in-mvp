@@ -29,8 +29,8 @@ function detectPlatform() {
   if (process.env.QODER_SESSION_ID || process.env.QODER_WORKSPACE) return 'qoder';
   if (process.env.CLAUDE_CODE_SESSION_ID || process.env.ANTHROPIC_API_KEY) return 'claude';
 
-  // 3. 默认 Claude Code
-  return 'claude';
+  // 3. 默认 Qoder（v2.0 Qoder-first）
+  return 'qoder';
 }
 
 // ─── Qoder → 统一格式翻译 ──────────────────────

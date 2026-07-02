@@ -1,0 +1,45 @@
+{
+  "_comment": "UltraCostEffective 极致节能 — Qoder 项目级 settings.json",
+  "_description": "Qoder 专用配置。Hook 脚本位于 ~/.qoder/hooks/ 下。",
+  "_version": "2.0.0",
+
+  "env": {
+    "CLAUDE_FLOW_HOOKS_ENABLED": "true",
+    "CLAUDE_CODE_ALWAYS_THINKING": "0",
+    "ULTRA_COST_EFFECTIVE_PLATFORM": "qoder",
+    "ULTRA_COST_EFFECTIVE_LEVEL": "medium",
+    "ULTRA_COST_EFFECTIVE_PRESET": "standard",
+    "ULTRA_COST_EFFECTIVE_PROJECT_ROOT": "d:\\all-in-mvp"
+  },
+
+  "model": "deepseek-v4-flash",
+
+  "modelPreferences": {
+    "preferred": "deepseek-v4-flash",
+    "fallbacks": ["deepseek-v4-pro"],
+    "automaticallySwitch": true
+  },
+
+  "rules": [
+    "d:\\all-in-mvp\\ultra-cost-effective\\rules\\main.md",
+    "d:\\all-in-mvp\\ultra-cost-effective\\rules\\shared-prefix.md",
+    "d:\\all-in-mvp\\ultra-cost-effective\\rules\\cache-optimization.md",
+    "d:\\all-in-mvp\\ultra-cost-effective\\rules\\lean-ctx.md",
+    "d:\\all-in-mvp\\ultra-cost-effective\\rules\\compression-default.md"
+  ],
+
+  "permissions": {
+    "allow": [
+      "Bash(node d:\\all-in-mvp\\ultra-cost-effective\\helpers\\*.cjs:*)",
+      "Bash(node d:\\all-in-mvp\\ultra-cost-effective\\helpers\\perf\\*.cjs:*)",
+      "Bash(node d:\\all-in-mvp\\scripts\\*.js:*)"
+    ]
+  },
+
+  "mcpServers": {
+    "lean-ctx": {
+      "command": "lean-ctx",
+      "args": ["mcp"]
+    }
+  }
+}
