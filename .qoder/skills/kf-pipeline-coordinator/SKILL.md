@@ -130,6 +130,7 @@ interface ModuleState {
   domain: string;
   assignedAgent?: string;
   blockedReason?: string;
+  e2eScenarios?: string[];  // E2E scenario files covering this module
 }
 
 async function scanModuleStates(
@@ -172,6 +173,69 @@ async function fileExists(filePath: string): Promise<boolean> {
     return false;
   }
 }
+
+// ─── E2E State Scanner (v2.10) ───
+// Called after ALL modules DONE to check if E2E-Adapt has completed
+async function scanE2EState(workspaceRoot: string): Promise<E2EState> {
+  const e2eReadyMarker = path.join(workspaceRoot, 'integration-tests/scenarios/E2E_READY');
+  const e2eScenariosDir = path.join(workspaceRoot, 'integration-tests/scenarios');
+  const e2eTestsDir = path.join(workspaceRoot, 'tests/e2e');
+  
+  const hasReady = await fileExists(e2eReadyMarker);
+  
+  // Count existing E2E files
+  const scenarioFiles = await listTestFiles(e2eScenariosDir);
+  const e2eTestFiles = await listTestFiles(e2eTestsDir);
+  
+  if (hasReady) {
+    // Read E2E_READY content for coverage summary
+    const content = await readFile(e2eReadyMarker);
+    let coverage = null;
+    try {
+      coverage = JSON.parse(content);
+    } catch { /* malformed JSON, ignore */ }
+    
+    return {
+      status: 'E2E_READY',
+      markerPath: e2eReadyMarker,
+      scenarioCount: scenarioFiles.length + e2eTestFiles.length,
+      totalCases: coverage?.total_cases || 0,
+      coverage,
+    };
+  }
+  
+  return {
+    status: scenarioFiles.length > 0 ? 'E2E_PENDING' : 'E2E_MISSING',
+    markerPath: e2eReadyMarker,
+    scenarioCount: scenarioFiles.length + e2eTestFiles.length,
+    totalCases: 0,
+    coverage: null,
+  };
+}
+
+interface E2EState {
+  status: 'E2E_READY' | 'E2E_PENDING' | 'E2E_MISSING';
+  markerPath: string;
+  scenarioCount: number;
+  totalCases: number;
+  coverage: any;
+}
+
+async function listTestFiles(dir: string): Promise<string[]> {
+  const results: string[] = [];
+  if (!await dirExists(dir)) return results;
+  
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...await listTestFiles(fullPath));
+    } else if (entry.name.endsWith('.spec.ts') || entry.name.endsWith('.test.ts')) {
+      results.push(fullPath);
+    }
+  }
+  return results;
+}
 ```
 
 | State | File Marker | Meaning | Coordinator Action |
@@ -181,6 +245,7 @@ async function fileExists(filePath: string): Promise<boolean> {
 | DONE | `DONE` marker file exists | Agent completed | Release dependent modules |
 | BLOCKED | `BLOCKED` marker + reason | Agent encountered blocker | Read reason, decide next step |
 | DEFER | `DEFER` marker + `reason.md` | Agent active deferral | Cascade DEFER to dependents, continue others |
+| E2E_READY | `integration-tests/scenarios/E2E_READY` exists | E2E-Adapt complete, ≥70 cases ready | **Gate**: All modules DONE + E2E_READY → Stage 4 unlocked |
 
 ---
 
@@ -1033,6 +1098,13 @@ Coordinator 维护 `pipeline-state.json`，每次状态变更原子写入（先�
     "product": { "status": "ALLOCATED", "agent": "be-2", "allocated_at": "2026-05-24T10:00:00Z" },
     "trace": { "status": "UNALLOCATED", "agent": null, "allocated_at": null }
   },
+  "e2e_state": {
+    "status": "E2E_PENDING",
+    "scenario_count": 8,
+    "total_cases": 45,
+    "ready_marker": "integration-tests/scenarios/E2E_READY",
+    "checked_at": "2026-05-24T10:00:00Z"
+  },
   "last_checkpoint": "2026-05-24T10:00:00Z"
 }
 ```
@@ -1183,6 +1255,8 @@ user �?product �?trace (3�?
 - Handle exceptions explicitly
 - Detect VISUAL_PENDING markers and **do NOT** treat them as DONE
 - Notify human when VISUAL_PENDING files accumulate (�?2 unconfirmed)
+- **Scan E2E_READY marker before entering Stage 4 (v2.10)**: ALL modules DONE + E2E_READY exists -> Stage 4 unlocked. Missing E2E_READY -> BLOCKED, trigger E2E-Adapt phase
+- **Track E2E coverage in pipeline-state.json (v2.10)**: Update e2e_state on each checkpoint save
 
 **MUST NOT DO:**
 - Schedule based on urgency alone (dependencies come first)
@@ -1190,6 +1264,7 @@ user �?product �?trace (3�?
 - Let agent choose which module (Coordinator decides)
 - Skip logging (maintain state as files)
 - Release downstream dependencies of VISUAL_PENDING modules (they are NOT complete)
+- **Enter Stage 4 without E2E_READY marker (v2.10)**: Even if all modules are DONE, Stage 4 MUST NOT start until E2E-Adapt has completed and E2E_READY exists
 
 ---
 
@@ -1202,3 +1277,6 @@ user �?product �?trace (3�?
 - **Coordinator is lightweight** �?It doesn't write code, just manages state and dispatches
 - **VISUAL_PENDING is NOT DONE (v2.5)** �?Frontend modules with VISUAL_PENDING markers are incomplete. Do NOT release their downstream dependencies. Send a prompt to human: "N 个前端页面等待视觉确认，请在浏览器中审核后删�?VISUAL_PENDING 文件并创�?DONE"
 - **VISUAL_PENDING accumulation alert** �?If �?2 VISUAL_PENDING files exist for > 30 min, escalate to human. This prevents pipeline stall from forgotten visual reviews.
+- **E2E_READY is the Stage 4 gate (v2.10)**: Stage 3 -> Stage 4 transition requires ALL modules DONE AND integration-tests/scenarios/E2E_READY exists. Missing E2E_READY = pipeline stall. Coordinator MUST NOT advance to Stage 4 without it. If E2E_READY missing after all modules DONE, trigger E2E-Adapt phase.
+- **E2E coverage tracked in pipeline-state.json (v2.10)**: Every checkpoint save includes e2e_state with status/scenario_count/total_cases. Coordinator uses this to detect E2E gaps early.
+- **DONE markers should include E2E_SCENARIOS field (v2.10)**: When an agent marks a module DONE, the DONE file should optionally list which E2E scenario files cover this module. Example: {" e2e_scenarios\: [\workflows-internal.spec.ts\, \opportunities.spec.ts\]}. This helps Coordinator verify cross-module coverage.

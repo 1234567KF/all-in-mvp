@@ -7,8 +7,8 @@ description: >-
   flow needs automated testing.
 metadata:
   pattern: generator
-  domain: mvp-stage2
-recommended_model: mino-v2.5-pro
+  domain: mvp-stage2,mvp-stage3
+recommended_model: minimax-m2.7
 graph:
   dependencies:
     - target: kf-mvp-biz-expert
@@ -28,9 +28,13 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # MVP End-to-End Scenario Test Writer �?业务条线测试编写技�?
 
-> **Core Belief**: Single module tests verify interfaces work. E2E tests verify business works. A business story must be told from start to finish, not in fragments.
+> **Core Belief**: Single module tests verify interfaces work. E2E tests verify business works. A business story must be told from start to finish, not in fragments. And after implementation, tests MUST adapt to reality.
 
-**Division of Labor**: This Skill focuses on **cross-module scenario test generation** based on PRD business flows. It outputs tests in `integration-tests/scenarios/`. Follows Generator pattern with strict story templates.
+**Division of Labor**: This Skill has TWO phases:
+1. **E2E-Write** (Stage 2): Cross-module scenario test generation based on PRD business flows. Outputs `integration-tests/scenarios/`.
+2. **E2E-Adapt** (Stage 3.5): Adapt existing E2E tests to match actual backend implementation after all modules DONE. Fixes contract drift, fills coverage gaps, ensures ≥70 cases.
+
+Follows Generator pattern with strict story templates.
 
 ---
 
@@ -856,3 +860,136 @@ test.describe('[Workflow] 内部用户全流程', () => {
 - [ ] 每个CRUD模块至少 7 个用例
 - [ ] 工作流测试至少 21 个用例（管理员8+销售7+渠道6）
 - [ ] 总用例数 ≥ 70（全量模式）
+
+---
+
+# E2E-Adapt 阶段：实现后适配（Stage 3.5）
+
+> **触发时机**：Stage 3 所有后端模块 DONE 后、Stage 4 集成前。
+> **目标**：将 Stage 2 基于 PRD 编写的 E2E 骨架适配到实际实现，修复契约漂移，补齐覆盖缺口。
+> **模型分配**：pro（**MUST NOT 使用 flash**，≥70 用例需要深度推理）
+
+---
+
+## 适配流程
+
+```
+阶段 A: 差异扫描 (pro)
+  → 输入: api-contract.yaml【锁定版】+ 实际 API 路由文件
+  → 检测: API 路径变化 / 字段名变化 / 枚举值变化 / 响应格式变化
+  → 输出: contract-drift-log.md（差异清单）
+
+阶段 B: E2E 用例修正 (pro)
+  → 输入: 已有 E2E 文件 + contract-drift-log.md
+  → 动作: 逐文件修正 API 路径、字段名、枚举值
+  → 规则: 不改测试意图，只改 API 调用细节
+
+阶段 C: 覆盖缺口补齐 (pro)
+  → 运行: node scripts/check-e2e-coverage.js --json
+  → 分析: 识别未达标分类
+  → 动作: 按优先级补齐用例（登录 > 工作流 > CRUD > 导航 > 数据隔离）
+  → 验证: 再次运行 check-e2e-coverage.js --ci 确认通过
+
+阶段 D: 首次运行验证 (pro)
+  → 启动后端服务 + Mock 数据
+  → 运行全部 E2E 测试（L5 headless）
+  → 记录失败到 e2e-first-run-issues.md
+  → 区分: E2E 测试 Bug vs 后端实现 Bug
+  → 后端 Bug → 标记 BLOCKED，通知对应模块 Agent
+  → E2E Bug → 本阶段修复
+
+阶段 E: 产出 E2E_READY 标记
+  → 创建 integration-tests/scenarios/E2E_READY 文件
+  → 内容：覆盖报告摘要 + 适配轮次 + 时间戳
+  → Coordinator 检测到此标记后才允许进入 Stage 4
+```
+
+---
+
+## E2E_READY 标记文件格式
+
+```json
+{
+  "stage": "3.5",
+  "phase": "E2E-Adapt",
+  "timestamp": "2026-07-02T12:00:00Z",
+  "total_cases": 74,
+  "coverage": {
+    "login": 13,
+    "navigation": 6,
+    "crud": 28,
+    "workflow": 22,
+    "dataIsolation": 3
+  },
+  "adaptation_rounds": 2,
+  "contract_drifts_fixed": 5,
+  "gaps_filled": 12,
+  "status": "READY"
+}
+```
+
+---
+
+## 适配约束
+
+**MUST DO:**
+- 基于实际 API 路由修正（不是基于 PRD 猜测）
+- 每个修正验证 API 确实返回该字段/格式
+- 补齐用例前必须先 `check-e2e-coverage.js --json` 确认缺口
+- E2E-Adapt 完成后创建 E2E_READY 标记
+- 使用 pro 模型（NOT flash）
+
+**MUST NOT DO:**
+- 修改测试的业务意图（只改 API 细节）
+- 删除因后端 Bug 失败的用例（改为标记 skip + 记录到 e2e-first-run-issues.md）
+- 跳过覆盖缺口（必须补齐到 ≥70）
+- 在没有 E2E_READY 标记的情况下进入 Stage 4
+
+---
+
+## contract-drift-log.md 模板
+
+```markdown
+# Contract Drift Log — E2E 适配
+
+**生成时间**: [ISO datetime]
+**对比基准**: api-contract.yaml【锁定版】
+**实际来源**: src/modules/*/routes.ts
+
+## 差异清单
+
+| # | 类型 | PRD 定义 | 实际实现 | 影响 E2E 文件 | 已修复 |
+|---|------|---------|---------|-------------|--------|
+| 1 | 路径变化 | POST /api/auth/login | POST /api/login | auth.spec.ts | ✅ |
+| 2 | 字段名 | user.role | user.roleType | roles-accounts.spec.ts | ✅ |
+| 3 | 枚举值 | status: 'pending' | status: 'PENDING' | opportunities.spec.ts | ✅ |
+
+## 统计
+- 总差异: N
+- 已修复: N
+- 需后端确认: N
+```
+
+---
+
+## E2E-Adapt 与 Stage 4 的关系
+
+```
+Stage 3 全部模块 DONE
+    │
+    ▼
+Stage 3.5 E2E-Adapt（本技能）
+    ├── 扫描契约漂移 → 修正 E2E
+    ├── 补齐覆盖缺口 → ≥70 用例
+    ├── 首次运行验证 → 记录真实 Bug
+    └── 产出 E2E_READY 标记
+    │
+    ▼
+Stage 4 集成与验收
+    ├── check-e2e-coverage.js --ci 自动通过（E2E_READY 已保证）
+    ├── 后端合并 + 联调
+    ├── 回归 E2E 全部用例
+    └── check-e2e-parity.js --ci 有头/无头验证
+```
+
+> **关键**：Stage 4 不再需要补齐 E2E 用例——这个工作在 Stage 3.5 已完成。Stage 4 只需验证已有 E2E 全部通过。

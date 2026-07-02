@@ -26,7 +26,7 @@ metadata:
 
 ```
 【轻量模式】简单任务 → QuickStep1-3（单Agent直通，10-30min）
-【全量模式】全新项目 → Stage1→Stage2→Stage3→Stage4（6-10 Agent，4-12h）
+【全量模式】全新项目 → Stage1→Stage2→Stage3→Stage3.5→Stage4（7-12 Agent，4-14h）
 【增量模式】迭代项目 → 裁剪Stage执行（1-4h）
 ```
 
@@ -59,19 +59,21 @@ metadata:
           Workflow({ scriptPath: '.claude/workflows/stage1-prd.js', args: {...} })
           → Workflow({ scriptPath: '.claude/workflows/stage2-planning.js', args: {...} })
           → Workflow({ scriptPath: '.claude/workflows/stage3-execution.js', args: {...} })
+          → Stage 3.5 E2E-Adapt（主 Agent 直接执行，非 Workflow）
           → Workflow({ scriptPath: '.claude/workflows/stage4-integration.js', args: {...} })
           每个 Workflow 完成后，主 Agent 审查产出卡片，确认门禁通过，再触发下一个
 ```
 
 ### Workflow 脚本架构
 
-4 个脚本各自自包含，不依赖运行时读取 `agents/*.md` 文件（prompt 内嵌模板字符串）：
+4 个 Workflow 脚本 + Stage 3.5 主 Agent 直接执行（非 Workflow）：
 
 ```
 .claude/workflows/
 ├── stage1-prd.js          ← PM Agent (pro) → PRD.md
-├── stage2-planning.js     ← Architect(pro) + Domain Expert(flash) + Grill(pro) + Mock/Test(flash)
+├── stage2-planning.js     ← Architect(pro) + Domain Expert(flash) + Grill(pro) + Mock/Test(flash) + E2E(pro)
 ├── stage3-execution.js    ← Coordinator(flash) + Backend/Frontend(flash) + Code Reviewer(pro)
+├── (Stage 3.5)            ← 主 Agent → kf-mvp-test-e2e E2E-Adapt (pro) → E2E_READY
 └── stage4-integration.js  ← Stage4 Coord(pro) + Merge/Integration/Test(flash) + Debug(flash)
 ```
 
@@ -1162,7 +1164,7 @@ Workflow({
 
 阶段③a Mock Service (flash) ────┐
 阶段③b-1 Unit Tests (flash, ≤2) ─┤ 并行
-阶段③b-2 E2E Tests (flash, 串行) ─┤
+阶段③b-2 E2E Tests (pro, 串行) ─┤  // MUST use pro model, >=70 cases requires deep reasoning
 阶段③c Test Review (flash) ────┘ 等③a+③b全完成
   → 4项检查: 文件存在性 / API路由有效性 / 场景覆盖 / fixture一致性
   → 通过标准: 无 ERROR
@@ -1264,6 +1266,9 @@ checks:
   visual_layout_integrity: PASS
   visual_human_review: NOT_REQUIRED
 issues: []
+e2e_scenarios:  # v2.10: E2E scenario files covering this module
+  - workflows-internal.spec.ts
+  - opportunities.spec.ts
 ```
 
 #### BLOCKED 标记
@@ -1308,11 +1313,11 @@ human_action: "请打开 review_url 查看视觉效果，确认无误后删除�
 | DONE 和 BLOCKED 同时存在 | 已完成但有遗留问题 | 标记为 DONE（遗留问题进 Stage4） |
 | DONE 和 VISUAL_PENDING 同时存在 | 非法状态 | ERROR：Agent 违规自标 DONE |
 
-### Stage 3 门禁 (MUST — v2.5 视觉强化)
+### Stage 3 门禁 (MUST — v2.5 视觉强化 + v2.10 E2E增量)
 
 每个模块必须通过完整的5层测试 + 3道视觉防线才能标记DONE：
 
-- [ ] 后端全部模块 DONE（模块目录下存在 DONE 标记）
+- [ ] 后端全部模块 DONE（模块目录下存在 DONE 标记，**DONE 文件建议附带 `E2E_SCENARIOS` 字段**列出覆盖本模块的 E2E 场景文件）
 - [ ] 前端全部页面 DONE（或 VISUAL_PENDING 已由人类确认后转 DONE）
 - [ ] **L1 单元测试**：所有Service函数、纯函数、工具函数测试通过
 - [ ] **L2 API集成测试**：每个路由的happy+error path测试通过
@@ -1327,8 +1332,10 @@ human_action: "请打开 review_url 查看视觉效果，确认无误后删除�
 - [ ] Code Review 无 P0 问题
 - [ ] **前端无未解决的 VISUAL_PENDING**
 - [ ] **契约合规检查（v2.8）**：前端 API 调用签名与后端 API 契约一致（字段名、枚举值、响应格式 shape、HTTP 状态码）
-- [ ] **E2E 覆盖率自动化门禁（v2.9）**：`node scripts/check-e2e-coverage.js --ci` 通过（总用例 ≥70 + 分类最低数）
-- [ ] **有头/无头一致性自动化门禁（v2.9）**：`node scripts/check-e2e-parity.js --ci` 通过（L4 与 L5 无 HIGH 差异）
+- [ ] **每模块 E2E 场景覆盖检查（v2.10）**：每个 DONE 模块至少被 1 个 E2E 场景文件覆盖（检查 `integration-tests/scenarios/*.spec.ts` 中是否引用该模块的 API）
+- [ ] **全局 E2E 文件存在检查（v2.10）**：`integration-tests/scenarios/` 目录下至少有 E2E 测试文件存在（Stage 2 已产出骨架）
+
+> **注意（v2.10）**：E2E 覆盖率门禁（≥70 用例）和有头/无头一致性门禁已**移至 Stage 3.5**。Stage 3 只要求 E2E 文件存在 + 每模块有覆盖，不要求全部通过。E2E 适配、补齐、验证在 Stage 3.5 统一完成。
 
 ### 测试执行流程
 
@@ -1343,10 +1350,8 @@ npx playwright test tests/visual/<page>.visual.spec.ts -g "overlapping"
 npx playwright test --project=chromium-headed --reporter=json > test-results/l4-headed.json
 npx playwright test --project=chromium-headless --reporter=json > test-results/l5-headless.json
 
-# 强制门禁：覆盖率 + 有头/无头一致性
-node scripts/check-e2e-coverage.js --ci
-node scripts/check-e2e-parity.js --headed test-results/l4-headed.json --headless test-results/l5-headless.json --ci
-
+# 强制门禁：覆盖率 + 有头/无头一致性 → 已移至 Stage 3.5
+# Stage 3 只需运行以下基础验证：
 npx vitest run --coverage --reporter=json
 for i in {1..3}; do npx vitest run; done
 ```
@@ -1361,13 +1366,80 @@ for i in {1..3}; do npx vitest run; done
    - 按需触发 Code Review
 3. Workflow 完成后，主 Agent 审查门禁清单
 4. 特别检查：无未解决的 VISUAL_PENDING（人类确认所有前端页面）
-5. 门禁全部通过 → 进入 Stage4
+5. 门禁全部通过 → 进入 Stage 3.5（E2E 适配）
+
+---
+
+## Stage 3.5: E2E 适配阶段（v2.10 新增）
+
+> **核心问题**：Stage 2 基于 PRD 编写的 E2E 用例与实际实现存在契约漂移（API 路径变化、字段名调整、枚举值变更）。Stage 3 所有模块 DONE 后，必须先适配 E2E 测试、补齐覆盖缺口，再进入 Stage 4 集成。否则 Stage 4 的 ≥70 用例门禁必然失败，且无人负责修复。
+
+**前置条件**：Stage 3 门禁全部通过（所有模块 DONE）。
+**执行方式**：主 Agent 直接触发 kf-mvp-test-e2e 技能的 E2E-Adapt 阶段（pro 模型，单 Agent 串行）。
+**模型分配**：pro（**MUST NOT flash**，≥70 用例需要深度推理 + API 修正）。
+
+### 触发方式
+
+```
+主 Agent 依次执行：
+
+# 步骤 1: 契约漂移扫描
+→ 对比 api-contract.yaml【锁定版】与实际 src/modules/*/routes.ts
+→ 输出 contract-drift-log.md
+
+# 步骤 2: E2E 用例修正
+→ 基于 drift log 逐文件修正 E2E 用例
+→ 不改测试意图，只改 API 调用细节（路径/字段名/枚举值）
+
+# 步骤 3: 覆盖缺口补齐
+→ 运行 node scripts/check-e2e-coverage.js --json
+→ 识别未达标分类，按优先级补齐：登录 > 工作流 > CRUD > 导航 > 数据隔离
+→ 再次运行 check-e2e-coverage.js --ci 确认 ≥70 用例通过
+
+# 步骤 4: 首次运行验证
+→ 启动后端服务 + Mock 数据
+→ 运行全部 E2E（L5 headless）
+→ 记录失败到 e2e-first-run-issues.md
+→ 区分 E2E Bug vs 后端 Bug
+→ 后端 Bug → 标记 BLOCKED，回退对应模块
+→ E2E Bug → 本阶段修复
+
+# 步骤 5: 产出 E2E_READY 标记
+→ 创建 integration-tests/scenarios/E2E_READY
+→ JSON 格式：{ total_cases, coverage, status: "READY" }
+→ Coordinator 检测到此标记 + 全部模块 DONE → Stage 4 解锁
+```
+
+### Stage 3.5 门禁
+
+- [ ] `contract-drift-log.md` 已产出，所有差异已修复或标记为"需后端确认"
+- [ ] 所有 E2E 用例已基于实际 API 修正
+- [ ] `node scripts/check-e2e-coverage.js --ci` 退出码 0（≥70 用例）
+- [ ] 首次运行验证完成，`e2e-first-run-issues.md` 中无 P0 E2E 问题
+- [ ] `integration-tests/scenarios/E2E_READY` 已创建且 `status: "READY"`
+
+### 主 Agent 动作
+
+1. 确认 Stage 3 全部模块 DONE + VISUAL_PENDING 已解决
+2. 触发 kf-mvp-test-e2e 的 E2E-Adapt 阶段（pro 模型，单 Agent）
+3. 审查 contract-drift-log.md + E2E_READY 内容
+4. 确认 `check-e2e-coverage.js --ci` 通过
+5. 门禁全部通过 → Coordinator 检测 E2E_READY + 全部 DONE → 进入 Stage 4
+
+### 异常处理
+
+| 情况 | 处理 |
+|------|------|
+| 契约漂移过多（>10 处） | 警告：PRD 与实现严重偏离，审查是否需要回退 |
+| 覆盖缺口无法补齐 | 标记 E2E_PARTIAL，列出缺口清单，人工决策 |
+| 首次运行全部失败 | 后端服务未启动或路由配置错误 → 回退 Stage 3 |
+| E2E_READY 标记损坏 | 重新运行 Stage 3.5 |
 
 ---
 
 ## Stage 4: 集成与验收 — Workflow(`.claude/workflows/stage4-integration.js`)
 
-**前置条件**：Stage 3 门禁全部通过。
+**前置条件**：Stage 3.5 E2E_READY 通过（所有模块 DONE + E2E_READY 标记存在）。
 **执行方式**：触发 Workflow 脚本（串行收敛）
 **模型分配**：Stage4 Coordinator → pro，其余 flash
 
@@ -1421,7 +1493,7 @@ Workflow({
 | Mock偏差 | Mock 与真实 API 不一致 | 修正 Mock |
 | 契约漂移 | 前后端独立生成代码导致字段名/枚举值/响应格式不一致 | 同步修正双方，追溯 api-contract.yaml 是否完整 |
 
-### Stage 4 门禁（终检）(MUST — v2.5 视觉强化 + v2.6 E2E强化)
+### Stage 4 门禁（终检）(MUST — v2.5 视觉强化 + v2.6 E2E强化 + v2.10 E2E前置)
 
 - [ ] 后端合并完成，路由一致性验证通过
 - [ ] 前后端联调全部模块通过
@@ -1435,13 +1507,8 @@ Workflow({
 - [ ] **数据一致性验证**：无外键违反、无orphan记录
 - [ ] **Mock-后端一致性**：7个维度全部匹配
 - [ ] 无 P0/P1 Bug 遗留
-- [ ] **E2E覆盖率自动化通过（v2.9 强制）**：`node scripts/check-e2e-coverage.js --ci` 退出码 0
-  - 总用例数 ≥ 70（全量模式）
-  - 登录流程 ≥ 12（每角色+错误路径+改密+找回密码+退出）
-  - 菜单导航 ≥ 5（完整性+权限+跳转+404+面包屑）
-  - 每模块 CRUD ≥ 7（创建成功/失败+列表+详情+编辑+删除+取消删除）
-  - 工作流测试 ≥ 21（管理员8+销售7+渠道6）
-  - 数据隔离 ≥ 1
+- [ ] **E2E_READY 标记验证（v2.10）**：`integration-tests/scenarios/E2E_READY` 存在且 `status: "READY"`（Stage 3.5 已保证 ≥70 用例）
+- [ ] **E2E 回归验证（v2.9）**：`node scripts/check-e2e-coverage.js --ci` 退出码 0（确认 Stage 3.5 产出未被破坏）
 - [ ] **有头/无头一致性自动化通过（v2.9 强制）**：`node scripts/check-e2e-parity.js --ci` 退出码 0
   - L4 与 L5 结果一致，无 HIGH 级别差异
   - 类型1（无头独败）/ 类型2（有头独败）/ 类型3（双方失败）全部清零
