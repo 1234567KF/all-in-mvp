@@ -5,7 +5,7 @@ triggers: cache, 缓存, KV, 前缀, ultra-cost-effective-cache
 role: infrastructure
 scope: global
 always-on: true
-platforms: [claude-code, qoder]
+platforms: [qoder]
 models: [deepseek-v4-pro, deepseek-v4-flash]
 rules:
   - rules/shared-prefix.md

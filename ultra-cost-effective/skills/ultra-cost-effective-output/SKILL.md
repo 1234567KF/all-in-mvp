@@ -5,7 +5,7 @@ triggers: output, 压缩, tokenforge, compress
 role: infrastructure
 scope: global
 always-on: true
-platforms: [claude-code, qoder]
+platforms: [qoder]
 helper: helpers/tokenforge.cjs
 hook: helpers/tokenforge-hook.cjs
 ---

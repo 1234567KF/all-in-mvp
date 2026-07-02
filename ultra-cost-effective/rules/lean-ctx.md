@@ -4,7 +4,7 @@
 
 ## 规则概述
 
-当可用工具列表中存在 `lean-ctx` MCP 工具（`ctx_read`、`ctx_shell`、`ctx_search`、`ctx_tree`）时，**必须优先使用 lean-ctx 工具替代原生工具**。此规则在 Claude Code 和 Qoder 中均自动生效。
+当可用工具列表中存在 `lean-ctx` MCP 工具（`ctx_read`、`ctx_shell`、`ctx_search`、`ctx_tree`）时，**必须优先使用 lean-ctx 工具替代原生工具**。此规则在 Qoder 中自动生效。
 
 ## 工具映射表
 

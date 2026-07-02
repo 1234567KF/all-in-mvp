@@ -5,7 +5,7 @@ triggers: router, 路由, 模型切换, 模型, ultra-cost-effective-router
 role: infrastructure
 scope: global
 always-on: true
-platforms: [claude-code, qoder]
+platforms: [qoder]
 models: [deepseek-v4-pro, deepseek-v4-flash]
 ---
 

@@ -1,3 +1,88 @@
+# all-in-mvp — Qoder MVP 开发流水线
+
+> 42 个技能 + ultra-cost-effective 极致节能引擎，Qoder 专属。
+> 多 Agent 并行开发，从需求到交付全流程自动化。
+
+---
+
+## 安装
+
+### 自动安装
+
+将此 README 发给你的 Qoder Agent，说：
+
+> **"安装 all-in-mvp 技能"**
+
+### 手动安装
+
+```powershell
+npx.cmd giget gh:1234567KF/all-in-mvp#all-in-mvp . --force
+```
+
+> 在当前项目根目录执行。`.qoder/skills/` 出现在项目中，重启 Qoder 即可。
+
+---
+
+## 架构
+
+```
+.qoder/
+├── skills/               ← Qoder 技能（43 个）
+│   ├── all-in-mvp/       ← 主技能：多 Agent 并行流水线
+│   ├── kf-mvp-*/         ← 阶段专项技能
+│   └── ...
+└── settings.json         ← Qoder 项目配置（模型/规则/环境变量）
+
+ultra-cost-effective/     ← 极致节能引擎 v2.0
+├── helpers/
+│   ├── project-monitor.cjs  ← 项目级全链路 Token 监控
+│   ├── token-watcher.cjs    ← 会话级 JSONL 扫描
+│   └── perf/                ← 成本追踪 + 定价数据
+├── rules/                   ← LLM 行为规则
+└── adapters/qoder/          ← Qoder 专用适配器
+```
+
+---
+
+## 技能清单
+
+| Stage | 技能 | 说明 |
+|-------|------|------|
+| **核心** | all-in-mvp, kf-pipeline-coordinator, grill-with-docs | 流水线调度 + 交叉审查 |
+| **Stage1** | kf-mvp-product-manager, kf-mvp-prd-generator, kf-mvp-arch-expert, kf-mvp-biz-expert, kf-mvp-spec-generator, kf-mvp-task-splitter | 需求 → 架构 → 任务拆分 |
+| **Stage2** | kf-mvp-api-contract, kf-mvp-schema-design, kf-mvp-mock-service, kf-mvp-test-single, kf-mvp-test-e2e, kf-mvp-test-review, kf-mvp-testing-strategy | API 契约 + 测试设计 |
+| **Stage3** | kf-mvp-backend-tdd, kf-mvp-frontend-dev, kf-mvp-code-review, kf-mvp-debug, kf-mvp-tdd-helper, kf-mvp-vue-components, kf-mvp-auth-implementation | TDD 开发 + 代码审查 |
+| **Stage4** | kf-mvp-integration, kf-mvp-stage4-coordinator, kf-mvp-devops, kf-mvp-security, kf-mvp-health-check, kf-mvp-data-migration, kf-mvp-monitoring, kf-mvp-performance | 集成 + 部署 + 验证 |
+| **辅助** | kf-mvp-error-handling, kf-mvp-refactoring, kf-mvp-caching, kf-mvp-api-doc, kf-mvp-api-versioning, kf-mvp-onboarding, kf-mvp-cli, kf-web-search, kf-skill-design-expert | 质量保障 + 工具 |
+
+### 极致节能引擎
+
+| 模块 | 说明 |
+|------|------|
+| `project-monitor.cjs` | 七层架构项目级全链路 Token 监控（A2A穿透 + 子Agent + 理论节约） |
+| `token-watcher.cjs` | 会话级 JSONL 实时 Token 统计 |
+| `agent-spawn-guard.cjs` | Agent spawn 前置拦截，注入压缩上下文 |
+| `perf-tracker.cjs` | 全链路成本追踪（会话/任务/项目三级） |
+
+---
+
+## 维护者工作流
+
+```bash
+# 直接编辑 .qoder/skills/ 下的技能
+vim .qoder/skills/all-in-mvp/SKILL.md
+
+# 提交
+git add .qoder/skills/
+git commit -m "feat: 更新技能"
+git push origin all-in-mvp
+```
+
+---
+
+## 许可证
+
+MIT
 # all-in-skills — 跨平台 Agent 技能库
 
 > 39 个 MVP 开发技能，一次维护，三平台自动同步。

@@ -4,7 +4,7 @@
 
 ## 规则说明
 
-当用户使用 Claude Code Dynamic Workflows（`ultracode` 关键词、`/deep-research`、`/workflows` 命令或自然语言请求工作流）时，本规则确保在**工作流脚本生成前**上下文已被压缩，所有子 agent 自动继承压缩上下文。
+当用户使用 Qoder Workflows 或自然语言请求工作流时，本规则确保在**工作流脚本生成前**上下文已被压缩，所有子 agent 自动继承压缩上下文。
 
 ## 触发检测
 

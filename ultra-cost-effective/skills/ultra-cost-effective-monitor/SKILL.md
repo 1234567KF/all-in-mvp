@@ -5,7 +5,7 @@ triggers: monitor, 监控, token report, 成本报告, 统计
 role: infrastructure
 scope: global
 always-on: true
-platforms: [claude-code, qoder]
+platforms: [qoder]
 helpers:
   - helpers/perf/perf-tracker.cjs
   - helpers/perf/pricing.json

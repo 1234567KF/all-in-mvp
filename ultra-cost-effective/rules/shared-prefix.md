@@ -4,7 +4,7 @@
 
 ## 规则概述
 
-所有 Claude Code / Qoder Agent 的系统提示必须使用**统一共享前缀模板**，确保 DeepSeek KV Cache 最大化命中。
+Qoder Agent 的系统提示必须使用**统一共享前缀模板**，确保 DeepSeek KV Cache 最大化命中。
 共享前缀（前 200-500 tokens）在所有 Agent 间**逐字相同**，差异化内容放在前缀标记之后。
 
 ## 共享前缀模板

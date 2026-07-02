@@ -4,13 +4,12 @@ description: UltraCostEffective 极致节能主规则 — 单文件导入所有�
 always-on: true
 scope: global
 priority: high
-platforms: [claude-code, qoder]
+platforms: [qoder]
 ---
 
 # UltraCostEffective 极致节能 — 主规则集
 
-> 导入此文件即激活全部七层节能规则。向项目 CLAUDE.md 添加一行：
-> `@ultra-cost-effective/rules/main.md`
+> 导入此文件即激活全部七层节能规则。已在 `.qoder/settings.json` 中配置。
 
 ---
 
