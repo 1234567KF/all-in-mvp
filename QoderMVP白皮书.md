@@ -3061,3 +3061,24 @@ E2E 质量通过以下自动化门禁保障（逻辑嵌入 `.qoder/skills/all-in
 | 有头/无头一致性门禁 | 有头/无头测试结果一致性对比（Type1渲染差异/Type2 CORS差异/Type3弱断言检测） |
 
 > 注：自动化校验脚本 `check-e2e-coverage.js` / `check-e2e-parity.js` 原位于 `scripts/` 目录，v2.6 清理后逻辑已集成至 all-in-mvp SKILL.md 的 CI gate 中。
+
+### A.5 设计哲学（来源：WhyMe.md）
+
+本流程的设计源自对传统研发团队工作流的反思与 AI 时代转型实践：
+
+**传统团队流程**：与客户确定需求 → 待办整理 → 原型制作 → 原型宣讲 → 分头行动 → 集成测试
+
+**AI 辅助转型**：产品不画原型但写 PRD 大纲 → AI 产生与 PRD 高度一致的原型宣讲 → 研发评审 Spec → 研发编码
+
+**激进 AI 驱动模式（本流程目标）**：一人完成设计-开发-测试，不画原型、不直接写代码：
+
+```
+orig-requirements → prd → ui-prototype → spec → code → unit test → integration test
+```
+
+基于 Spec 按模块拆分给不同 Agent 完成不同模块的开发和测试。
+
+**贯穿始终的核心原则**：
+- **PRD、Spec、代码必须保持一致**——人工修改代码后，也必须让 AI 回写 PRD 和 Spec
+- **Spec 是唯一的真相来源**（Single Source of Truth），所有 Agent 基于 Spec 并行工作
+- **文档驱动开发**（Document-Driven Development）：先冻结文档，再开始编码

@@ -3,6 +3,30 @@
 #  （git archive 和 GitHub API tarball 均生效）
 # ============================================================
 
+# --- 根目录文档（giget 用户不需要）---
+/AGENTS.md               export-ignore
+/README.md               export-ignore
+/QoderMVP*               export-ignore
+/screenshot-1-full.png   export-ignore
+
+# --- 非分发目录 ---
+/shadcn/                 export-ignore
+/.idea/                  export-ignore
+/.vite/                  export-ignore
+/node_modules/           export-ignore
+
+# --- 开发者依赖（不分发）---
+/package.json            export-ignore
+/package-lock.json       export-ignore
+
+# --- .gitattributes 自身（不导出）---
+/.gitattributes          export-ignore
+/.gitignore              export-ignore
+# ============================================================
+#  GitHub tarball export-ignore：giget 下载时自动排除
+#  （git archive 和 GitHub API tarball 均生效）
+# ============================================================
+
 # --- 源技能仓库（用户不需，已融合到 .claude/.qoder/.trae/skills/）---
 /skills/          export-ignore
 
