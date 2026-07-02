@@ -1,8 +1,9 @@
-# all-in-mvp 多 Agent 并行开发流程 v2.5（最终融合版）
+# QoderMVP 白皮书 — 多 Agent 并行开发流程 v2.6
 
 > 本文档描述从需求对齐到交付的完整多 Agent 并行工程流程。
 >
 > **版本历史**：
+> - v2.6.0 (2026-07-02): **Qoder 专属化转型**——项目从 Claude Code/Qoder/Trae 三平台迁移为 Qoder 唯一平台；文档更名为 QoderMVP白皮书；技能路径从 `skills/` 更新为 `.qoder/skills/`；CLAUDE.md 引用替换为 `.qoder/settings.json`；新增 ultra-cost-effective 极致节能引擎（七层架构，项目级全链路 Token 监控含 A2A穿透+子Agent+理论节约统计）；新增 E2E 覆盖率自动化门禁（check-e2e-coverage.js + check-e2e-parity.js）
 > - v2.5.0 (2026-05-26): 强化增量变更流水线——新增§0.2增量变更分类决策树，明确「非Bug变更（Issue/新功能/改善实现）必须走完整 PRD→架构→审查→Mock→测试 流水线」的核心原则；重构§0.5 PRD变更分级控制为三级全流水线模式（微小/中等/重大均走完整流水线，仅深度和同步范围不同）；扩展§0.6产物复用规则增加Mock/测试同步列；新增§0.3增量模式阶段裁剪规则独立表格；级联重编号§0.3-0.8→§0.4-0.9
 > - v2.4.0 (2026-05-21): 新增第三种运行模式「轻量模式」——简单任务判定标准（≤2 API、≤1表、单角色、无复杂状态机），跳过Stage1重PRD/Stage2重规划/多Agent并行，改为单Agent直通车（需求摘要→直接开发→轻量验收），10-30分钟完成
 > - v2.3.0 (2026-05-21): 融合四份优化建议（bykimi/byminimax/bypro/flash）剩余23项——新增↺循环分级矩阵、模块合并四步流程、增量测试窗口、DEFER状态、Pipeline回滚协议、回归测试管理、Mock连接/验证规范、上下文管理、Agent时限契约、模块摘要传输、版本元数据、数据竞争检测、产物完整性校验、依赖追踪、Mock变更同步、Stage0需求精炼、PRD"不做"清单；P3层补充Coordinator扫描伪代码/文件竞态防护/Mock契约验证/门禁检查清单
@@ -11,7 +12,7 @@
 > - v2.0.0 (2026-05-21): 融合三轮优化审查（bypro+pro+minimax），新增迭代模型、回退协议、Agent恢复、质量度量、项目回溯
 > - v1.0.0 (初始): 原始白皮书
 >
-> **文档定位**：本文档是 all-in-mvp 项目的多 Agent 并行开发执行标准。与 `CLAUDE.md` 中的 `kf-mvp` 流程的关系：`kf-mvp` 为通用 MVP 开发方法论框架，本文档是在其理念基础上针对本项目的具体化——定义了精确的 Agent 角色、并行策略、调度机制和产出物契约。本文档为该项目 Agent 协作的最高执行标准，`CLAUDE.md` 中的项目配置和工具链说明为操作层补充。
+> **文档定位**：本文档是 all-in-mvp 项目的多 Agent 并行开发执行标准。与 `.qoder/settings.json` 中配置的技能体系的关系：技能为通用 MVP 开发方法论框架，本文档是在其理念基础上针对本项目的具体化——定义了精确的 Agent 角色、并行策略、调度机制和产出物契约。本文档为该项目 Agent 协作的最高执行标准，`.qoder/settings.json` 中的项目配置和 `ultra-cost-effective/` 工具链为操作层补充。
 >
 > **【已验证规则】** 经过 ≥3 次迭代验证，变更需走评审
 > **【待验证假设】** 基于理论推导，建议在下一次迭代中观察验证
@@ -1652,7 +1653,7 @@ src/
 - 开发模式下 `.env.development` 指向Mock服务（如 `http://localhost:3001`）
 - Stage4联调时切换 `.env.production` 指向真实API
 - 页面代码中不硬编码API地址，统一从 `api.config.ts` 读取
-- Mock数据更新后，前端通过 `npm run mock:sync` 刷新本地Mock类型定义
+- Mock数据更新后，前端通过 Mock 服务热更新机制自动同步
 
 **前端开发中的Mock持续验证**：
 每个前端Agent在开发每个页面时，自动执行Mock检查：对比Mock返回的JSON结构与api-contract.yaml的Response DTO、验证happy path返回2xx/exception path返回4xx/5xx。发现不一致 → 写入 `mock-drift-issues.md` → Coordinator在Stage4开始前统一处理。
@@ -2538,18 +2539,18 @@ tests/e2e/
 
 | 白皮书Agent角色 | Skill文件路径 | 核心职责 |
 |--------------|-------------|---------|
-| 产品经理 | `skills/kf-mvp-product-manager/SKILL.md` | 需求分析、PRD生成 |
-| 架构专家（①） | `skills/kf-mvp-arch-expert/SKILL.md` | 技术选型、Schema设计 |
-| 业务领域专家（②） | `skills/kf-mvp-biz-expert/SKILL.md` | 模块划分、边界定义 |
-| 拷问审查（↺） | `skills/grill-with-docs/SKILL.md` | 交叉验证 |
-| Mock服务专家（③a） | `skills/kf-mvp-mock-service/SKILL.md` | Mock服务搭建 |
-| 单模块测试专家（③b-1） | `skills/kf-mvp-test-single/SKILL.md` | 单模块API测试 |
-| 业务条线测试专家（③b-2） | `skills/kf-mvp-test-e2e/SKILL.md` | 端到端场景测试 |
-| Pipeline Coordinator | `skills/kf-pipeline-coordinator/SKILL.md` | 任务调度、依赖管理 |
-| 后端TDD Agent | `skills/kf-mvp-backend-tdd/SKILL.md` | TDD开发 |
-| 前端Agent | `skills/kf-mvp-frontend-dev/SKILL.md` | Vue开发、Mock对接 |
-| Code Review Agent | `skills/kf-mvp-code-review/SKILL.md` | 代码审查 |
-| Debug Agent | `skills/kf-mvp-debug/SKILL.md` | Bug定位、修复 |
+| 产品经理 | `.qoder/skills/kf-mvp-product-manager/SKILL.md` | 需求分析、PRD生成 |
+| 架构专家（①） | `.qoder/skills/kf-mvp-arch-expert/SKILL.md` | 技术选型、Schema设计 |
+| 业务领域专家（②） | `.qoder/skills/kf-mvp-biz-expert/SKILL.md` | 模块划分、边界定义 |
+| 拷问审查（↺） | `.qoder/skills/grill-with-docs/SKILL.md` | 交叉验证 |
+| Mock服务专家（③a） | `.qoder/skills/kf-mvp-mock-service/SKILL.md` | Mock服务搭建 |
+| 单模块测试专家（③b-1） | `.qoder/skills/kf-mvp-test-single/SKILL.md` | 单模块API测试 |
+| 业务条线测试专家（③b-2） | `.qoder/skills/kf-mvp-test-e2e/SKILL.md` | 端到端场景测试 |
+| Pipeline Coordinator | `.qoder/skills/kf-pipeline-coordinator/SKILL.md` | 任务调度、依赖管理 |
+| 后端TDD Agent | `.qoder/skills/kf-mvp-backend-tdd/SKILL.md` | TDD开发 |
+| 前端Agent | `.qoder/skills/kf-mvp-frontend-dev/SKILL.md` | Vue开发、Mock对接 |
+| Code Review Agent | `.qoder/skills/kf-mvp-code-review/SKILL.md` | 代码审查 |
+| Debug Agent | `.qoder/skills/kf-mvp-debug/SKILL.md` | Bug定位、修复 |
 
 > 每个Agent创建时，必须从对应的Skill文件读取完整的system prompt配置。Skill文件是Agent创建的**唯一来源**。
 
@@ -2923,7 +2924,7 @@ Coordinator在Stage4完成后自动采集到 `pipeline-metrics.json`：
 - 次版本（Y+1）：新增子流程/新增门禁
 - 补丁（Z+1）：措辞修正/示例补充
 
-所有配套Skill和Agent prompt模板需在头部声明 `@based_on: MVP白皮书 vX.Y.Z`。
+所有配套Skill和Agent prompt模板需在头部声明 `@based_on: QoderMVP白皮书 vX.Y.Z`。
 
 ---
 
@@ -3002,4 +3003,61 @@ Coordinator在Stage4完成后自动采集到 `pipeline-metrics.json`：
 
 ---
 
-*本文档为 all-in-mvp 项目多 Agent 并行开发的执行标准，所有 Agent 必须遵循。*
+*本文档为 QoderMVP 项目多 Agent 并行开发的执行标准，所有 Agent 必须遵循。*
+
+---
+
+## 附录：项目基础设施（v2.6 新增）
+
+### A.1 平台与技能体系
+
+| 项目 | 说明 |
+|------|------|
+| 开发平台 | **Qoder**（唯一平台，已移除 Claude Code / Trae 支持） |
+| 技能路径 | `.qoder/skills/`（43 个技能，覆盖 Stage1-5 全流程） |
+| 项目配置 | `.qoder/settings.json`（模型路由、规则注入、环境变量） |
+| Hook 机制 | `~/.qoder/hooks/` 下 `.cmd` 脚本（自动触发 Token 监控） |
+
+### A.2 ultra-cost-effective 极致节能引擎
+
+七层 Token 节省架构，综合节省 60-90%，不影响输出质量：
+
+| 层 | 名称 | 机制 |
+|----|------|------|
+| L1 | 输出压缩 | tokenforge PreToolUse Hook 管道注入 |
+| L2 | KV Cache | DeepSeek 共享前缀缓存，命中率 >90% |
+| L3 | 上下文预热 | PRD/Spec 长文档触发 KV Cache checkpoint |
+| L4 | 技能按需加载 | 非活跃技能 → ~25 token stub |
+| L5 | 阶段智能跳过 | 变更检测驱动，小变更跳过不必要阶段 |
+| L6 | A2A 通信压缩 | agent-spawn-guard 注入 session-memory 索引 |
+| L7 | 模型智能路由 | DeepSeek Pro↔Flash 按需切换（3x 成本差） |
+
+### A.3 项目级全链路 Token 监控
+
+`ultra-cost-effective/helpers/project-monitor.cjs` 提供三维度追踪：
+
+| 维度 | 内容 |
+|------|------|
+| **主会话** | JSONL 扫描，统计每次 LLM 调用的输入/输出 Token |
+| **A2A 通信** | 检测 Agent 工具调用次数 + Prompt/Response Token 估算 |
+| **子Agent 穿透** | 扫描子 Agent JSONL 会话，聚合 Token 消耗 |
+| **理论节约** | 按 L1-L7 分别计算若全开可节省的 Token + 成本 |
+| **成本估算** | 基于 `pricing.json` 动态定价，Flash 实际 vs Pro 无优化对比 |
+
+运行命令：
+```bash
+node ultra-cost-effective/helpers/project-monitor.cjs          # 全链路报告
+node ultra-cost-effective/helpers/project-monitor.cjs --watch  # 实时监控
+node ultra-cost-effective/helpers/project-monitor.cjs --json   # JSON 输出
+```
+
+### A.4 E2E 测试质量门禁
+
+E2E 质量通过以下自动化门禁保障（逻辑嵌入 `.qoder/skills/all-in-mvp/SKILL.md` Stage3/Stage4 gate）：
+
+| 门禁 | 用途 |
+|------|------|
+| E2E 覆盖率门禁 | 静态检查 E2E 用例数量是否达标（总计≥70, Login≥12, Menu≥5, CRUD≥7/模块, Workflow≥21, Data Isolation≥1） |
+| 有头/无头一致性门禁 | 有头/无头测试结果一致性对比（Type1渲染差异/Type2 CORS差异/Type3弱断言检测） |
+
+> 注：自动化校验脚本 `check-e2e-coverage.js` / `check-e2e-parity.js` 原位于 `scripts/` 目录，v2.6 清理后逻辑已集成至 all-in-mvp SKILL.md 的 CI gate 中。
