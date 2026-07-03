@@ -20,6 +20,7 @@ skills:
 - `schema.sql`【锁定版】
 - `api-contract.yaml`【锁定版】
 - `task.md`【锁定版】
+- `pipeline-state.json`（含 module_agent_map，用于 Bug 精准路由）
 - `src/modules/` — Stage3 产出的所有后端模块
 - `src/views/` + `src/components/` — Stage3 产出的所有前端页面
 - `integration-tests/` — Stage2 产出的测试用例
@@ -49,26 +50,39 @@ skills:
 4.3 集成测试执行
   ├── 运行 `integration-tests/modules/` + `integration-tests/scenarios/` + `integration-tests/regression/`
   ├── 通过率阈值：Happy Path 100%，Exception Path ≥80%
-  └── 输出测试报告 + Bug 清单
+  └── 输出测试报告 + Bug 清单（每个 Bug 标注所属模块）
     ↓
-4.4 Bug 修复循环
-  ├── 分配 Bug 给 Debug Agent（mvp-debug-fixer）
-  ├── 定位根因（代码/设计/需求理解偏差），标记根因分类（CAUSE:PRD_*/DESIGN_*/IMPL_*）
-  ├── 跟踪修复状态
-  └── 回归测试验证
+4.4 Bug 精准路由与修复循环
+  ├── **第一步：按模块溯源** → 读取 `pipeline-state.json` 的 `module_agent_map`
+  ├── **第二步：精确路由** → 根据 Bug 所属模块，将 Bug 发回当初开发该模块的原 Agent
+  │   ├── 后端模块 Bug → 路由给写该模块的 mvp-backend-tdd（非 mvp-debug-fixer）
+  │   ├── 前端页面 Bug → 路由给写该页面的 mvp-frontend-dev（非 mvp-debug-fixer）
+  │   ├── Mock 偏差 → 路由给 mvp-mock-service
+  │   └── 无法定位归属的 Bug → 交给 mvp-debug-fixer 做首次根因定位，定位后仍路由回原开发 Agent
+  ├── **第三步：原 Agent 修复** → 接收 Bug 报告 → 定位根因 → 最小修复 → 补充回归测试
+  ├── **第四步：自动回归** → 修复后立即运行该模块相关测试集
+  │   ├── 通过 → Bug 关闭，继续下一个
+  │   └── 仍失败 → 返回第三步，同一 Agent 再次修复
+  ├── **第五步：跨模块 Bug 升级** → 同一 Bug 涉及 2+ 模块 → Coordinator 协调双方 Agent 同步修复
+  └── **循环终止**：见「Bug 修复循环终止条件」
     ↓
 4.5 产物归档
   └── 整理 `delivery/` 目录（docs/ + backend/ + frontend/ + integration-tests/）
 ```
 
-## 联调问题分类与分发
+## 联调问题分类与精准分发
 
-| 分类 | 判定 | 分发对象 |
-|------|------|---------|
-| 契约问题 | 接口响应与 api-contract.yaml 不一致 | 后端 Agent |
-| 实现问题 | 接口符合契约但数据/逻辑错误 | 后端 Agent |
-| 理解偏差 | 前端对接口理解与后端设计不一致 | 前端 Agent + Mock Agent |
-| Mock偏差 | Mock 与真实 API 不一致 | Mock Agent |
+> **核心原则**：每个 Bug 必须路由回当初写那个模块的 Agent，而非交给通用 Debug Agent。通过 `pipeline-state.json` 的 `module_agent_map` 定位原开发 Agent。
+
+| 分类 | 判定 | 路由目标 | 定位方式 |
+|------|------|---------|---------|
+| 契约问题 | 接口响应与 api-contract.yaml 不一致 | **写该模块的 mvp-backend-tdd** | module_agent_map 查找模块归属 |
+| 实现问题 | 接口符合契约但数据/逻辑错误 | **写该模块的 mvp-backend-tdd** | module_agent_map 查找模块归属 |
+| 理解偏差 | 前端对接口理解与后端设计不一致 | **写该页面的 mvp-frontend-dev** | module_agent_map 查找页面归属 |
+| Mock偏差 | Mock 与真实 API 不一致 | **mvp-mock-service** | 直接路由 |
+| 归属不明 | 无法从失败日志定位具体模块 | **mvp-debug-fixer（仅做首次定位）** | 定位后路由回原开发 Agent |
+
+> **mvp-debug-fixer 的新定位**：从「修复所有 Bug」降级为「仅处理归属不明的 Bug 的首次根因定位」，定位完成后立即将 Bug 路由回 `module_agent_map` 中对应的原开发 Agent。原开发 Agent 拥有该模块的完整上下文，修复效率远高于通用 Debug Agent。
 
 ## 切换策略
 前端 `api.config.ts` 中按模块映射 baseURL，逐模块切换：
@@ -76,7 +90,7 @@ skills:
 user: mock  → user: real
 product: mock → product: real
 ```
-回退：切换后发现问题 → 标记该模块 `BLOCKED` → 回退到 Mock → Debug Agent 修复 → 再次切换。
+回退：切换后发现问题 → 标记该模块 `BLOCKED` → 回退到 Mock → 通过 `module_agent_map` 路由给原开发 Agent 修复 → 再次切换。
 
 ## Stage4 回滚协议
 

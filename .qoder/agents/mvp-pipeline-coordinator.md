@@ -38,6 +38,7 @@ skills:
 4. 记录分配
    → 模块标记为「已分配」，写入分配日志
    → Agent 完成 → 标记为 DONE
+   → 同步写入 module_agent_map（模块名 → Agent ID），供 Stage4 Bug 路由使用
 
 5. 检查完成
    → 所有模块 DONE → Stage3 完成 → 输出完成报告
@@ -84,10 +85,17 @@ Coordinator 维护 `pipeline-state.json`（原子写入：先写 `.tmp` → 重�
   "current_round": 2,
   "agent_slots": { "backend": [], "frontend": [] },
   "module_states": {},
+  "module_agent_map": {
+    "user": "mvp-backend-tdd-1",
+    "product": "mvp-backend-tdd-2",
+    "dashboard": "mvp-frontend-dev-1"
+  },
   "last_checkpoint": "2026-05-21T10:30:00Z"
 }
 ```
 崩溃后重启读取该文件恢复状态，差异以文件系统为准（ground truth）。
+
+> **module_agent_map** 是 Stage4 Bug 路由的关键数据：当测试失败时，Stage4 Coordinator 通过此映射将 Bug 精准路由回当初开发该模块的 Agent，而非交给通用 Debug Agent。每个模块标记为 DONE 时同步写入此映射。
 
 ## 模块分配信息摘要
 传 Agent 时不传完整 `<module>.md`，传摘要版 YAML 以降低上下文消耗：
@@ -106,3 +114,14 @@ acceptance:
   exception_path: 4
 ```
 Agent 需要完整信息时通过文件路径按需读取 `<module>.md`。
+
+## module_agent_map 写入规则
+
+每次 Agent 完成模块开发并标记 DONE 时，Coordinator 必须同步更新 `pipeline-state.json` 中的 `module_agent_map`：
+
+```
+模块 user → mvp-backend-tdd（Backend-1 Slot）→ 写入 "user": "mvp-backend-tdd"
+页面 dashboard → mvp-frontend-dev（Frontend-1 Slot）→ 写入 "dashboard": "mvp-frontend-dev"
+```
+
+映射键名为模块目录名，值为负责开发的 Agent name。Stage4 Coordinator 读取此映射进行精确 Bug 路由。
