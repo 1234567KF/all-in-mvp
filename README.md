@@ -31,6 +31,9 @@ npx giget gh:1234567KF/all-in-mvp#all-in-mvp . --force
 │   └── ...
 └── settings.json           ← Qoder 项目配置（模型/规则/环境变量）
 
+.claude/                    ← Claude Code 配置（agents/rules/skills/hooks）
+.trae/                      ← Trae 技能兼容层
+
 ultra-cost-effective/       ← 极致节能引擎 v2.0
 ├── helpers/
 │   ├── project-monitor.cjs ← 项目级全链路 Token 监控
@@ -38,6 +41,9 @@ ultra-cost-effective/       ← 极致节能引擎 v2.0
 │   └── perf/               ← 成本追踪 + 定价数据
 ├── rules/                  ← LLM 行为规则
 └── adapters/qoder/         ← Qoder 专用适配器
+
+starters/                   ← 前端脚手架模板
+└── liquid-glass-frontend/  ← Vue 3 + shadcn/vue + Liquid Glass，npm install 即用
 ```
 
 ---
@@ -89,9 +95,9 @@ npx.cmd giget gh:1234567KF/all-in-mvp#v2.10.0 .
 
 ## 常见问题
 
-### Q: 为什么 giget 拉取后只有 `.qoder/` 和 `ultra-cost-effective/`？
+### Q: giget 拉取后有哪些目录？
 
-A: `.gitattributes` 的 `export-ignore` 规则让 GitHub tarball 自动排除文档/白皮书等文件，只保留 `.qoder/skills/`、`ultra-cost-effective/`。完整源码在 [GitHub 仓库](https://github.com/1234567KF/all-in-mvp)。
+A: `.gitattributes` 的 `export-ignore` 规则让 GitHub tarball 自动排除文档/白皮书等文件，只保留 `.qoder/skills/`、`.claude/`、`ultra-cost-effective/`、`starters/`。完整源码在 [GitHub 仓库](https://github.com/1234567KF/all-in-mvp)。
 
 ### Q: 技能是全局的还是项目级的？
 
