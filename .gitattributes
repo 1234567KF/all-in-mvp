@@ -27,7 +27,7 @@
 #  （git archive 和 GitHub API tarball 均生效）
 # ============================================================
 
-# --- 源技能仓库（用户不需，已融合到 .claude/.qoder/.trae/skills/）---
+# --- 源技能仓库（用户不需，已融合到 .qoder/skills/）---
 /skills/          export-ignore
 
 # --- 内部 overlay 配置（含 pipeline-monitor node_modules 等）---
@@ -61,8 +61,5 @@
 /install.sh       export-ignore
 /.gitattributes   export-ignore
 /.gitignore       export-ignore
-
-# --- .claude/ 全量分发（仅排除本地密钥配置）---
-.claude/settings.local.json export-ignore
 
 # --- .qoder/ 全量分发 ---
