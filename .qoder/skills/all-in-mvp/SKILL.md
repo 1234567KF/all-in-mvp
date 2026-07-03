@@ -5,7 +5,8 @@ metadata:
   pattern: pipeline+inversion+reviewer+generator
   stage-gates: true
   max-parallel-agents: 3
-  based_on: MVP白皮书 v2.5.0
+  based_on: MVP白皮书 v2.11.0
+  gate_probe: enforced  # v2.11: 每个 Stage 入口有 GATE_PROBE 文件检查，不可跳过
   platforms: [claude-code, qoder]
   workflow-ready: true
   workflow-scripts:
@@ -17,7 +18,7 @@ metadata:
 
 # Parallel MVP Pipeline — Multi-Platform 版
 
-> 基于《MVP 白皮书 v2.5》的多 Agent 并行工程方法论。3 种运行模式、严格门禁、最大并行度。增量变更强制走完整流水线（§0.2决策树）。
+> 基于《MVP 白皮书 v2.11》的多 Agent 并行工程方法论。3 种运行模式、强制模式判定、Stage 入口门禁探针、最大并行度。增量变更强制走完整流水线（§0.2决策树）。
 > 支持 Claude Code（Dynamic Workflows）与 Qoder（Custom Subagents）双平台运行。
 
 ---
@@ -31,6 +32,79 @@ metadata:
 ```
 
 **黄金规则**：全量/增量模式下 Stage 不可跳过。轻量模式走简化通道（3 步替代 4 Stage）。
+
+---
+
+## ⚠️ 强制模式声明（MANDATORY — v2.11 新增，执行任何开发前必做）
+
+> **核心原则**：Agent 不自行决定走轻量还是全量。必须先完成判定矩阵、输出 MODE_DECISION 文件、经用户确认后，才能进入对应流程。**禁止默认走轻量**。
+
+### 判定流程（不可跳过）
+
+```
+用户需求进入
+    ↓
+┌─────────────────────────────────────────────┐
+│ 🔴 强制步骤 1：逐项填写判定矩阵              │
+│    必须输出完整的 7 维度评估，不可写"略"       │
+└─────────────────────────────────────────────┘
+    ↓
+┌─────────────────────────────────────────────┐
+│ 🔴 强制步骤 2：输出 MODE_DECISION 文件        │
+│    格式见下方，必须包含 mode + reason         │
+└─────────────────────────────────────────────┘
+    ↓
+┌─────────────────────────────────────────────┐
+│ 🔴 强制步骤 3：用户确认                       │
+│    Agent 必须等待用户 ✅ 后才能进入对应模式    │
+└─────────────────────────────────────────────┘
+```
+
+### 判定矩阵（必须逐项填写）
+
+| # | 维度 | 阈值 | 本项目评估 | 命中？ |
+|---|------|------|-----------|--------|
+| 1 | API/接口数量 > 2？ | >2 → +1 | （填写实际数量） | |
+| 2 | 多表关联（非单表 CRUD）？ | 是 → +1 | （填写表数量） | |
+| 3 | 多用户角色（≥2）？ | 是 → +1 | （填写角色数） | |
+| 4 | 状态机流转？ | 是 → +1 | （填写状态数） | |
+| 5 | 页面 > 2？ | 是 → +1 | （填写页面数） | |
+| 6 | 有外部服务调用？ | 是 → 轻量不适用 | | |
+| 7 | 仅 1 个全栈模块？ | 否 → +1 | （填写模块数） | |
+
+**判定规则**：
+- **命中 ≥2 项 → 🔴 强制全量模式**。绝对禁止走轻量通道。
+- 命中 0-1 项 → 可与用户确认后走轻量模式。
+- 第 6 项命中（有外部服务）→ 自动排除轻量模式。
+
+### MODE_DECISION 输出格式（必须）
+
+创建 `MODE_DECISION` 文件，内容：
+
+```yaml
+# MODE_DECISION — 模式判定记录
+# 此文件是 Stage 入口门禁的检查对象，不可删除
+mode: full          # full | lightweight | incremental
+reason: |
+  API 42个(命中), 多角色3个(命中), 状态机4态(命中)
+  命中 3/7 项 → 强制全量模式
+stages_required:
+  - stage1          # PRD
+  - stage2          # 架构+模块+E2E用例设计
+  - stage3          # 并行开发
+  - stage3.5        # E2E适配（不可跳过）
+  - stage4          # 集成验收+MSVP冒烟
+skip_prohibited: true
+confirmed_by_user: false   # 用户确认后改为 true
+```
+
+### 🚫 违规检测
+
+如果 Agent 在 `mode: full` 的情况下：
+- 试图直接用 Write/SearchReplace 写全部代码（绕过 Workflow）→ **立即停止，标记 VIOLATION**
+- 跳过 Stage 2 ③b-2（E2E 用例设计）→ **立即停止**
+- 跳过 Stage 3.5（E2E 适配）→ **立即停止**
+- 在 Stage 4 不做浏览器 MSVP 冒烟 → **立即停止**
 
 ---
 
@@ -560,6 +634,7 @@ Agent A 产出 → Agent B 接收：
 
 ## 快速通道：简单任务判定（进入流水线前执行）
 
+> **⚠️ v2.11 变更：此判定已被 `强制模式声明` 取代。执行前必须先完成上方的判定矩阵 + MODE_DECISION 文件。此节保留作为轻量模式的具体执行步骤参考。**
 > **在执行完整流水线之前，先判定任务复杂度。简单任务走轻量通道，避免不必要的 Workflow 开销。**
 
 ### 判定流程
@@ -1065,6 +1140,21 @@ const LIGHTWEIGHT_AUTO_UPGRADE_CONFIG = {
 
 ---
 
+### 🛂 Stage 1 入口自检（GATE_PROBE）
+
+> **禁止跳过。** 进入 Stage 1 前，逐一确认以下条件：
+
+| # | 检查项 | 验证方式 |
+|---|--------|---------|
+| 1 | 已输出 `MODE_DECISION` 文件 | Glob("MODE_DECISION") 必须返回结果 |
+| 2 | `MODE_DECISION` 中 `mode` 为 `full` 或 `incremental` | Read 确认内容 |
+| 3 | `confirmed_by_user: true` | 用户已 ✅ |
+| 4 | 已通过 MQAP 理解确认 | 用户已回复确认 |
+
+**缺失任何一项 → 🔴 禁止进入 Stage 1。必须先完成 MODE_DECISION 和用户确认。**
+
+---
+
 ## Stage 1: 需求对齐 — Workflow(`.claude/workflows/stage1-prd.js`)
 
 **前置条件**：用户需求已收集（如果模糊则先执行 Inversion 采集）。
@@ -1121,6 +1211,27 @@ PRD 评审通过后锁定为 `PRD.md`。锁定的 PRD 是后续所有阶段的�
 2. 等待 Workflow 完成
 3. 审查产出卡片，确认 9 个章节齐全
 4. 门禁通过 → 标记 PRD.md 为【锁定版】→ 进入 Stage2
+
+---
+
+### 🛂 Stage 2 入口门禁（GATE_PROBE — 不可跳过）
+
+> **进入 Stage 2 前，主 Agent 必须用 Glob/Read 工具逐一确认以下文件存在。缺失任何一项 → 🔴 立即停止，回退 Stage 1。**
+
+| # | 文件 | 验证工具 | 说明 |
+|---|------|---------|------|
+| 1 | `PRD.md` | Glob("PRD.md") | Stage 1 核心产出 |
+| 2 | `decisions/stage1-prd-decisions.md` | Glob("decisions/stage1-prd-decisions.md") | Stage 1 决策日志 |
+| 3 | `MODE_DECISION` | Glob("MODE_DECISION") | 模式判定记录 |
+
+```
+执行检查命令（Agent 用 Glob 工具替代）：
+  Glob("PRD.md")                        → 必须返回结果，否则 ❌
+  Glob("decisions/stage1-prd-decisions.md") → 必须返回结果，否则 ❌
+  Glob("MODE_DECISION")                 → 必须返回结果，否则 ❌
+```
+
+**如果有任何 ❌：禁止进入 Stage 2。先补齐 Stage 1 产出。**
 
 ---
 
@@ -1199,6 +1310,33 @@ Workflow({
 3. 等待 Workflow 完成
 4. 审查产出卡片，逐项核对门禁清单
 5. 门禁全部通过 → 进入 Stage3
+
+---
+
+### 🛂 Stage 3 入口门禁（GATE_PROBE — 不可跳过）
+
+> **进入 Stage 3 前，主 Agent 必须用 Glob/Read 工具逐一确认。缺失任何一项 → 🔴 立即停止，回退 Stage 2。**
+
+| # | 文件/目录 | 验证工具 | 说明 |
+|---|----------|---------|------|
+| 1 | `spec.md` | Glob("spec.md") | 架构设计 |
+| 2 | `schema.sql` | Glob("schema.sql") | 数据库 DDL |
+| 3 | `api-contract.yaml` | Glob("api-contract.yaml") | API 契约 |
+| 4 | `task.md` | Glob("task.md") | 模块任务清单 |
+| 5 | `modules/` 目录 | Glob("modules/*.md") | 模块文档 |
+| 6 | `integration-tests/scenarios/` | Glob("integration-tests/scenarios/*.spec.ts") | **Stage 2 ③b-2 E2E 用例** |
+
+```
+执行检查（Agent 用 Glob 工具）：
+  Glob("spec.md")                              → 必须返回结果
+  Glob("schema.sql")                            → 必须返回结果
+  Glob("api-contract.yaml")                     → 必须返回结果
+  Glob("task.md")                               → 必须返回结果
+  Glob("modules/*.md")                          → 必须返回结果
+  Glob("integration-tests/scenarios/*.spec.ts")  → 🔴 必须返回结果！
+```
+
+**🔴 重点检查：如果第 6 项（E2E scenarios）缺失 → Stage 2 ③b-2 被跳过。绝对禁止直接进入 Stage 3。必须先回退执行 Stage 2 ③b-2。**
 
 ---
 
@@ -1370,6 +1508,21 @@ for i in {1..3}; do npx vitest run; done
 
 ---
 
+### 🛂 Stage 3.5 入口门禁（GATE_PROBE — 不可跳过）
+
+> **🔴 Stage 3.5 是强制阶段，不可跳过。** 进入前必须验证 Stage 3 全部模块 DONE。
+
+| # | 检查项 | 验证工具 | 说明 |
+|---|--------|---------|------|
+| 1 | 全部后端模块 DONE | Glob("src/modules/*/DONE") | 每个模块目录必须有 DONE 标记 |
+| 2 | 全部前端页面 DONE | Glob("src/client/src/views/*.vue") 存在 | 前端页面已实现 |
+| 3 | 无残留 VISUAL_PENDING | Glob("**/VISUAL_PENDING") 必须返回空 | 前端视觉已确认 |
+| 4 | `integration-tests/scenarios/` 目录存在 | Glob("integration-tests/scenarios/*.spec.ts") | Stage 2 ③b-2 产出 |
+
+**缺失任何一项 → 🔴 禁止进入 Stage 3.5。必须先完成对应 Stage 的前置条件。**
+
+---
+
 ## Stage 3.5: E2E 适配阶段（v2.10 新增）
 
 > **核心问题**：Stage 2 基于 PRD 编写的 E2E 用例与实际实现存在契约漂移（API 路径变化、字段名调整、枚举值变更）。Stage 3 所有模块 DONE 后，必须先适配 E2E 测试、补齐覆盖缺口，再进入 Stage 4 集成。否则 Stage 4 的 ≥70 用例门禁必然失败，且无人负责修复。
@@ -1437,6 +1590,27 @@ for i in {1..3}; do npx vitest run; done
 
 ---
 
+### 🛂 Stage 4 入口门禁（GATE_PROBE — 不可跳过）
+
+> **进入 Stage 4 前，必须验证 Stage 3.5 已完成。**
+
+| # | 检查项 | 验证工具 | 说明 |
+|---|--------|---------|------|
+| 1 | `E2E_READY` 标记存在 | Glob("integration-tests/scenarios/E2E_READY") | Stage 3.5 完成标记 |
+| 2 | `E2E_READY` 中 `status: "READY"` | Read 确认内容 | ≥70 用例已通过 |
+| 3 | `contract-drift-log.md` 存在 | Glob("contract-drift-log.md") | 契约漂移已扫描 |
+
+```
+执行检查（Agent 用 Glob + Read 工具）：
+  Glob("integration-tests/scenarios/E2E_READY")  → 🔴 必须返回结果！
+  Read("integration-tests/scenarios/E2E_READY")  → status 必须为 "READY"
+  Glob("contract-drift-log.md")                   → 必须返回结果
+```
+
+**🔴 如果 E2E_READY 缺失 → Stage 3.5 被跳过。绝对禁止进入 Stage 4。必须先回退执行 Stage 3.5（含浏览器 E2E 适配）。**
+
+---
+
 ## Stage 4: 集成与验收 — Workflow(`.claude/workflows/stage4-integration.js`)
 
 **前置条件**：Stage 3.5 E2E_READY 通过（所有模块 DONE + E2E_READY 标记存在）。
@@ -1472,26 +1646,88 @@ Workflow({
   → 运行 L1-L5 全部测试层 + V1-V3 视觉检查
   → 输出测试报告 + 覆盖率报告
 
-阶段4.4 Bug修复循环 (flash dev + pro reviewer)
-  → while 存在未修复 Bug && 轮次 < 3:
-      → agent(分析 Bug 列表, pro)
-      → agent(修复 Bug, flash)
-      → 回归测试验证
-  → 3 轮后仍有 Bug → 标记 BLOCKED
+阶段4.4 Bug分派修复循环（v2.11 — 按Bug类型路由到原专业Agent）
+  → 🔴 原则：谁写的代码谁修。不允许用通用Agent做"擦屁股"式集中修复。
+  → 阶段4.3 产出 Bug 列表 → Bug分类器 (pro) 输出分类报告
+  → 按 `Bug路由矩阵` 分派到对应专业Agent:
+      | 后端 Bug   → agent(BACKEND_DEV, flash)    ← 用回后端开发Agent
+      | 前端 Bug   → agent(FRONTEND_DEV, flash)   ← 用回前端开发Agent
+      | 契约漂移   → agent(ARCHITECT, pro)         ← 架构师修正契约+同步双方
+      | 视觉 Bug   → agent(FRONTEND_DEV, flash)    ← 前端Agent修，完工标 VISUAL_PENDING
+      | 集成 Bug   → agent(COORDINATOR, pro)       ← 协调器协调跨模块修复
+      | 数据 Bug   → agent(BACKEND_DEV, flash)     ← 后端Agent修数据层
+      | 安全 Bug   → agent(BACKEND_DEV, flash) + agent(CODE_REVIEW, pro) ← 后端修+独立审查
+  → 每轮流程: 分类报告 → fan-out 并行分派 → 各Agent独立修复 → 回归验证
+  → 同一Agent连续失败 2 次 → 该模块标记 BLOCKED(module_review)
+  → 同一Bug被多个Agent修复冲突 → 升级为 BLOCKED(human_review)
+  → 最多 2 轮分派修复 → 仍有Bug → 标记 BLOCKED 并附分派历史
 
 → 质量审计输出
 → 交付归档 delivery/
 ```
 
-### 联调问题分类
+### Bug路由矩阵（v2.11 — 按类型分派到原专业Agent）
 
-| 分类 | 判定 | 修复方向 |
-|------|------|---------|
-| 契约问题 | 接口响应与 api-contract.yaml 不一致 | 修正后端 |
-| 实现问题 | 接口符合契约但数据/逻辑错误 | 修正后端 |
-| 理解偏差 | 前端对接口理解与后端设计不一致 | 修正前端 + Mock |
-| Mock偏差 | Mock 与真实 API 不一致 | 修正 Mock |
-| 契约漂移 | 前后端独立生成代码导致字段名/枚举值/响应格式不一致 | 同步修正双方，追溯 api-contract.yaml 是否完整 |
+> **核心原则：Bug 修复不是"擦屁股"。谁负责的模块谁修。主 Agent 只做路由分派，不亲自修代码。**
+
+| Bug 分类 | 判定依据 | 分派目标 Agent | 模型 | 修复范围 |
+|---------|---------|---------------|------|---------|
+| **后端 Bug** | API 500/逻辑错误、DB 写入失败、数据校验缺失 | `BACKEND_DEV` | flash | 仅该模块的后端代码 |
+| **前端 Bug** | 页面渲染异常、交互无响应、路由404 | `FRONTEND_DEV` | flash | 仅该页面的前端代码 |
+| **契约漂移** | 字段名不一致、枚举值不匹配、响应格式差异 | `ARCHITECT` | **pro** | `api-contract.yaml` + 双端同步修正 |
+| **视觉 Bug** | 布局错乱、样式丢失、响应式失效 | `FRONTEND_DEV` | flash | 修复后标 `VISUAL_PENDING`，等人类确认 |
+| **集成 Bug** | 跨模块调用失败、数据流断裂、Mock-真实不一致 | `COORDINATOR` | **pro** | 协调多模块修改 |
+| **数据 Bug** | 约束违反、orphan 记录、事务失败 | `BACKEND_DEV` | flash | DB schema + Repository 层 |
+| **安全 Bug** | XSS/注入/越权/令牌泄露 | `BACKEND_DEV` + `CODE_REVIEW` | flash + **pro** | 后端修 + 独立安全审查 |
+| **E2E Bug** | E2E 用例失败但 API 单独调用正常 | `E2E_ADAPT`（kf-mvp-test-e2e） | **pro** | 仅修正 E2E 用例本身 |
+
+### 分派执行协议
+
+```
+Step 1: Bug 分类器 (pro)
+  → 输入: integration-issues.md + 测试报告
+  → 输出: bug-dispatch.yaml（每个Bug标注分类+目标Agent+模块归属）
+
+Step 2: 并行分派（fan-out）
+  → 同类型Bug合并，按模块分组
+  → 不同模块的Bug可并行分派给不同Agent
+  → 同一模块的多个Bug串行发给同一个Agent（避免冲突）
+
+Step 3: Agent 修复
+  → 每个Agent只改自己负责的模块/层级
+  → 修复后必须运行该模块的 L1-L2 测试
+  → 前端Agent修复后输出 VISUAL_PENDING（如涉及CSS）
+
+Step 4: 回归验证
+  → 运行受影响模块的全量测试
+  → 运行相关 E2E scenarios
+  → 更新 bug-dispatch.yaml 标注修复状态
+
+Step 5: 升级条件
+  → 同一Agent同一Bug连续失败 2 次 → BLOCKED(module_review)
+  → 多个Agent修改同一文件产生冲突 → BLOCKED(human_review)
+  → 架构决策需变更 → 回退 Stage 2 ① 复议
+```
+
+### 禁止行为
+
+| ❌ 禁止 | ✅ 正确做法 |
+|--------|----------|
+| 主 Agent 直接用 Write 修 Bug | 分派给对应专业 Agent |
+| 用一个通用 flash agent 修所有 Bug | 按路由矩阵分派 |
+| 后端 Agent 改前端代码 | 路由给前端 Agent |
+| 前端 Agent 改后端 API | 路由给后端 Agent |
+| 跳过 Bug 分类直接修 | 先分类、再分派 |
+
+### 历史问题分类（保留用作分派参考）
+
+| 分类 | 判定 | 修复方向 | 分派目标 |
+|------|------|---------|---------|
+| 契约问题 | 接口响应与 api-contract.yaml 不一致 | 修正后端 | `BACKEND_DEV` |
+| 实现问题 | 接口符合契约但数据/逻辑错误 | 修正后端 | `BACKEND_DEV` |
+| 理解偏差 | 前端对接口理解与后端设计不一致 | 修正前端 + Mock | `FRONTEND_DEV` + `MOCK_SERVICE` |
+| Mock偏差 | Mock 与真实 API 不一致 | 修正 Mock | `MOCK_SERVICE` |
+| 契约漂移 | 前后端字段名/枚举值/响应格式不一致 | 同步修正双方 | `ARCHITECT` → 修正契约后分派双端 |
 
 ### Stage 4 门禁（终检）(MUST — v2.5 视觉强化 + v2.6 E2E强化 + v2.10 E2E前置)
 
