@@ -1302,6 +1302,7 @@ Workflow({
 - [ ] `integration-tests/modules/` 已产出
 - [ ] `integration-tests/scenarios/` 已产出
 - [ ] ③c 测试用例静态审查通过（无 ERROR）
+- [x] **E2E Quality Gate 脚本通过（v2.12）**：运行 `powershell -File .qoder/skills/all-in-mvp/scripts/e2e-quality-gate.ps1 --all` 必须返回 PASS（退出码 0）。脚本检测 5 项硬指标（浏览器交互比/权限矩阵/双向断言/CRUD生命周期/断言质量），不依赖 LLM 记忆，直接扫描文件系统。
 
 ### 主 Agent 动作
 
@@ -1309,7 +1310,12 @@ Workflow({
 2. Workflow 脚本内部自动处理串行/并行编排
 3. 等待 Workflow 完成
 4. 审查产出卡片，逐项核对门禁清单
-5. 门禁全部通过 → 进入 Stage3
+5. **🔴 强制运行 E2E Quality Gate 脚本**（不可跳过）：
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File ".qoder/skills/all-in-mvp/scripts/e2e-quality-gate.ps1" --all
+   ```
+   脚本返回 FAIL（退出码 1）→ 🔴 禁止进入 Stage 3，必须回退修复 E2E 用例。
+6. 门禁全部通过 → 进入 Stage3
 
 ---
 
@@ -1325,18 +1331,22 @@ Workflow({
 | 4 | `task.md` | Glob("task.md") | 模块任务清单 |
 | 5 | `modules/` 目录 | Glob("modules/*.md") | 模块文档 |
 | 6 | `integration-tests/scenarios/` | Glob("integration-tests/scenarios/*.spec.ts") | **Stage 2 ③b-2 E2E 用例** |
+| **7** | **E2E Quality Gate 脚本 PASS** | **Bash: `powershell -File .qoder/skills/all-in-mvp/scripts/e2e-quality-gate.ps1 --all`** | **v2.12 质量门禁探针** |
 
 ```
-执行检查（Agent 用 Glob 工具）：
+执行检查（Agent 用 Glob + Bash 工具）：
   Glob("spec.md")                              → 必须返回结果
   Glob("schema.sql")                            → 必须返回结果
   Glob("api-contract.yaml")                     → 必须返回结果
   Glob("task.md")                               → 必须返回结果
   Glob("modules/*.md")                          → 必须返回结果
   Glob("integration-tests/scenarios/*.spec.ts")  → 🔴 必须返回结果！
+  Bash: e2e-quality-gate.ps1 --all              → 🔴 必须 PASS（退出码 0）！
 ```
 
 **🔴 重点检查：如果第 6 项（E2E scenarios）缺失 → Stage 2 ③b-2 被跳过。绝对禁止直接进入 Stage 3。必须先回退执行 Stage 2 ③b-2。**
+
+**🔴 重点检查：如果第 7 项（Quality Gate）返回 FAIL → E2E 用例质量不达标。常见失败原因：(1) 纯 API 模式无浏览器交互 → 回退补充浏览器用例；(2) 权限交叉矩阵缺失 → 补充 403 测试；(3) 禁止断言模式 → 修复模糊/无内容断言。**
 
 ---
 
@@ -1599,15 +1609,19 @@ for i in {1..3}; do npx vitest run; done
 | 1 | `E2E_READY` 标记存在 | Glob("integration-tests/scenarios/E2E_READY") | Stage 3.5 完成标记 |
 | 2 | `E2E_READY` 中 `status: "READY"` | Read 确认内容 | ≥70 用例已通过 |
 | 3 | `contract-drift-log.md` 存在 | Glob("contract-drift-log.md") | 契约漂移已扫描 |
+| **4** | **E2E Quality Gate 脚本 PASS** | **Bash: `powershell -File .qoder/skills/all-in-mvp/scripts/e2e-quality-gate.ps1 --all`** | **v2.12 质量门禁复查** |
 
 ```
-执行检查（Agent 用 Glob + Read 工具）：
+执行检查（Agent 用 Glob + Read + Bash 工具）：
   Glob("integration-tests/scenarios/E2E_READY")  → 🔴 必须返回结果！
   Read("integration-tests/scenarios/E2E_READY")  → status 必须为 "READY"
   Glob("contract-drift-log.md")                   → 必须返回结果
+  Bash: e2e-quality-gate.ps1 --all              → 🔴 必须 PASS（退出码 0）！
 ```
 
 **🔴 如果 E2E_READY 缺失 → Stage 3.5 被跳过。绝对禁止进入 Stage 4。必须先回退执行 Stage 3.5（含浏览器 E2E 适配）。**
+
+**🔴 Stage 4 质量门禁复查：即使 Stage 2 通过，Stage 3 开发可能导致 E2E 用例被修改或新增用例质量不达标。Stage 4 入口必须重新运行 Quality Gate 脚本确保质量未退化。**
 
 ---
 
@@ -2300,6 +2314,10 @@ const E2E_COVERAGE_CHECKER = {
 - **枚举值唯一真源（v2.8）**：后端 zod schema 中的 `z.enum([...])` 是唯一真源（Single Source of Truth）。前端 Agent MUST 从 `api-contract.yaml` 或后端 schema 定义中提取枚举值，**严禁自行发明**。典型血案：前端写 `type: 'company'`，后端只接受 `z.enum(['enterprise', 'individual'])`。此类bug在纯API测试中不可见（测试直接拼正确值），唯有真实浏览器操作才会触发 400 校验失败。
 - **E2E 必须穿透代理层（v2.8）**：E2E 测试 MUST 通过前端开发服务器的代理层（如 Vite proxy: `5173 → 3000`）访问后端，**严禁直连后端端口**。直连会漏掉三类关键 bug：(1) 代理路由配置错误或遗漏（如 partner 路由只挂载 externalApp）；(2) axios 响应拦截器逻辑（双重包裹/解包失败）；(3) CORS 头缺失。
 - **axios/前端请求实例是胶水代码（v2.8）**：前端统一请求实例（含响应拦截器）是前后端集成的关键胶水层，必须视为一等公民纳入测试范围。所有测试（包括L2/L5）MUST 使用与该实例相同的请求配置，不得用裸 `fetch`/`axios` 绕过拦截器。
+- **E2E 浏览器交互配额（v2.12）**：每个 E2E spec 文件中浏览器交互用例（page.fill/click/goto）占比必须 ≥ 30%。纯 API 测试无法发现前端表单下拉框无反应、搜索框无效、编辑表单未预填等 UI 层 Bug。详见「E2E 测试编写最佳实践 §8」。
+- **权限交叉矩阵必测（v2.12）**：多角色项目必须生成角色×端点组矩阵，每个交叉格 = 1 条必写用例（含预期 403 格）。禁止 partner-flow 只用一个 partner 账号测试。详见「E2E 测试编写最佳实践 §9」。
+- **状态双向断言（v2.12）**：每次状态转换必须同时验证"target 出现"和"source 消失"。单向断言是"已审核商机仍在待审核列表"类 Bug 的第一漏测原因。详见「E2E 测试编写最佳实践 §10」。
+- **断言质量门禁（v2.12）**：禁止 `expect([200,403]).toContain(status)` 宽松断言、禁止只判状态码不判内容、禁止缺失反向断言。Test Review Agent（③c）已新增第 5 项审查维度。详见 `agents/test-review.md`。
 
 ### E2E 测试编写最佳实践（v2.6）
 
@@ -2360,6 +2378,272 @@ export async function ensureAccountReady(request, phone, entry) {
 - [ ] 状态机每个状态转换至少 1 个用例
 - [ ] 数据隔离至少 1 个跨角色验证用例
 - [ ] **E2E 测试 MUST 通过前端代理层（Vite proxy 5173→3000），严禁直连后端端口（v2.8）**
+- [x] **浏览器交互用例占比 ≥ 30%（v2.12 强制）**：每个 E2E spec 文件中 `page.fill()`/`page.click()`/`page.goto()` 等浏览器交互用例数量不得低于总用例数的 30%。禁止全部数据准备都通过 API `request` 完成。
+- [x] **权限交叉矩阵全覆盖（v2.12 强制）**：多角色项目必须生成角色×端点组权限矩阵，每个交叉格 = 1 条必写用例（包括预期 403 格）。
+- [x] **状态变更双向断言（v2.12 强制）**：每次状态转换必须同时验证"目标列表出现"和"源列表消失"，缺一不可。
+- [x] **CRUD 生命周期完整覆盖（v2.12 强制）**：每个实体必须覆盖 C(浏览器创建→列表可见) + R(列表→详情) + U(编辑→预填→保存→刷新) + D(禁用/删除→不再出现)。
+
+#### 8. 浏览器交互强制配额（v2.12）
+
+> **核心原则**：API 级别的集成测试可以验证后端逻辑，但无法发现前端表单交互、表格渲染、搜索筛选、级联勾选等 UI 层 Bug。浏览器交互测试是防止"后端正确但前端不可用"类 Bug 的唯⼀手段。
+
+##### 强制配额规则
+
+| 规则 | 内容 |
+|------|------|
+| **最低占比** | 每个 E2E spec 文件中，浏览器交互用例（使用 `page.fill()`/`page.click()`/`page.goto()`/`page.locator()` 等 Playwright 浏览器 API）占该文件总用例数的 **≥ 30%** |
+| **每实体必含** | 每个 CRUD 实体（role/account/channel/customer/opportunity）至少 1 条"浏览器新增→列表验证"的端到端链路 |
+| **禁止全 API** | 禁止一个 spec 文件中所有数据准备都通过 `request.post()` 完成。至少 1 条用例从浏览器表单创建数据 |
+
+##### 浏览器交互用例模板
+
+```typescript
+// ✅ 浏览器交互用例模板 — 新增渠道（覆盖 Bug #1: 表单下拉框）
+test('[Browser] 新增企业渠道 → 表单填写 → 列表出现', async ({ page, request }) => {
+  await ensureAccountReady(request, ADMIN_PHONE, 'internal');
+  await pageLogin(page, ADMIN_PHONE);
+  
+  // 导航到渠道列表
+  await page.locator('text=渠道管理').click();
+  await page.locator('text=渠道列表').click();
+  await page.waitForLoadState('networkidle');
+  
+  // 点击新增按钮
+  await page.locator('button:has-text("新增")').click();
+  await page.waitForTimeout(500);
+  
+  // 填写表单 — 验证每个表单控件可交互
+  await page.locator('input[name="name"]').fill('浏览器测试渠道');
+  await page.locator('select[name="type"]').selectOption('enterprise');
+  await page.locator('input[name="contact_name"]').fill('测试联系人');
+  await page.locator('input[name="phone"]').fill('13900000001');
+  // 关键：验证下拉框可操作（Bug #1 就在这里漏测）
+  await page.locator('select[name="can_view_status"]').selectOption('1');
+  
+  // 提交
+  await page.locator('button[type="submit"]').click();
+  await page.waitForTimeout(2000);
+  
+  // 验证列表出现新数据
+  await expect(page.locator('table')).toContainText('浏览器测试渠道');
+});
+
+// ✅ 搜索筛选交互测试（覆盖 Bug #3）
+test('[Browser] 账号管理 → 搜索框输入 → 列表筛选', async ({ page, request }) => {
+  await ensureAccountReady(request, ADMIN_PHONE, 'internal');
+  await pageLogin(page, ADMIN_PHONE);
+  await page.locator('text=系统设置').click();
+  await page.locator('text=账号管理').click();
+  await page.waitForLoadState('networkidle');
+  
+  // 在搜索框输入
+  const searchInput = page.locator('input[placeholder*="搜索"], input[name="keyword"]');
+  await searchInput.fill('13800000000');
+  await searchInput.press('Enter');
+  await page.waitForTimeout(1000);
+  
+  // 验证列表已筛选
+  const rows = page.locator('table tbody tr');
+  await expect(rows.first()).toBeVisible();
+});
+
+// ✅ 编辑表单预填测试（覆盖 Bug #4）
+test('[Browser] 编辑客户 → 表单预填原值 → 修改 → 保存', async ({ page, request }) => {
+  // 先通过 API 创建一条数据
+  const adminResult = await ensureAccountReady(request, ADMIN_PHONE, 'internal');
+  const token = adminResult.token;
+  const chResp = await request.post(`${API}/channels`, { /* ... */ });
+  const custResp = await request.post(`${API}/customers`, { /* ... */ });
+  
+  // 浏览器编辑
+  await pageLogin(page, ADMIN_PHONE);
+  await page.goto('/customers');
+  await page.waitForLoadState('networkidle');
+  
+  // 点击编辑按钮
+  await page.locator('table tbody tr:first-child button:has-text("编辑")').click();
+  await page.waitForTimeout(500);
+  
+  // 关键断言：表单已预填原值（Bug #4 就在这里漏测）
+  await expect(page.locator('input[name="name"]')).not.toHaveValue('');
+  await expect(page.locator('input[name="phone"]')).not.toHaveValue('');
+  
+  // 修改并保存
+  await page.locator('input[name="name"]').fill('修改后的名称');
+  await page.locator('button[type="submit"]').click();
+  await page.waitForTimeout(1000);
+  
+  // 验证列表已更新
+  await expect(page.locator('table')).toContainText('修改后的名称');
+});
+```
+
+#### 9. 权限交叉矩阵（v2.12）
+
+> **核心原则**：权限 Bug 是最严重的功能缺陷（数据泄露/越权操作）。E2E 测试必须覆盖所有角色 × 端点组的交叉组合，而不仅仅是 happy path 角色。
+
+##### 矩阵生成规则
+
+多角色项目（≥2 角色）在 Stage 2 ③b-2 设计阶段必须生成以下矩阵：
+
+```
+┌────────────────────┬────────┬────────┬─────────┐
+│ 端点组              │ admin  │ sales  │ partner │
+├────────────────────┼────────┼────────┼─────────┤
+│ /api/roles/*       │  200   │  403   │  403    │
+│ /api/accounts/*    │  200   │  403   │  403    │
+│ /api/channels/*    │  200   │  200   │  403    │
+│ /api/customers/*   │  200   │  200   │  403    │
+│ /api/opportunities/approve │ 200 │ 403   │  403    │
+│ /api/opportunities/reassign │ 200│ 403   │  403    │
+│ /api/partner/*     │  403   │  403   │  200    │
+│ /api/menus/my      │  200   │  200   │  200    │
+└────────────────────┴────────┴────────┴─────────┘
+```
+
+##### 强制规则
+
+| 规则 | 内容 |
+|------|------|
+| **每格必测** | 矩阵中每个交叉格 = 1 条必写 E2E 用例。**403 格同样必写**（验证权限拦截有效） |
+| **禁止只测自己** | partner-flow 不能只用一个 partner 账号测试。必须包含 admin/sales 尝试访问 partner API 并验证 403 |
+| **双入口覆盖** | 如果项目有 internal/external 双入口，每个角色的每个入口组合都要覆盖 |
+
+##### 权限交叉测试模板
+
+```typescript
+// ✅ 权限交叉测试模板 — 覆盖 Bug #7
+test.describe('权限交叉矩阵', () => {
+  test('[Matrix] admin 访问 /api/partner/customers → 403', async ({ request }) => {
+    const adminResult = await ensureAccountReady(request, '13800000000', 'internal');
+    const resp = await request.get(`${API}/partner/customers`, {
+      headers: { Authorization: `Bearer ${adminResult.token}` },
+    });
+    expect(resp.status()).toBe(403); // admin 不可访问 partner API
+  });
+
+  test('[Matrix] sales 访问 /api/partner/* → 403', async ({ request }) => {
+    const salesResult = await ensureAccountReady(request, '13800000001', 'internal');
+    const resp = await request.get(`${API}/partner/customers`, {
+      headers: { Authorization: `Bearer ${salesResult.token}` },
+    });
+    expect(resp.status()).toBe(403);
+  });
+
+  test('[Matrix] partner 访问 /api/admin/* → 403', async ({ request }) => {
+    const partnerResult = await ensureAccountReady(request, '13800000002', 'external');
+    const resp = await request.get(`${API}/customers`, {
+      headers: { Authorization: `Bearer ${partnerResult.token}` },
+    });
+    expect(resp.status()).toBe(403); // partner 不可访问内部 API
+  });
+
+  test('[Matrix] sales 审批商机 → 403', async ({ request }) => {
+    const salesResult = await ensureAccountReady(request, '13800000001', 'internal');
+    const resp = await request.post(`${API}/opportunities/1/approve`, {
+      headers: { Authorization: `Bearer ${salesResult.token}` },
+      data: { owner_id: 1, protection_until: '2027-12-31T00:00:00' },
+    });
+    expect(resp.status()).toBe(403); // 非管理员不可审批
+  });
+});
+```
+
+#### 10. 状态双向断言（v2.12）
+
+> **核心原则**：状态变更后，仅验证"新状态出现了"是不够的。必须同时验证"旧状态已消失"。单向断言是状态机 Bug（如已审核商机仍出现在待审核列表）的第一漏测原因。
+
+##### 强制模式
+
+```typescript
+// ❌ 错误：单向断言 — 只验证"到了哪里"
+await adminFactory.approveOpportunity(opp.id, ownerId, date);
+const reviewed = await getReviewedList();
+expect(reviewed.find(o => o.id === opp.id)).toBeDefined();
+// ← 只断言了"出现在已审核列表"，没断言"从待审核列表消失"
+
+// ✅ 正确：双向断言 — 同时验证 source 和 target
+test('审批通过 → 已审核列表出现 + 待审核列表消失', async () => {
+  await adminFactory.approveOpportunity(opp.id, ownerId, date);
+  
+  // 正向断言：target 列表包含
+  const reviewed = await adminFactory.getReviewedList({ approvalStatus: 'approved' });
+  expect(reviewed.find(o => o.id === opp.id)).toBeDefined();
+  
+  // 反向断言：source 列表不包含（v2.12 强制，不可省略）
+  const pending = await adminFactory.getPendingReviewList();
+  expect(pending.find(o => o.id === opp.id)).toBeUndefined();
+});
+```
+
+##### 状态转换双向断言清单
+
+| 转换 | 正向断言（target 出现） | 反向断言（source 消失） |
+|------|----------------------|----------------------|
+| pending → approved | 在 `reviewed(approved)` 中 | 不在 `pending-review` 中 |
+| pending → rejected | 在 `reviewed(rejected)` 中 | 不在 `pending-review` 中 |
+| approved → revoked | 在 `pending-review` 中 | 不在 `reviewed(approved)` 中 |
+| following → implementing | `opp_status=implementing` | `opp_status≠following` |
+| implementing → online | `opp_status=online` | `opp_status≠implementing` |
+| online → closed | `opp_status=closed` | `opp_status≠online` |
+| 商机调配 owner A→B | owner=B 可查看 | owner=A 不可查看（如业务需隔离） |
+
+#### 11. CRUD 完整生命周期模板（v2.12）
+
+> **核心原则**：每个实体必须覆盖完整的 C-R-U-D 生命周期，不能只测"创建"而漏掉"编辑回填"和"删除后消失"。
+
+##### 每实体强制覆盖
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ 实体: role / account / channel / customer / opportunity  │
+├──────────────────────────────────────────────────────────┤
+│ C: 浏览器表单创建 → 列表出现新行           [P0 不可跳过] │
+│ R: 列表加载 → 详情数据完整（所有字段非空）  [P0 不可跳过] │
+│ U: 点击编辑 → 表单预填原值 → 修改 → 刷新验证 [P0 不可跳过] │
+│ D: 禁用/删除 → 列表不再出现              [P1]            │
+└──────────────────────────────────────────────────────────┘
+```
+
+##### 编辑表单预填测试模板（覆盖 Bug #4）
+
+```typescript
+// ✅ 每个实体必须包含此模板
+test.describe('[Lifecycle] ${Entity} CRUD 完整生命周期', () => {
+  let entityId: number;
+
+  test('[C] 浏览器新增 → 列表可见', async ({ page, request }) => {
+    // 表单创建 + 列表断言
+  });
+
+  test('[R] 列表 → 详情数据完整', async ({ page, request }) => {
+    await page.goto(`/${entityPlural}`);
+    await page.locator('table tbody tr:first-child').click();
+    await page.waitForTimeout(500);
+    // 关键：验证详情所有字段已渲染
+    await expect(page.locator('[data-field="name"]')).not.toBeEmpty();
+    await expect(page.locator('[data-field="phone"]')).not.toBeEmpty();
+  });
+
+  test('[U] 编辑 → 表单预填 → 修改 → 保存', async ({ page, request }) => {
+    await page.goto(`/${entityPlural}`);
+    await page.locator('table tbody tr:first-child button:has-text("编辑")').click();
+    await page.waitForTimeout(500);
+    
+    // 🔴 强制断言：编辑表单已预填原值
+    await expect(page.locator('input[name="name"]')).not.toHaveValue('');
+    // 修改
+    await page.locator('input[name="name"]').fill('修改后');
+    await page.locator('button[type="submit"]').click();
+    // 刷新验证
+    await expect(page.locator('table')).toContainText('修改后');
+  });
+
+  test('[D] 禁用 → 列表中标记为禁用', async ({ page, request }) => {
+    // 禁用操作 + 状态验证
+  });
+});
+```
 
 #### 7. 全流程深度测试（v2.7 强制）
 
