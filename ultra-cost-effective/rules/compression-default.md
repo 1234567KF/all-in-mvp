@@ -38,6 +38,16 @@ UltraCostEffective L1 层压缩（tokenforge + lean-ctx）默认**全自动开�
 - 数据库 CLI: mysql, psql, sqlite3
 - 编辑器: vim, nano, code, emacs
 
+## 永不压缩白名单
+
+以下文件/标记**永久排除**在 L1 压缩之外，即使用户未主动设置：
+
+| 白名单项 | 路径/匹配 | 理由 |
+|----------|----------|------|
+| **质量宪法** | `*QUALITY_CONSTITUTION.md` | 不可削减的质量基线，压缩会导致理解偏差 |
+| **E2E 门禁脚本** | `*e2e-quality-gate.ps1` | 可执行探针，压缩可能破坏逻辑完整性 |
+| **MODE_DECISION 标记** | `*MODE_DECISION*` | 决策上下文必须完整保留 |
+
 ## 手动控制
 
 ### 环境变量
