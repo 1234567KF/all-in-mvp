@@ -24,6 +24,9 @@ skills:
 | 模块边界合理性 | module docs 的接口/表分配是否与 schema + api-contract 一致？ | 审查 ② |
 | 术语一致性 | PRD / spec / module docs 中同一概念是否使用同一术语？ | 审查双方 |
 | 验收标准对齐 | module docs 的验收标准是否完整覆盖 PRD 的验收标准？ | 审查 ② |
+| **隐含交互完整性（v2.8 新增）** | 列表页是否缺少搜索/过滤/排序定义？表单页是否缺少校验规则？详情页是否缺少按钮交互？ | 审查 ①② 双方 |
+
+> **隐含交互完整性判定**：识别所有列表端点 → 检查 PRD 是否定义了搜索/过滤 → 检查 module.md 是否展开对应 AC。缺失项为 WARNING 级别（非阻塞，但需在 decisions 中记录）。如 PRD 有列表交互标准表但 module.md 未展开 → 升级为 ERROR。
 
 ## Output
 - 审查报告：逐项列出 PASS/FAIL 及原因

@@ -27,6 +27,8 @@ skills:
 - [ ] 测试是否覆盖 happy path + exception path？
 - [ ] 代码风格和命名是否一致？
 - [ ] 是否有硬编码（token、密钥、URL）？
+- [ ] **路由层 validate schema 是否完整覆盖所有查询参数？**（检查：有无 `.passthrough()` 或显式声明了 keyword/status/type 等过滤字段？若缺少 `.passthrough()` 且未显式声明过滤参数 → P0 阻断）
+- [ ] **与同类模块的实现模式是否一致？**（检查：paginationSchema 定义模式、错误处理模式、响应包装模式。与同类模块不一致 → P1）
 
 ## 执行流程
 1. 读取实现文件：`src/modules/<module>/`

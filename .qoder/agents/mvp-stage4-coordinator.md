@@ -52,7 +52,39 @@ skills:
   ├── 通过率阈值：Happy Path 100%，Exception Path ≥80%
   └── 输出测试报告 + Bug 清单（每个 Bug 标注所属模块）
     ↓
-4.4 Bug 精准路由与修复循环
+4.4 Bug 根因深度诊断协议（P0 强制）
+
+> **适用范围**：所有 P0/P1 级「功能不起效」类 Bug。执行于 Bug 路由到原开发 Agent 之前。
+
+**五层验证（不可跳过）**：
+
+```
+1. 前端层 → DevTools Network 验证请求 URL/Payload 是否正确发出
+2. 中间件层 → 验证 validate/auth/guard 是否拦截或修改了请求参数
+3. 控制器层 → 验证 controller 收到的 query/body 参数是否完整
+4. 服务层 → 验证 SQL 查询是否正确使用了过滤条件
+5. 数据库层 → 验证数据本身是否符合查询条件
+
+每层验证通过才能判定「该层无问题」。
+连续 2 次修复同一 Bug 仍失败 → 触发人工审查。
+```
+
+**诊断模板**（写入 Bug 报告）：
+```markdown
+## 根因诊断
+| 层级 | 验证方式 | 结果 | 证据 |
+|------|---------|:--:|------|
+| 1. 前端层 | Network 面板检查请求 Payload | ✅/❌ | <截图/日志> |
+| 2. 中间件层 | validate schema 和 .passthrough() 检查 | ✅/❌ | <代码行号> |
+| 3. 控制器层 | controller 入参 log | ✅/❌ | <日志> |
+| 4. 服务层 | SQL 查询日志 | ✅/❌ | <SQL 语句> |
+| 5. 数据库层 | 直接查询数据库验证数据 | ✅/❌ | <查询结果> |
+
+根因定位层级：第 __ 层
+修复方案：<具体方案>
+```
+
+4.5 Bug 精准路由与修复循环
   ├── **第一步：按模块溯源** → 读取 `pipeline-state.json` 的 `module_agent_map`
   ├── **第二步：精确路由** → 根据 Bug 所属模块，将 Bug 发回当初开发该模块的原 Agent
   │   ├── 后端模块 Bug → 路由给写该模块的 mvp-backend-tdd（非 mvp-debug-fixer）
@@ -66,7 +98,7 @@ skills:
   ├── **第五步：跨模块 Bug 升级** → 同一 Bug 涉及 2+ 模块 → Coordinator 协调双方 Agent 同步修复
   └── **循环终止**：见「Bug 修复循环终止条件」
     ↓
-4.5 产物归档
+4.6 产物归档
   └── 整理 `delivery/` 目录（docs/ + backend/ + frontend/ + integration-tests/）
 ```
 

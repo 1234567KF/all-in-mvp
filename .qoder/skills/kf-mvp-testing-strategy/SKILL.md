@@ -11,11 +11,13 @@ metadata:
 recommended_model: deepseek-v4-pro
 graph:
   dependencies:
+    - target: kf-mvp-playwright-infra
+      type: semantic
     - target: all-in-mvp
       type: semantic
 ---
 
-# MVP Testing Strategy �?测试策略技�?
+# MVP Testing Strategy �?测试策略技�?
 
 > **Core Belief**: Testing is not about coverage percentage. It's about confidence. A well-tested system can be changed without fear. The pyramid structure optimizes for that confidence.
 
@@ -33,25 +35,25 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-1. **Test pyramid** �?More unit tests, fewer integration tests
-2. **Confidence over coverage** �?80% coverage with real tests > 100% with shallow tests
-3. **Fast feedback** �?Run fast tests first
-4. **Continuous testing** �?Tests run on every commit
+1. **Test pyramid** �?More unit tests, fewer integration tests
+2. **Confidence over coverage** �?80% coverage with real tests > 100% with shallow tests
+3. **Fast feedback** �?Run fast tests first
+4. **Continuous testing** �?Tests run on every commit
 
 ---
 
 # Test Pyramid
 
 ```
-           ┌─────────────�?
-           �?  E2E Tests �?    10%
-          ┌─────────────�?
-         ┌───────────────�?
-         �?Integration   �?  30%
-        ┌───────────────�?
-       ┌─────────────────�?
-       �? Unit Tests     �?  60%
-      ┌─────────────────�?
+           ┌─────────────�?
+           �?  E2E Tests �?    10%
+          ┌─────────────�?
+         ┌───────────────�?
+         �?Integration   �?  30%
+        ┌───────────────�?
+       ┌─────────────────�?
+       �? Unit Tests     �?  60%
+      ┌─────────────────�?
 ```
 
 ## Layer Details
@@ -118,46 +120,46 @@ npm run test:e2e
 
 ---
 
-# Test Naming & Organization Standards (MUST �?迭代19核心修复)
+# Test Naming & Organization Standards (MUST �?迭代19核心修复)
 
-**问题**：测试用例命名混乱、组织无序，导致测试难以维护、失败时难以定位�?
+**问题**：测试用例命名混乱、组织无序，导致测试难以维护、失败时难以定位�?
 
-**解决方案**：MUST 遵循 **统一命名规范** �?**文件组织标准**�?
+**解决方案**：MUST 遵循 **统一命名规范** �?**文件组织标准**�?
 
 ## 测试文件组织
 
 ```
 tests/
 ├── unit/                          # L1: 单元测试
-�?  ├── modules/
-�?  �?  ├── user/
-�?  �?  �?  ├── user.service.test.ts      # 服务函数
-�?  �?  �?  ├── user.validator.test.ts    # 验证�?
-�?  �?  �?  └── user.state-machine.test.ts # 状态机
-�?  �?  └── product/
-�?  �?      └── product.service.test.ts
-�?  └── utils/
-�?      └── date-helper.test.ts
+�?  ├── modules/
+�?  �?  ├── user/
+�?  �?  �?  ├── user.service.test.ts      # 服务函数
+�?  �?  �?  ├── user.validator.test.ts    # 验证�?
+�?  �?  �?  └── user.state-machine.test.ts # 状态机
+�?  �?  └── product/
+�?  �?      └── product.service.test.ts
+�?  └── utils/
+�?      └── date-helper.test.ts
 ├── integration/                   # L2-L3: 集成测试
-�?  ├── api/
-�?  �?  ├── user.api.test.ts       # API路由测试
-�?  �?  └── product.api.test.ts
-�?  ├── db/
-�?  �?  ├── transaction.test.ts    # 数据库事�?
-�?  �?  └── migration.test.ts      # 迁移测试
-�?  └── contract/
-�?      └── mock-consistency.test.ts
+�?  ├── api/
+�?  �?  ├── user.api.test.ts       # API路由测试
+�?  �?  └── product.api.test.ts
+�?  ├── db/
+�?  �?  ├── transaction.test.ts    # 数据库事�?
+�?  �?  └── migration.test.ts      # 迁移测试
+�?  └── contract/
+�?      └── mock-consistency.test.ts
 ├── e2e/                           # L4-L5: E2E测试
-�?  ├── scenarios/
-�?  �?  ├── checkout-flow.spec.ts
-�?  �?  └── auth-flow.spec.ts
-�?  └── pages/
-�?      └── login.spec.ts
+�?  ├── scenarios/
+�?  �?  ├── checkout-flow.spec.ts
+�?  �?  └── auth-flow.spec.ts
+�?  └── pages/
+�?      └── login.spec.ts
 ├── security/                      # 安全测试
-�?  ├── injection.test.ts
-�?  └── rate-limit.test.ts
+�?  ├── injection.test.ts
+�?  └── rate-limit.test.ts
 ├── performance/                   # 性能测试
-�?  └── load.test.ts
+�?  └── load.test.ts
 └── factories/                     # 测试工厂
     └── TestFactory.ts
 ```
@@ -174,10 +176,10 @@ tests/
 | 安全测试 | `[attack].test.ts` | `sql-injection.test.ts` |
 | 性能测试 | `[metric].test.ts` | `api-load.test.ts` |
 
-### 用例命名（迭�?9标准化）
+### 用例命名（迭�?9标准化）
 
 ```typescript
-// �?正确：描述性行�?+ 条件 + 结果
+// �?正确：描述性行�?+ 条件 + 结果
 describe('UserService', () => {
   describe('createUser', () => {
     it('should create user with valid email and password', async () => {
@@ -194,7 +196,7 @@ describe('UserService', () => {
   });
 });
 
-// �?正确：API测试用describe分组
+// �?正确：API测试用describe分组
 describe('POST /api/users', () => {
   describe('201 Created', () => {
     it('should return user object with id when input is valid', async () => {});
@@ -210,21 +212,21 @@ describe('POST /api/users', () => {
   });
 });
 
-// �?错误：命名不清晰
+// �?错误：命名不清晰
 describe('user', () => {
-  it('test1', () => {});      // 无意�?
-  it('should work', () => {}); // 太模�?
-  it('error', () => {});       // 不完�?
+  it('test1', () => {});      // 无意�?
+  it('should work', () => {}); // 太模�?
+  it('error', () => {});       // 不完�?
 });
 ```
 
-### 命名检查清�?
+### 命名检查清�?
 
-- [ ] 每个 `it` 描述�?"should" 开�?
-- [ ] 描述包含：行�?+ 条件（when/if/with�?
-- [ ] `describe` 按功�?状态码分组
-- [ ] 避免无意义的编号（test1, test2�?
-- [ ] 避免过于笼统的描述（"should work"�?
+- [ ] 每个 `it` 描述�?"should" 开�?
+- [ ] 描述包含：行�?+ 条件（when/if/with�?
+- [ ] `describe` 按功�?状态码分组
+- [ ] 避免无意义的编号（test1, test2�?
+- [ ] 避免过于笼统的描述（"should work"�?
 
 ## Unit Test Naming
 
@@ -279,11 +281,11 @@ describe('Brand Owner', () => {
 
 | Type | Mock? | Reason |
 |------|-------|--------|
-| Database | �?| Faster, isolated |
-| External APIs | �?| Stability, rate limits |
-| File system | �?| Clean state |
-| Time | �?| Deterministic |
-| Random | �?| Deterministic |
+| Database | �?| Faster, isolated |
+| External APIs | �?| Stability, rate limits |
+| File system | �?| Clean state |
+| Time | �?| Deterministic |
+| Random | �?| Deterministic |
 
 ## What NOT to Mock
 
@@ -314,11 +316,11 @@ export const testUsers = {
 };
 ```
 
-## Factories (MUST �?迭代15标准�?
+## Factories (MUST �?迭代15标准�?
 
-**问题**：各模块测试数据分散、重复，不同测试用hardcoded ID导致冲突，数据工厂不统一导致测试不稳定�?
+**问题**：各模块测试数据分散、重复，不同测试用hardcoded ID导致冲突，数据工厂不统一导致测试不稳定�?
 
-**解决方案**：MUST 使用 **统一TestFactory**，所有测试数据通过工厂创建，确保隔离性和一致性�?
+**解决方案**：MUST 使用 **统一TestFactory**，所有测试数据通过工厂创建，确保隔离性和一致性�?
 
 ### 统一TestFactory模板
 
@@ -339,7 +341,7 @@ export class TestFactory {
     // 注册测试路由
   }
 
-  // 生成唯一ID（避免hardcoded冲突�?
+  // 生成唯一ID（避免hardcoded冲突�?
   private nextId(): number {
     return ++this.idCounter;
   }
@@ -387,7 +389,7 @@ export class TestFactory {
     
     await this.db.insert(orders).values(order);
 
-    // 自动创建订单�?
+    // 自动创建订单�?
     if (overrides.items) {
       let total = 0;
       for (const item of overrides.items) {
@@ -415,7 +417,7 @@ export class TestFactory {
     return order;
   }
 
-  // 溯源码工�?
+  // 溯源码工�?
   async createTraceCode(overrides: Partial<TraceCode> = {}): Promise<TraceCode> {
     const productId = overrides.productId || (await this.createProduct()).id;
     
@@ -436,9 +438,9 @@ export class TestFactory {
     return createToken(user);
   }
 
-  // 清理所有数�?
+  // 清理所有数�?
   async cleanup(): Promise<void> {
-    // 按依赖顺序清理（先子表后父表�?
+    // 按依赖顺序清理（先子表后父表�?
     await this.db.delete(orderItems);
     await this.db.delete(orders);
     await this.db.delete(traceCodes);
@@ -452,12 +454,12 @@ export class TestFactory {
 ### Factory使用规范
 
 ```typescript
-// �?正确：使用Factory创建数据
+// �?正确：使用Factory创建数据
 describe('Order Module', () => {
   const factory = new TestFactory();
 
   afterEach(async () => {
-    await factory.cleanup(); // 每个测试后清�?
+    await factory.cleanup(); // 每个测试后清�?
   });
 
   it('should create order with items', async () => {
@@ -472,7 +474,7 @@ describe('Order Module', () => {
   });
 });
 
-// �?错误：hardcoded ID
+// �?错误：hardcoded ID
 describe('Order Module', () => {
   it('should create order', async () => {
     const order = await createOrder({ userId: 1 }); // 可能与其他测试冲突！
@@ -485,12 +487,12 @@ describe('Order Module', () => {
 | 原则 | 说明 |
 |------|------|
 | 自增ID | 使用内部计数器，避免hardcoded ID冲突 |
-| 自动关联 | 创建子实体时自动创建父实体（除非指定�?|
-| 默认值合�?| 所有字段有有意义的默认值，减少overrides |
-| 可清�?| 提供cleanup方法，确保测试隔�?|
-| 类型安全 | 所有工厂方法返回正确类�?|
+| 自动关联 | 创建子实体时自动创建父实体（除非指定�?|
+| 默认值合�?| 所有字段有有意义的默认值，减少overrides |
+| 可清�?| 提供cleanup方法，确保测试隔�?|
+| 类型安全 | 所有工厂方法返回正确类�?|
 
-## Factories (基础�?
+## Factories (基础�?
 ```typescript
 // tests/factories/userFactory.ts
 export const createUser = (overrides = {}) => ({
@@ -514,11 +516,11 @@ export const createUser = (overrides = {}) => ({
 
 ---
 
-# Test Reporting & Coverage (MUST �?迭代16核心修复)
+# Test Reporting & Coverage (MUST �?迭代16核心修复)
 
-**问题**：测试结果和覆盖率报告分散，难以追踪趋势，CI失败时难以定位问题�?
+**问题**：测试结果和覆盖率报告分散，难以追踪趋势，CI失败时难以定位问题�?
 
-**解决方案**：MUST 配置 **统一测试报告** �?**覆盖率可视化**�?
+**解决方案**：MUST 配置 **统一测试报告** �?**覆盖率可视化**�?
 
 ## 测试报告配置
 
@@ -554,13 +556,13 @@ export default defineConfig({
 });
 ```
 
-## 覆盖率报告解�?
+## 覆盖率报告解�?
 
 ```bash
-# 生成覆盖率报�?
+# 生成覆盖率报�?
 npx vitest run --coverage
 
-# 输出示例�?
+# 输出示例�?
 # --------------- Coverage ---------------
 # File           | Statements | Branches | Functions | Lines
 # ---------------|------------|----------|-----------|-------
@@ -590,11 +592,11 @@ npx vitest run --coverage
     path: test-results/
 ```
 
-# CI/CD Pipeline Testing (MUST �?迭代17核心修复)
+# CI/CD Pipeline Testing (MUST �?迭代17核心修复)
 
-**问题**：测试只在本地运行，CI环境配置不同导致测试失败，部署前未验证�?
+**问题**：测试只在本地运行，CI环境配置不同导致测试失败，部署前未验证�?
 
-**解决方案**：MUST 配置 **CI流水线测�?*，确保每次提交都自动运行测试�?
+**解决方案**：MUST 配置 **CI流水线测�?*，确保每次提交都自动运行测试�?
 
 ## GitHub Actions配置
 
@@ -634,30 +636,12 @@ jobs:
         with:
           files: ./coverage/lcov.info
 
-  e2e:
-    runs-on: ubuntu-latest
-    needs: test
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Install Playwright
-        run: npx playwright install chromium
-      
-      - name: Run L5 E2E tests
-        run: npx playwright test --project=chromium-headless
-      
-      - name: Upload test results
-        uses: actions/upload-artifact@v3
-        with:
-          name: playwright-report
-          path: playwright-report/
+  # E2E 测试 job — 完整配置（含 playwright 安装、截图基线、产物上传）见 kf-mvp-playwright-infra 技能 Section 2
+  # 关键命令：npx playwright install --with-deps chromium
+  #          npx playwright test --project=chromium-headless
 ```
 
-## 流水线测试阶�?
+## 流水线测试阶�?
 
 | 阶段 | 触发条件 | 测试内容 | 时间目标 |
 |------|---------|---------|---------|
@@ -699,8 +683,8 @@ jobs:
 
 # Gotchas
 
-- **Isolation** �?Each test must be independent
-- **Determinism** �?No random failures
-- **Speed** �?Unit tests should be < 1ms each
-- **Maintenance** �?Tests that break often need redesign
-- **Coverage** �?100% coverage with bad tests = 0 confidence
+- **Isolation** �?Each test must be independent
+- **Determinism** �?No random failures
+- **Speed** �?Unit tests should be < 1ms each
+- **Maintenance** �?Tests that break often need redesign
+- **Coverage** �?100% coverage with bad tests = 0 confidence

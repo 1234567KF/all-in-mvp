@@ -7,14 +7,16 @@ description: >-
   flow needs automated testing.
 metadata:
   pattern: generator
-  domain: mvp-stage2,mvp-stage3
-recommended_model: minimax-m2.7
+  domain: mvp-stage2
+recommended_model: mino-v2.5-pro
 graph:
   dependencies:
     - target: kf-mvp-biz-expert
       type: sequential
     - target: kf-mvp-prd-generator
       type: sequential
+    - target: kf-mvp-playwright-infra
+      type: semantic
     - target: all-in-mvp
       type: semantic
 ---
@@ -23,18 +25,16 @@ graph:
 - Testing: Vitest (unit/integration) + Playwright (E2E)
 - Backend test: Hono app.request() adapter + SQLite in-memory
 
+> **Infrastructure Note**: Playwright 配置（headed/headless、CI、截图基线、浏览器实例池、storageState）统一由 `kf-mvp-playwright-infra` 技能管理。本技能聚焦测试用例编写，不重复基础设施配置。
+
 Load `references/mvp-tech-stack-default.md` for full specification.
 
 
 # MVP End-to-End Scenario Test Writer �?业务条线测试编写技�?
 
-> **Core Belief**: Single module tests verify interfaces work. E2E tests verify business works. A business story must be told from start to finish, not in fragments. And after implementation, tests MUST adapt to reality.
+> **Core Belief**: Single module tests verify interfaces work. E2E tests verify business works. A business story must be told from start to finish, not in fragments.
 
-**Division of Labor**: This Skill has TWO phases:
-1. **E2E-Write** (Stage 2): Cross-module scenario test generation based on PRD business flows. Outputs `integration-tests/scenarios/`.
-2. **E2E-Adapt** (Stage 3.5): Adapt existing E2E tests to match actual backend implementation after all modules DONE. Fixes contract drift, fills coverage gaps, ensures ≥70 cases.
-
-Follows Generator pattern with strict story templates.
+**Division of Labor**: This Skill focuses on **cross-module scenario test generation** based on PRD business flows. It outputs tests in `integration-tests/scenarios/`. Follows Generator pattern with strict story templates.
 
 ---
 
@@ -848,6 +848,431 @@ test.describe('[Workflow] 内部用户全流程', () => {
 
 ---
 
+# Playwright API 最佳实践（v2.8 新增）
+
+> **定位**：`kf-mvp-playwright-infra` 管理配置，本节聚焦 **测试编写时的 Playwright API 用法**。
+
+---
+
+## 1. Locator 优先级策略
+
+> **核心原则**：越接近用户视角的选择器越稳定。CSS 类名会变，用户看到的文本和角色不会。
+
+| 优先级 | 选择器 | 示例 | 说明 |
+|:------:|--------|------|------|
+| 1 (最高) | `data-testid` | `page.locator('[data-testid="btn-submit"]')` | 专为测试设计，不受重构影响 |
+| 2 | `getByRole` | `page.getByRole('button', { name: '提交' })` | 语义化，符合无障碍标准 |
+| 3 | `getByText` | `page.getByText('确认删除')` | 用户可见文本 |
+| 4 | `getByLabel` | `page.getByLabel('用户名')` | 表单字段 |
+| 5 | `getByPlaceholder` | `page.getByPlaceholder('请输入手机号')` | 输入提示 |
+| 6 (最低) | CSS 选择器 | `page.locator('.btn-primary')` | 仅做兜底，不绑定具体 UI 框架 |
+
+**强制规则**:
+- MUST 优先使用 `data-testid`，前端组件必须预埋
+- MUST NOT 使用 `.ant-btn-primary > span:nth-child(2)` 等脆弱选择器
+- MUST NOT 使用 XPath（可读性差且维护成本高）
+- 复合定位时链式调用：`page.locator('[data-testid="form"]').getByRole('button', { name: '提交' })`
+
+---
+
+## 2. 等待策略 (waitFor)
+
+> **核心原则**：永远不要 `waitForTimeout()`。等待具体的网络事件、DOM 状态或条件。
+
+| 场景 | 正确做法 | 错误做法 |
+|------|---------|---------|
+| 等待 API 响应 | `waitForResponse(url => url.includes('/api/xxx'))` | `waitForTimeout(2000)` |
+| 等待元素可见 | `waitForSelector('[data-testid="result"]', { state: 'visible' })` | `waitForTimeout(1000)` |
+| 等待页面加载 | `waitForLoadState('networkidle')` | `waitForTimeout(3000)` |
+| 等待导航完成 | `waitForURL(/dashboard/)` | `waitForTimeout(2000)` |
+| 等待动画结束 | `waitForLoadState('domcontentloaded')` + 元素断言 | `waitForTimeout(500)` |
+
+### 等待 API 响应的标准模式
+
+```typescript
+// 触发操作并同时等待 API 完成
+const [response] = await Promise.all([
+  page.waitForResponse(resp =>
+    resp.url().includes('/api/opportunities') &&
+    resp.request().method() === 'POST' &&
+    resp.status() === 200
+  ),
+  page.click('[data-testid="btn-submit"]'),
+]);
+
+// 验证响应体（可选）
+const body = await response.json();
+expect(body.data.id).toBeDefined();
+```
+
+### 轮询等待（仅用于异步任务）
+
+```typescript
+// 等待后台任务完成（如文件导入、批量处理）
+await expect(async () => {
+  await page.reload();
+  const status = page.locator('[data-testid="task-status"]');
+  await expect(status).toHaveText('已完成');
+}).toPass({ timeout: 30_000 }); // 最多轮询 30 秒
+```
+
+---
+
+## 3. 网络拦截与 Mock (page.route)
+
+> **用途**：模拟后端异常、慢响应、特定数据场景，不依赖真实 API。
+
+### 模拟 API 错误
+
+```typescript
+// 模拟 500 服务器错误
+await page.route('**/api/opportunities', route => {
+  route.fulfill({
+    status: 500,
+    contentType: 'application/json',
+    body: JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: '服务器异常' } }),
+  });
+});
+
+await page.goto('/opportunities');
+await expect(page.locator('[data-testid="error-message"]')).toBeVisible();
+```
+
+### 模拟慢响应（测试 Loading 状态）
+
+```typescript
+await page.route('**/api/opportunities', async route => {
+  await new Promise(resolve => setTimeout(resolve, 3000)); // 延迟 3 秒
+  route.continue();
+});
+
+await page.goto('/opportunities');
+// 此时 loading 骨架屏应该可见
+await expect(page.locator('[data-testid="loading-skeleton"]')).toBeVisible();
+```
+
+### 修改 API 响应数据
+
+```typescript
+await page.route('**/api/opportunities/*', async route => {
+  const response = await route.fetch();
+  const json = await response.json();
+  // 注入特殊数据用于测试
+  json.data.status = 'pending_review';
+  route.fulfill({ response, json });
+});
+```
+
+### 拦截规则
+
+- MUST 用 `**` 通配符匹配 API 路径（不硬编码域名）
+- MUST 在 `page.goto()` 之前设置 route 拦截
+- MUST 在测试结束后取消拦截（`page.unroute()` 或在 test fixture 中自动清理）
+- MUST NOT 拦截所有请求 — 只拦截测试需要的特定路径
+
+---
+
+## 4. 认证状态复用 (storageState)
+
+> **原则**：登录一次，所有测试复用。详细配置见 `kf-mvp-playwright-infra`。
+
+```typescript
+// 在 fixture 中使用预保存的认证状态
+import { test as base } from '@playwright/test';
+
+export const test = base.extend<{ authenticatedPage: Page }>({
+  authenticatedPage: async ({ browser }, use) => {
+    const context = await browser.newContext({
+      storageState: './e2e/.auth/storage-state.json',
+    });
+    const page = await context.newPage();
+    await use(page);
+    await context.close();
+  },
+});
+```
+
+**多角色场景**：为每个角色维护独立的 storageState 文件：
+
+```
+e2e/.auth/
+├── admin-state.json      # 管理员
+├── sales-state.json      # 销售人员
+└── channel-state.json    # 渠道人员
+```
+
+---
+
+## 5. API 路由拦截模式 (APIRequestContext)
+
+> **用途**：在 Playwright E2E 测试中直接调用 API 做数据准备或验证，绕过 UI 操作。
+
+```typescript
+test('批量创建后可在列表中查到', async ({ page, request }) => {
+  // 通过 API 直接创建测试数据（绕过表单 UI）
+  const createResp = await request.post('/api/opportunities', {
+    data: { name: '测试商机', amount: 50000, stage: 'initial' },
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  expect(createResp.ok()).toBeTruthy();
+
+  // 通过 UI 验证数据出现
+  await page.goto('/opportunities');
+  await expect(page.getByText('测试商机')).toBeVisible();
+});
+```
+
+**适用场景**:
+- 数据准备（beforeAll 中用 API 创建大量数据）
+- 验证 UI 操作后的后端状态（API 查数据库确认）
+- 绕过复杂的 UI 流程来测试下游功能
+
+---
+
+# 移动端 / H5 测试（v2.8 新增）
+
+> **定位**：覆盖移动端特有场景 — 手势、WebView、弱网、离线。Desktop 视觉回归已由 v2.5 多分辨率矩阵覆盖，本节聚焦 **移动端独有能力**。
+
+---
+
+## 1. 移动端设备模拟
+
+Playwright 内置设备描述符自动设置 viewport、userAgent、deviceScaleFactor、isMobile、hasTouch：
+
+```typescript
+// playwright.config.ts projects（已由 kf-mvp-playwright-infra 提供模板）
+{
+  name: 'mobile-chrome',
+  use: { ...devices['Pixel 5'] },    // 393×851, Android
+},
+{
+  name: 'mobile-safari',
+  use: { ...devices['iPhone 13'] },   // 390×844, iOS
+},
+```
+
+**强制规则**:
+- 有移动端需求的页面 MUST 在至少一个移动设备 project 下测试
+- MUST NOT 仅用 `page.setViewportSize()` 模拟移动端 — 它不设置 touch/userAgent
+
+---
+
+## 2. 手势模拟
+
+### 滑动 (Swipe / Scroll)
+
+```typescript
+// 下拉刷新
+const pullZone = page.locator('[data-testid="pull-to-refresh"]');
+const box = await pullZone.boundingBox();
+if (box) {
+  await page.mouse.move(box.x + box.width / 2, box.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y + 200, { steps: 10 });
+  await page.mouse.up();
+}
+// 等待刷新完成
+await page.waitForResponse(resp => resp.url().includes('/api/refresh'));
+```
+
+```typescript
+// 左滑删除（列表项）
+const item = page.locator('[data-testid="list-item-1"]');
+const itemBox = await item.boundingBox();
+if (itemBox) {
+  await page.mouse.move(itemBox.x + itemBox.width / 2, itemBox.y + itemBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(itemBox.x - 100, itemBox.y + itemBox.height / 2, { steps: 5 });
+  await page.mouse.up();
+}
+await expect(page.locator('[data-testid="btn-delete"]')).toBeVisible();
+```
+
+### 捏合缩放 (Pinch)
+
+```typescript
+// Playwright 不直接支持多点触控，使用 CDP 协议
+const client = await page.context().newCDPSession(page);
+
+// 模拟 pinch-in（缩小）
+await client.send('Input.dispatchTouchEvent', {
+  type: 'touchStart',
+  touchPoints: [
+    { x: 200, y: 300 },
+    { x: 300, y: 300 },
+  ],
+});
+await client.send('Input.dispatchTouchEvent', {
+  type: 'touchMove',
+  touchPoints: [
+    { x: 230, y: 300 },
+    { x: 270, y: 300 },
+  ],
+});
+await client.send('Input.dispatchTouchEvent', {
+  type: 'touchEnd',
+  touchPoints: [],
+});
+```
+
+### 长按
+
+```typescript
+// 长按触发上下文菜单
+await page.locator('[data-testid="message-item"]').click({
+  button: 'left',
+  delay: 1000, // 按住 1 秒 = 长按
+});
+await expect(page.locator('[data-testid="context-menu"]')).toBeVisible();
+```
+
+---
+
+## 3. WebView 场景
+
+> **场景**：H5 页面嵌入原生 App WebView，需要验证 H5 在受限环境中的表现。
+
+### 模拟 WebView 环境
+
+```typescript
+test('H5 page works in WebView-like context', async ({ page }) => {
+  // 模拟 WebView 的受限环境
+  await page.context().addInitScript(() => {
+    // 注入 WebView 标识（某些 H5 代码会检测此变量）
+    (window as any).__IS_WEBVIEW__ = true;
+    // 模拟 WebView 的 navigator 特征
+    Object.defineProperty(navigator, 'standalone', { value: true });
+  });
+
+  await page.goto('/h5/product-detail?id=123');
+  await page.waitForLoadState('networkidle');
+
+  // 验证 H5 核心功能
+  await expect(page.locator('[data-testid="product-info"]')).toBeVisible();
+  await expect(page.locator('[data-testid="btn-add-cart"]')).toBeEnabled();
+});
+```
+
+### JSBridge 模拟
+
+```typescript
+test('H5 calls native via JSBridge', async ({ page }) => {
+  // 注入 mock JSBridge
+  await page.context().addInitScript(() => {
+    (window as any).NativeBridge = {
+      call: (method: string, params: any) => {
+        console.log(`[JSBridge] ${method}`, params);
+        // 返回模拟的原生响应
+        if (method === 'getDeviceInfo') {
+          return JSON.stringify({ platform: 'android', version: '12' });
+        }
+        if (method === 'scanQRCode') {
+          return JSON.stringify({ code: 'MOCK-QR-12345' });
+        }
+      },
+    };
+  });
+
+  await page.goto('/h5/scan');
+  await page.click('[data-testid="btn-scan"]');
+
+  // 验证 H5 正确处理了 JSBridge 返回
+  await expect(page.locator('[data-testid="scan-result"]')).toContainText('MOCK-QR-12345');
+});
+```
+
+---
+
+## 4. 离线 / 弱网模拟
+
+### 弱网模拟 (Slow 3G / 4G)
+
+```typescript
+// 模拟 Slow 3G
+test('page loads gracefully on slow network', async ({ page }) => {
+  const context = page.context();
+  const cdpSession = await context.newCDPSession(page);
+
+  await cdpSession.send('Network.emulateNetworkConditions', {
+    offline: false,
+    latency: 400,          // 400ms RTT (Slow 3G)
+    downloadThroughput: 500 * 1024 / 8,  // 500 Kbps
+    uploadThroughput: 500 * 1024 / 8,    // 500 Kbps
+  });
+
+  await page.goto('/dashboard');
+
+  // 弱网下：骨架屏 / loading 必须先出现
+  await expect(page.locator('[data-testid="loading-skeleton"]')).toBeVisible();
+
+  // 最终数据仍然加载成功
+  await expect(page.locator('[data-testid="dashboard-data"]')).toBeVisible({
+    timeout: 15_000, // 弱网下给更多时间
+  });
+});
+```
+
+### 完全离线
+
+```typescript
+test('offline mode shows cached data or friendly error', async ({ page }) => {
+  const context = page.context();
+  const cdpSession = await context.newCDPSession(page);
+
+  // 先正常加载
+  await page.goto('/dashboard');
+  await page.waitForLoadState('networkidle');
+
+  // 切换为离线
+  await cdpSession.send('Network.emulateNetworkConditions', {
+    offline: true,
+    latency: 0,
+    downloadThroughput: -1,
+    uploadThroughput: -1,
+  });
+
+  // 刷新页面
+  await page.reload();
+
+  // 应该看到离线提示而不是白屏
+  const offlineNotice = page.locator('[data-testid="offline-notice"]');
+  const cachedContent = page.locator('[data-testid="cached-dashboard"]');
+
+  const hasOffline = await offlineNotice.isVisible().catch(() => false);
+  const hasCache = await cachedContent.isVisible().catch(() => false);
+  expect(hasOffline || hasCache).toBeTruthy();
+});
+```
+
+### 请求失败模拟
+
+```typescript
+// 模拟特定 API 失败
+await page.route('**/api/dashboard/stats', route => {
+  route.abort('failed');  // 网络层失败
+});
+
+await page.goto('/dashboard');
+// 验证错误降级：其他模块正常显示，仅统计卡片显示重试按钮
+await expect(page.locator('[data-testid="stat-card-retry"]')).toBeVisible();
+await expect(page.locator('[data-testid="recent-list"]')).toBeVisible(); // 其他数据正常
+```
+
+---
+
+## 5. 移动端测试检查清单
+
+- [ ] 所有 H5 页面在 Mobile project 下可正常打开
+- [ ] 触摸操作（tap、swipe、long-press）正确响应
+- [ ] 虚拟键盘弹出时表单不被遮挡
+- [ ] 横竖屏切换不丢失数据（如有旋转需求）
+- [ ] 弱网下 loading 骨架屏正确显示
+- [ ] 离线模式有降级方案（缓存或友好提示）
+- [ ] WebView JSBridge 调用正确（如有嵌入场景）
+- [ ] 底部安全区（safe-area-inset）正确留白
+
+---
+
 # E2E覆盖率检查清单（Stage4门禁）
 
 - [ ] 每个 API 端点至少 1 个 Happy Path + 1 个 Error Path 用例
@@ -860,136 +1285,3 @@ test.describe('[Workflow] 内部用户全流程', () => {
 - [ ] 每个CRUD模块至少 7 个用例
 - [ ] 工作流测试至少 21 个用例（管理员8+销售7+渠道6）
 - [ ] 总用例数 ≥ 70（全量模式）
-
----
-
-# E2E-Adapt 阶段：实现后适配（Stage 3.5）
-
-> **触发时机**：Stage 3 所有后端模块 DONE 后、Stage 4 集成前。
-> **目标**：将 Stage 2 基于 PRD 编写的 E2E 骨架适配到实际实现，修复契约漂移，补齐覆盖缺口。
-> **模型分配**：pro（**MUST NOT 使用 flash**，≥70 用例需要深度推理）
-
----
-
-## 适配流程
-
-```
-阶段 A: 差异扫描 (pro)
-  → 输入: api-contract.yaml【锁定版】+ 实际 API 路由文件
-  → 检测: API 路径变化 / 字段名变化 / 枚举值变化 / 响应格式变化
-  → 输出: contract-drift-log.md（差异清单）
-
-阶段 B: E2E 用例修正 (pro)
-  → 输入: 已有 E2E 文件 + contract-drift-log.md
-  → 动作: 逐文件修正 API 路径、字段名、枚举值
-  → 规则: 不改测试意图，只改 API 调用细节
-
-阶段 C: 覆盖缺口补齐 (pro)
-  → 运行: node scripts/check-e2e-coverage.js --json
-  → 分析: 识别未达标分类
-  → 动作: 按优先级补齐用例（登录 > 工作流 > CRUD > 导航 > 数据隔离）
-  → 验证: 再次运行 check-e2e-coverage.js --ci 确认通过
-
-阶段 D: 首次运行验证 (pro)
-  → 启动后端服务 + Mock 数据
-  → 运行全部 E2E 测试（L5 headless）
-  → 记录失败到 e2e-first-run-issues.md
-  → 区分: E2E 测试 Bug vs 后端实现 Bug
-  → 后端 Bug → 标记 BLOCKED，通知对应模块 Agent
-  → E2E Bug → 本阶段修复
-
-阶段 E: 产出 E2E_READY 标记
-  → 创建 integration-tests/scenarios/E2E_READY 文件
-  → 内容：覆盖报告摘要 + 适配轮次 + 时间戳
-  → Coordinator 检测到此标记后才允许进入 Stage 4
-```
-
----
-
-## E2E_READY 标记文件格式
-
-```json
-{
-  "stage": "3.5",
-  "phase": "E2E-Adapt",
-  "timestamp": "2026-07-02T12:00:00Z",
-  "total_cases": 74,
-  "coverage": {
-    "login": 13,
-    "navigation": 6,
-    "crud": 28,
-    "workflow": 22,
-    "dataIsolation": 3
-  },
-  "adaptation_rounds": 2,
-  "contract_drifts_fixed": 5,
-  "gaps_filled": 12,
-  "status": "READY"
-}
-```
-
----
-
-## 适配约束
-
-**MUST DO:**
-- 基于实际 API 路由修正（不是基于 PRD 猜测）
-- 每个修正验证 API 确实返回该字段/格式
-- 补齐用例前必须先 `check-e2e-coverage.js --json` 确认缺口
-- E2E-Adapt 完成后创建 E2E_READY 标记
-- 使用 pro 模型（NOT flash）
-
-**MUST NOT DO:**
-- 修改测试的业务意图（只改 API 细节）
-- 删除因后端 Bug 失败的用例（改为标记 skip + 记录到 e2e-first-run-issues.md）
-- 跳过覆盖缺口（必须补齐到 ≥70）
-- 在没有 E2E_READY 标记的情况下进入 Stage 4
-
----
-
-## contract-drift-log.md 模板
-
-```markdown
-# Contract Drift Log — E2E 适配
-
-**生成时间**: [ISO datetime]
-**对比基准**: api-contract.yaml【锁定版】
-**实际来源**: src/modules/*/routes.ts
-
-## 差异清单
-
-| # | 类型 | PRD 定义 | 实际实现 | 影响 E2E 文件 | 已修复 |
-|---|------|---------|---------|-------------|--------|
-| 1 | 路径变化 | POST /api/auth/login | POST /api/login | auth.spec.ts | ✅ |
-| 2 | 字段名 | user.role | user.roleType | roles-accounts.spec.ts | ✅ |
-| 3 | 枚举值 | status: 'pending' | status: 'PENDING' | opportunities.spec.ts | ✅ |
-
-## 统计
-- 总差异: N
-- 已修复: N
-- 需后端确认: N
-```
-
----
-
-## E2E-Adapt 与 Stage 4 的关系
-
-```
-Stage 3 全部模块 DONE
-    │
-    ▼
-Stage 3.5 E2E-Adapt（本技能）
-    ├── 扫描契约漂移 → 修正 E2E
-    ├── 补齐覆盖缺口 → ≥70 用例
-    ├── 首次运行验证 → 记录真实 Bug
-    └── 产出 E2E_READY 标记
-    │
-    ▼
-Stage 4 集成与验收
-    ├── check-e2e-coverage.js --ci 自动通过（E2E_READY 已保证）
-    ├── 后端合并 + 联调
-    ├── 回归 E2E 全部用例
-    └── check-e2e-parity.js --ci 有头/无头验证
-```
-
-> **关键**：Stage 4 不再需要补齐 E2E 用例——这个工作在 Stage 3.5 已完成。Stage 4 只需验证已有 E2E 全部通过。
