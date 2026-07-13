@@ -16,6 +16,24 @@ skills:
 - `task.md`【锁定版】（模块清单 + 依赖关系）
 - `modules/<module>.md`【锁定版】（每个模块的领域标注）
 
+## 环境准备（启动前强制扫描）
+**Stage 3 启动第一件事不是 `npm create vite`，而是扫描本地预设资源。**
+
+```bash
+# 强制扫描项目根目录下的预设资源
+ls starters/      # 脚手架模板（liquid-glass-frontend 等）
+ls templates/     # 通用模板
+ls .qoder/        # Agent/Skill 配置
+```
+
+| 扫描目标 | 存在时 MUST DO | 缺失时 |
+|---------|---------------|--------|
+| `starters/<name>/` 脚手架 | **直接复制使用**，不执行 `npm create vite` | 检查 templates/ |
+| `.qoder/skills/references/` 设计体系 | 读取 CSS tokens / 设计文档，输出到前端项目 | 继续（非阻塞） |
+| `templates/` 通用模板 | 评估是否匹配当前项目类型 | 继续（非阻塞） |
+
+> **复盘问题E**：上一轮 Pipeline 中 Coordinator 忽略了项目内已有的 `starters/liquid-glass-frontend` 脚手架（含 AppLayout/KpiCard/theme-tokens/router），导致前端从零创建并产生了大量重复且低质量的代码。此后 **MUST 先扫描再创建**。
+
 ## Output
 每轮的模块/页面分配指令 + 分配日志
 
@@ -75,6 +93,34 @@ skills:
 3. 本轮分配数 ≤ 空闲 Agent 数
 
 任一检查失败 → 写入 `SCHEDULER_ERROR.md` → 人类介入
+
+## 子 Agent 输出独立复核（复盘问题D）
+**禁止无脑信任子 Agent 自标的 DONE。** 每轮收到子 Agent 完成后，Coordinator 必须执行 5 分钟快速复核：
+
+| 复核项 | 检查内容 | 失败处理 |
+|--------|---------|---------|
+| 文件计数 | 应有文件数 vs 实有文件数 | 差距 > 20% → 驳回，要求补充 |
+| 编码抽查 | 随机 3 个 .vue/.ts 文件 grep `\ufffd` | 发现损坏 → 驳回修复 |
+| API 冒烟 | 调用 1 个核心 API 确认 2xx | 失败 → 标记 BLOCKED |
+| 前端测试文件 | 检查是否有 `.spec.ts` / `.visual.spec.ts` | 缺失 → 标 VISUAL_PENDING |
+
+> 复核结果写入决策日志 `decision-log.md`。
+
+## 诚实汇报约束（复盘问题F — P0 红线）
+**主控 Agent 向用户汇报时的硬性约束：**
+
+| 禁止话术 | 替换为 |
+|---------|--------|
+| "所有 Stage 已完成" | 列出每阶段**应有 vs 实有**的量化对比 |
+| "核心页面已验证" | 列出具体验证了哪些页面/哪些场景 |
+| "验证通过 ✅" | 报告每个维度的实际通过率（如 18/55 = 33%） |
+| "测试已执行" | 列出执行了哪些测试文件，哪些跳过 |
+
+**强制规则**：
+- 每个 Stage 结束汇报时，必须输出"应有 vs 实有"量化对比表
+- 任一维度达成率 < 80% → **禁止标 COMPLETE**，必须标为 PARTIAL 或 FAILED
+- 子 Agent 调用失败（模型不可用/工具报错）→ **至少重试 1 次 fallback**，放弃前记录原因
+- 绝对禁止用"部分通过 = 全部通过"的话术向用户汇报
 
 ## 状态持久化
 Coordinator 维护 `pipeline-state.json`（原子写入：先写 `.tmp` → 重命名）：

@@ -897,6 +897,13 @@ n  alerts: {
 - [ ] All `<module>.md` files are available
 - [ ] Agent availability is known (or assumed based on count limits)
 
+**Local Scaffold Scan (复盘问题E — MUST)**:
+- [ ] Glob `starters/` — 发现脚手架则直接复制使用，不执行 `npm create vite`
+- [ ] Glob `templates/` — 评估可用模板
+- [ ] Glob `.qoder/skills/references/` — 读取设计体系 CSS/shadcn 配置
+
+> **P0 红线**：跳过此扫描直接 `npm create vite` 是流程级错误，上一轮已造成 100% 未使用脚手架的前端质量灾难。
+
 **Limits**:
 - Backend: max 3 agents in parallel
 - Frontend: max 3 agents in parallel
@@ -1265,6 +1272,7 @@ user �?product �?trace (3�?
 - Skip logging (maintain state as files)
 - Release downstream dependencies of VISUAL_PENDING modules (they are NOT complete)
 - **Enter Stage 4 without E2E_READY marker (v2.10)**: Even if all modules are DONE, Stage 4 MUST NOT start until E2E-Adapt has completed and E2E_READY exists
+- **复盘问题F**：向用户汇报时使用模糊话术（"核心页已验"、"所有Stage已完成"、"通过✅"）。必须用量化对比（应有 vs 实有）代替，差距 > 20% → 禁止标 COMPLETE
 
 ---
 

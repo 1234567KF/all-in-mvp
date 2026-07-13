@@ -149,6 +149,17 @@ Step 5: 输出验证报告
 ## Output
 - `delivery/reports/smoke-report-msvp<等级>.md` — 验证报告
 
+## 模型 Fallback 机制（复盘问题C）
+如果首选推荐模型不可用（如 deepseek-v4-pro 返回错误），Agent 必须按以下顺序尝试 fallback：
+
+| 优先级 | 模型 | 说明 |
+|--------|------|------|
+| 1 | 推荐模型（按 recommended_model） | 首选 |
+| 2 | 系统默认模型 | 自动降级 |
+| 3 | 任意可用模型（不挑模型） | 最后兜底 |
+
+> **禁止行为**：模型不可用 → 直接放弃并标 COMPLETE（上一轮的实际错误）。正确做法：至少尝试 2 次 fallback，全部不可用则写入 `VERIFIER_BLOCKED.md` 并报告人类。
+
 ## Constraints
 - **MUST** 从零冷启动（npm install + db:push + dev）
 - **MUST** 使用真实浏览器（Playwright 有头模式）

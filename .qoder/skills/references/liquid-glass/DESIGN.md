@@ -275,10 +275,22 @@ src/
 
 ## 9. 快速接入 (3 步)
 
-### 步骤 1: 初始化项目环境
+### 步骤 1: 使用预设脚手架（推荐）
 
 ```bash
-# 创建 Vite + Vue 3 + TypeScript 项目
+# 直接复制 starter 脚手架（已含 Vite + Tailwind v4 + shadcn + 设计体系全部 CSS）
+cp -r starters/liquid-glass-frontend/ my-app/
+cd my-app
+npm install
+npm run dev
+```
+
+> **为什么不用 `npm create vite`？** 脚手架已预配置好 280+ CSS 变量、25+ 工具类、主题系统、路由骨架、AppLayout、KpiCard 组件。从零搭反而要重新做这些。
+
+### 步骤 1b: 手动初始化（仅当脚手架不可用时）
+
+```bash
+# 仅在 starters/ 目录不存在时使用此方式
 npm create vite@latest my-app -- --template vue-ts
 cd my-app
 

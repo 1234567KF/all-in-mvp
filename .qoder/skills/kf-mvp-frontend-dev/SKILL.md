@@ -109,6 +109,35 @@ src/
 
 ---
 
+# Stage 0: Project Initialization（跳过此步 = 复盘问题E）
+
+**MUST 先检查 Coordinator 是否已初始化好前端项目目录。** 如果尚未初始化：
+
+```bash
+# 步骤 1: 扫描脚手架（P0 强制性）
+ls starters/liquid-glass-frontend/
+
+# 步骤 2: 如果脚手架存在 → 直接复制（推荐）
+cp -r starters/liquid-glass-frontend/ frontend/
+cd frontend && npm install
+
+# 步骤 3: 仅在脚手架确实不存在时 → 手动创建
+npm create vite@latest frontend -- --template vue-ts
+cd frontend
+npm install tailwindcss @tailwindcss/vite tw-animate-css
+# 然后手动复制 .qoder/skills/references/liquid-glass/theme-tokens.css 等
+```
+
+> **红线**：发现 `starters/liquid-glass-frontend/` 存在却仍然 `npm create vite` → P0 错误，上一轮实际发生了。脚手架含完整路由/布局/KpiCard/主题/设计体系，从零创建会丢失所有预设。
+
+**验证初始化完成**：
+- [ ] `npm run dev` 可正常启动
+- [ ] 访问 `http://localhost:5173` 可看到首页（含 blob 动画背景）
+- [ ] `@/` 路径别名生效
+- [ ] CSS 变量 `--lg-background` 等可用
+
+---
+
 # Stage 1: API Client Setup
 
 ```typescript
@@ -724,7 +753,7 @@ export default defineConfig({
 
 ---
 
-# Gotchas
+## Gotchas
 
 - **Mock URL** �?Set VITE_API_BASE_URL in .env for mock vs real API
 - **Auth token** �?Store in localStorage, attach in interceptor
@@ -740,6 +769,7 @@ export default defineConfig({
 - **VISUAL_PENDING �?DONE** �?Modifying CSS or layout �?mark VISUAL_PENDING, not DONE. Only human eyes can confirm visual correctness. Autonomously claiming visual correctness is a P0 error.
 - **Computed styles are deterministic** �?`toHaveCSS('color', 'rgb(...)')` is reliable and doesn't need AI vision. Use it aggressively.
 - **Screenshot retries** �?Visual regression failures due to font/OS differences can be retried once. Second failure �?VISUAL_PENDING.
+- **🇨🇳 中文编码规范（复盘问题B）** �?placeholder/label 等 HTML 属性值禁止使用 U+201C/U+201D（“”），一律用 ASCII 双引号 `"` 包裹。Write 每个 .vue 后执行 `grep -rnP '[\x{fffd}]' <file>` 自检，发现 � 损坏字符必须立即修复。参考 `.qoder/skills/references/encoding-guard.md`。
 
 ---
 

@@ -36,6 +36,31 @@ src/api/<module>.ts         # API 调用封装
 6. 配置路由
 7. 运行开发服务器验证
 
+## 防线门禁（开发完成 → 标记 DONE 的强制出口）
+**复盘问题A**：过去 Agent 输出页面后直接标 DONE，三道视觉防线从未执行。此后防线不再是建议项，而是**阻断条件**：
+
+```
+每页面开发完成 → 必须按序通过三道防线，任一不通过 → 不得标记 DONE：
+
+┌─ 防线1: computed style 断言 ──────────────────────────┐
+│ npx playwright test tests/visual/<page>.visual.spec.ts │
+│ 全部 PASS 才继续                                        │
+├─ 防线2: 视觉回归快照 ─────────────────────────────────┤
+│ npx playwright test tests/visual/<page>.screenshot.spec.ts │
+│ 首次生成基线，后续对比基线，差异 < maxDiffPixels         │
+├─ 防线3: DOM 结构快照 ─────────────────────────────────┤
+│ toMatchSnapshot('a11y-tree.json')                       │
+│ 验证 navigation/main/heading 等关键区域存在             │
+└────────────────────────────────────────────────────────┘
+
+出口状态:
+  ├─ 三道防线全 PASS + 无 VISUAL_PENDING 场景 → 可标 DONE
+  ├─ 防线全 PASS 但有 CSS/布局变更 → 标 VISUAL_PENDING (需人类确认)
+  └─ 任一道防线 FAIL → 修复后重新执行，不得跳过
+```
+
+> **红线**：禁止跳过防线执行标 DONE、禁止声称"看起来没问题"代替防线断言、禁止用 `toBeVisible()` 代替 computed style 检查。
+
 ## Development Principles
 - 所有 API 调用指向 Mock 服务（在 Mock 未就绪前，先定义接口调用层，使用模拟数据）
 - 页面逻辑、表单验证、状态管理独立开发
@@ -71,11 +96,14 @@ src/api/<module>.ts         # API 调用封装
 
 ## 完成后
 1. 运行 `npm run dev` 确认页面可正常渲染
-2. 写入 DONE 标记到对应模块目录
-3. 如遇阻塞，写入 BLOCKED 标记并说明原因
+2. **编码自检**：`grep -rnP '[\x{fffd}]' src/views/` 检查是否存在 U+FFFD 损坏字符，发现则修复后重新检查
+3. 写入 DONE 标记到对应模块目录
+4. 如遇阻塞，写入 BLOCKED 标记并说明原因
 
 ## Constraints
 - 不改动其他 Agent 负责的页面
 - 不修改后端代码
 - UI 框架遵循用户指定或默认（Element Plus / Ant Design Vue / 自建）
 - API 调用封装必须与 `api-contract.yaml` 严格一致
+- **HTML 属性值禁止使用中文引号** (U+201C/U+201D)，统一用 ASCII 双引号 `"` 包裹 placeholder/label 等
+- **Write 后强制自检**：每个 .vue 文件 Write 完成后立即 grep `\ufffd`，发现损坏字符必须修复
