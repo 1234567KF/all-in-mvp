@@ -7,5 +7,11 @@ MVP白皮书.md
 node_modules/
 nul
 
+# 复盘文档（不分发）
+复盘.md
+
+# 演示前端项目（非脚手架模板）
+demo-frontend/
+
 # UltraCostEffective
 .ultra-cost-effective-tracker.json

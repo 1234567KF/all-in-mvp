@@ -42,12 +42,14 @@
 /MVP*             export-ignore
 /screenshot-1-full.png  export-ignore
 /nul              export-ignore
+/复盘.md          export-ignore
 /all-in-mvp-*.md  export-ignore
 
 # --- 非分发目录 ---
 /shadcn/          export-ignore
 /tools/           export-ignore
 /scripts/         export-ignore
+/demo-frontend/   export-ignore
 /.idea/           export-ignore
 /.vite/           export-ignore
 /node_modules/    export-ignore
