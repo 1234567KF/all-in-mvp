@@ -49,6 +49,34 @@ Derived from MVP Whitepaper Section 2.6 �?③b-2 业务条线测试:
 
 ---
 
+## PRD 驱动场景设计方法论（复盘 D-08 — 4 步流程）
+
+> **核心问题**：原 E2E 设计从"功能模块"视角出发，仅覆盖约 56% PRD 业务规则。本方法论将设计锚点从"模块"切换到"PRD 业务规则"。
+
+### Step 1: PRD 逐章节提取可测断言
+- 读取 PRD 全文，逐章节标注每条业务规则
+- 每条规则判断：是否可通过 API/UI 验证？预期行为是什么？
+- 输出「PRD 章节 → 测试断言」对照表
+
+### Step 2: 按业务能力分组（非功能模块）
+- 将断言按业务能力分组：认证登录、渠道生命周期、客户生命周期、商机创建审核、商机跟进、权限角色...
+- 每组包含：创建 + 更新 + 权限边界 + 状态流转 + 异常路径
+- 避免仅覆盖"创建"流程（复盘 D-06/D-07 根因）
+
+### Step 3: 生成覆盖矩阵
+- 每个场景标注：PRD 章节来源、优先级（P0=核心/P1=边界）、实现状态
+- 强制检查：每个 PRD 章节 ≥ 1 场景？每个业务能力 ≥ 1 P0？
+- 输出覆盖统计：场景总数 / PRD 章节覆盖率 / 各能力组场景分布
+
+### Step 4: 对照设计文档反向校验
+- 将设计文档条目数与场景数对比（可解决复盘 D-01）
+- 未覆盖区域 → 补充场景（可解决复盘 D-06/D-07）
+- **此步骤必须在 Stage 2 完成，不可推迟到 Stage 4**
+
+> **强制规则**：Stage 2 交付物必须包含「PRD → 场景 追溯矩阵」。Stage 4 验收时对照矩阵逐条确认，禁止自行缩减范围。
+
+---
+
 # Output Location
 
 ```
@@ -398,6 +426,8 @@ describe('[Scenario] Business Rules', () => {
 - [ ] Assertions verify business outcomes, not just API responses
 - [ ] Error scenarios are covered
 - [ ] Test is self-contained (no external dependencies)
+- [ ] **CRUD 完整生命周期（复盘 D-06）**：每个资源至少覆盖 创建+读取+更新+删除+权限边界
+- [ ] **角色权限生效链路（复盘 D-07）**：角色配置→用户登录→菜单/功能验证 完整链路
 
 ---
 
@@ -408,6 +438,8 @@ describe('[Scenario] Business Rules', () => {
 - Use shared TestFactory for consistent data
 - Cover the complete story, not fragments
 - Include both success and failure paths
+- **每个 CRUD 实体 ≥ 1 个更新操作测试**（复盘 D-06：仅测"创建"遗漏更新，导致 Zod null 容错 Bug 未被发现）
+- **每个角色/权限定义 ≥ 1 个权限生效链路测试**（复盘 D-07：仅测数据隔离遗漏角色→菜单链路，导致硬编码权限 Bug 未被发现）
 
 **MUST NOT DO:**
 - Split scenario tests across agents (one story = one writer)
@@ -425,6 +457,24 @@ describe('[Scenario] Business Rules', () => {
 - **Foreign key order** �?Create entities in dependency order
 - **Soft delete in E2E** �?Deleted items may still exist in other module's cache
 - **Boundary with ③b-1** �?测试文件抬头看接口名（`POST /api/xxx`）→ ③b-1；抬头看角色旅程�?以某角色完成某事"）→ ③b-2
+
+---
+
+# E2E 常见技术障碍预检表（复盘 D-04）
+
+> **Stage 3 开发阶段就应完成此检查，而非推迟到 Stage 4 E2E 执行时才修复。**
+
+| 障碍类型 | 症状 | 解决方案 |
+|---------|------|---------|
+| Windows 文件锁 | EBUSY: resource busy or locked, SQLite 文件被占用 | 使用 DROP TABLE 替代 unlinkSync 清理 SQLite 数据库 |
+| localStorage 不可用 | SecurityError: The operation is insecure | 使用 Playwright `request` fixture 直接调用后端 API，绕过 `page.evaluate` 写 localStorage |
+| 角色/权限依赖 | POST /accounts 因角色不存在而 4xx | 测试前验证 seed 数据完整性，按依赖顺序创建：roles → users → 业务数据 |
+| Zod enum 不匹配 | productName / status 值与 Schema enum 不一致 | 测试前验证 test data 中的枚举值与 Zod schema 定义严格一致 |
+| 认证 token 过期 | 长流程测试中 401 Unauthorized | 使用 `ensureAccountReady()` 自修复模式，每个 `beforeAll` 重新获取 token |
+| 端口被占用 | EADDRINUSE: address already in use | 启动前 `taskkill /F /IM node.exe` 清理旧进程 |
+| tsconfig 路径别名 | Cannot find module '@wecrm/shared' | 测试前执行 `npm run build` 验证构建配置正确 |
+
+> **P0 红线**：Stage 4 首次 E2E 执行遇到 3+ 技术障碍 → 流程缺陷，说明 Stage 3 的 E2E 就绪检查未执行。纳入复盘。
 
 ---
 

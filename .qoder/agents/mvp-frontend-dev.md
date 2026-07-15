@@ -28,6 +28,11 @@ src/api/<module>.ts         # API 调用封装
 ```
 
 ## 执行流程
+0. **扫描预设资源（复盘 D-03 — 启动第一步，写入 decision-log.md）**
+   → Glob("starters/**") — 列出所有脚手架
+   → 逐项判定：复用 / 跳过（须记录理由）
+   → 脚手架存在但跳过 → 必须在 decision-log.md 中写理由
+   → **禁止**：不扫描就直接 npm create vite
 1. 读取分配的页面/模块定义
 2. 读取 `api-contract.yaml` 中相关端点
 3. 创建 API 调用封装层（指向 Mock 服务）

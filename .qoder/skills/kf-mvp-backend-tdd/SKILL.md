@@ -1132,6 +1132,11 @@ describe('O2O Geo-Fencing �?Location Testing', () => {
 - [ ] Schema consistency verified
 - [ ] Exception paths covered
 - [ ] Code review passed (if triggered)
+- [ ] **E2E 就绪检查（复盘 D-04）**：至少 1 条 E2E 基础用例已跑通（API smoke test）
+  - [ ] Schema 对齐：API 返回结构与 api-contract.yaml 一致
+  - [ ] API 端点可达：核心 endpoint 返回 2xx
+  - [ ] 认证流程可走通：JWT 认证链路完整
+  - [ ] 未通过 → 标记 E2E_NOT_READY，不标 DONE
 - [ ] DONE marker created
 
 ## Create DONE Marker

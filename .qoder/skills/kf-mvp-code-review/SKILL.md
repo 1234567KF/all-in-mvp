@@ -525,7 +525,41 @@ const TEST_COVERAGE_ANALYSIS = {
 
 ---
 
-## Phase Gate 5: Review Report
+## Phase Gate 5: Build Verification（复盘 D-05 — P0 强制）
+
+> **审查完成后，执行构建验证。构建失败 → 驳回，不得标 PASS。**
+
+**前置条件**：Phase Gate 1-4 审查完成、无 P0 ERROR。
+
+**验证步骤**：
+1. 后端：`npm run build`（检查 tsc 编译、路径别名解析）
+2. 前端：`npm run build`（检查 Vite 构建、类型检查）
+
+**构建错误分类与路由**：
+| 错误类型 | 判定 | 路由目标 |
+|---------|------|---------|
+| 路径别名（@/ → 解析失败） | tsconfig paths 配置问题 | 开发 Agent |
+| 类型错误 | 代码类型不匹配 | 开发 Agent |
+| 缺失依赖 | package.json 未声明 | 开发 Agent |
+| rootDir 不兼容 | monorepo 路径问题 | 开发 Agent + 架构审查 |
+
+**输出**：
+```markdown
+## 构建验证
+
+| 端 | 命令 | 结果 | 错误数 |
+|----|------|:--:|:--:|
+| 后端 | npm run build | ✅/❌ | N |
+| 前端 | npm run build | ✅/❌ | N |
+
+**结论**: PASS / FAIL
+```
+
+> **P0 红线**：构建失败 → P0 ERROR，驳回修复。修复后重新执行完整审查流程。
+
+---
+
+## Phase Gate 6: Review Report
 
 **Generate structured report**:
 
