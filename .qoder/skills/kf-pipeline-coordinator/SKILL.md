@@ -901,8 +901,10 @@ n  alerts: {
 - [ ] Glob `starters/` — 发现脚手架则直接复制使用，不执行 `npm create vite`
 - [ ] Glob `templates/` — 评估可用模板
 - [ ] Glob `.qoder/skills/references/` — 读取设计体系 CSS/shadcn 配置
+- [ ] **D-09 前端一致性**：若 `starters/` 与 `src/` 两套并存 → **阻断**。必须整合为一套（产物覆盖 starters 或删除 starters）。用户访问的前端 MUST == E2E 测试的前端
 
 > **P0 红线**：跳过此扫描直接 `npm create vite` 是流程级错误，上一轮已造成 100% 未使用脚手架的前端质量灾难。
+> **P0 红线（D-09）**：两套前端并存（starters + src/）→ P0 阻断，禁止进入 Stage 4。上一轮用户打开 starters 看到的 Bug（username 替代 phone、一律跳 /dashboard）与 E2E 测试的 packages/frontend 完全不同。
 
 **Design Doc Verification (复盘 D-01 — MUST)**:
 - [ ] Read `scenarios.md` — 提取所有 P0/P1 场景完整清单

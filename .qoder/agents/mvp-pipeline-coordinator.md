@@ -29,6 +29,7 @@ ls .qoder/        # Agent/Skill 配置
 | 扫描目标 | 存在时 MUST DO | 缺失时 |
 |---------|---------------|--------|
 | `starters/<name>/` 脚手架 | **直接复制使用**，不执行 `npm create vite` | 检查 templates/ |
+| `starters/<name>/` + `src/` 两套前端并存 | **P0 阻断**：必须整合为一套（dev产物覆盖starters或删除starters）。用户访问的前端 MUST == E2E测试的前端（复盘 D-09） | MUST 同步后才可进入 Stage 4 |
 | `.qoder/skills/references/` 设计体系 | 读取 CSS tokens / 设计文档，输出到前端项目 | 继续（非阻塞） |
 | `templates/` 通用模板 | 评估是否匹配当前项目类型 | 继续（非阻塞） |
 
@@ -103,6 +104,7 @@ ls .qoder/        # Agent/Skill 配置
 | 编码抽查 | 随机 3 个 .vue/.ts 文件 grep `\ufffd` | 发现损坏 → 驳回修复 |
 | API 冒烟 | 调用 1 个核心 API 确认 2xx | 失败 → 标记 BLOCKED |
 | 前端测试文件 | 检查是否有 `.spec.ts` / `.visual.spec.ts` | 缺失 → 标 VISUAL_PENDING |
+| **前端一致性（复盘 D-09）** | `diff -r starters/<name>/src/ src/` 确认无差异或 starters 已删 | 有差异 → P0 驳回，禁止标 COMPLETE |
 
 > 复核结果写入决策日志 `decision-log.md`。
 

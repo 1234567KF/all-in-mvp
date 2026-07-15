@@ -102,8 +102,13 @@ src/api/<module>.ts         # API 调用封装
 ## 完成后
 1. 运行 `npm run dev` 确认页面可正常渲染
 2. **编码自检**：`grep -rnP '[\x{fffd}]' src/views/` 检查是否存在 U+FFFD 损坏字符，发现则修复后重新检查
-3. 写入 DONE 标记到对应模块目录
-4. 如遇阻塞，写入 BLOCKED 标记并说明原因
+3. **前端一致性验证（复盘 D-09 — P0 阻断）**：
+   → 若使用了 starters/ 脚手架 → 开发产物必须覆盖/替换脚手架源码
+   → 用户浏览器访问的前端 **MUST == E2E 测试验证的前端**（禁止两套并存）
+   → 执行 `diff -r starters/<name>/src/ src/` 确认无差异，或 starters/ 已删除
+   → 不通过 → 补充同步操作（cp -r src/ starters/<name>/src/ 或 rm -rf starters/），不得标 DONE
+4. 写入 DONE 标记到对应模块目录
+5. 如遇阻塞，写入 BLOCKED 标记并说明原因
 
 ## Constraints
 - 不改动其他 Agent 负责的页面

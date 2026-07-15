@@ -742,6 +742,7 @@ export default defineConfig({
 - Generate visual regression baselines (防线2) for key pages and states
 - Run full visual verification suite before marking DONE
 - Mark VISUAL_PENDING when layout/CSS is modified (do NOT self-mark DONE)
+- **D-09 前端一致性**：如果使用了 starters/ 脚手架，开发完成后必须用产物覆盖/替换脚手架源码，或删除 starters/。确保 `diff -r starters/<name>/src/ src/` 无差异。用户浏览器访问的前端 MUST == E2E 测试的前端
 
 **MUST NOT DO:**
 - Use any type without reason
