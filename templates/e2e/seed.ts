@@ -4,9 +4,9 @@
  * 用于 E2E 测试前初始化文件数据库（非内存数据库），确保测试环境与人工验收环境一致。
  *
  * 使用方式:
- *   npx tsx templates/e2e/seed.ts              # 幂等模式（已有数据不重复插入）
- *   npx tsx templates/e2e/seed.ts --reset      # 重置模式（删除 DB 文件重建，每次测试前推荐）
- *   npx tsx templates/e2e/seed.ts --db=:memory: # 内存数据库模式（单元测试用）
+ *   bun run templates/e2e/seed.ts              # 幂等模式（已有数据不重复插入）
+ *   bun run templates/e2e/seed.ts --reset      # 重置模式（删除 DB 文件重建，每次测试前推荐）
+ *   bun run templates/e2e/seed.ts --db=:memory: # 内存数据库模式（单元测试用）
  *
  * 设计原则:
  *   - --reset: 完全删除旧 DB 文件重建，确保每次 E2E 测试从干净状态开始

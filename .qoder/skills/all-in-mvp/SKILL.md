@@ -1,4 +1,4 @@
----
+﻿---
 name: all-in-mvp
 description: Load when user wants to build a full-stack MVP prototype using multi-agent parallel development pipeline. Triggers: MVP, 原型开发, 多Agent并行开发, 全栈快速原型, multi-agent pipeline, 从需求到交付, 多Agent流水线, 并行开发, 快速验证产品, 原型系统, 并行工程. NOT for: single API endpoint, bug fixing, code refactoring, deployment, code review alone.
 metadata:
@@ -680,7 +680,7 @@ QuickStep3: 轻量验收
 ```yaml
 # @task: <一句话任务描述>
 # @type: simple
-# @tech: <html+css+js | hono+sqlite | vue+vite | ...>
+# @tech: <html+css+js | hono+sqlite | react+vite | ...>
 # @apis: <API端点列表，无则写 none>
 # @db: <数据表，无则写 none>
 # @pages: <页面列表>
@@ -1525,7 +1525,7 @@ for i in {1..3}; do npx vitest run; done
 | # | 检查项 | 验证工具 | 说明 |
 |---|--------|---------|------|
 | 1 | 全部后端模块 DONE | Glob("src/modules/*/DONE") | 每个模块目录必须有 DONE 标记 |
-| 2 | 全部前端页面 DONE | Glob("src/client/src/views/*.vue") 存在 | 前端页面已实现 |
+| 2 | 全部前端页面 DONE | Glob("src/client/src/**/*.tsx") 存在 | 前端页面已实现 |
 | 3 | 无残留 VISUAL_PENDING | Glob("**/VISUAL_PENDING") 必须返回空 | 前端视觉已确认 |
 | 4 | `integration-tests/scenarios/` 目录存在 | Glob("integration-tests/scenarios/*.spec.ts") | Stage 2 ③b-2 产出 |
 
@@ -1886,7 +1886,7 @@ Step 5: 输出验证报告
 | 级别 | 消息 | 来源 |
 |------|------|------|
 | 🔴 ERROR | Uncaught TypeError: Cannot read properties of undefined | products.js:42 |
-| 🟡 WARNING | [Vue warn]: Failed to resolve component | App.vue |
+| 🟡 WARNING | Warning: React does not recognize the prop on a DOM element | App.tsx |
 
 ## A 类 Bug 清单
 | 编号 | 类型 | 描述 | 严重程度 |
@@ -2698,7 +2698,7 @@ const CONTRACT_CHECKS = [
     name: '枚举值校验',
     check: async () => {
       // 逐路由检查：前端提交的枚举值 是否 ⊆ 后端 zod schema 定义的枚举值
-      // 方法：扫描前端 .vue/.ts 文件中的 select/radio/switch 选项，与 api-contract.yaml 对比
+      // 方法：扫描前端 .tsx/.ts 文件中的 select/radio/switch 选项，与 api-contract.yaml 对比
     }
   },
   {
@@ -2755,7 +2755,7 @@ const CONTRACT_CHECKS = [
 | **Drizzle ORM** | 数据库 ORM | 类型安全、Schema 即代码 |
 | **SQLite** | 数据库 | 零配置、原型阶段首选 |
 | **Vue 3 + Vite** | 前端框架 | 组合式 API、快速 HMR |
-| **shadcn/vue** | UI 组件库 | 默认选择，与 Liquid Glass 深度集成 |
+| **shadcn/ui** | UI 组件库 | 默认选择，与 Liquid Glass 深度集成 |
 | **Liquid Glass** | ★ 默认设计体系 | 毛玻璃拟态，CSS 变量驱动，详见 `shadcn/DESIGN.md` |
 | **Vitest** | 测试框架 | 与 Vite 共享配置、高性能 |
 | **OpenAPI 3.0** | 接口契约 | 标准化的 API 描述格式 |
@@ -2776,6 +2776,6 @@ const CONTRACT_CHECKS = [
 
 1. 复制 `starters/liquid-glass-frontend/` 到目标项目的 `frontend/` 目录
 2. `cd frontend && npm install`
-3. 删除 `src/views/HomePage.vue`（脚手架示例页）
+3. 删除 `src/views/HomePage.tsx`（脚手架示例页）
 4. 在 `src/main.ts` 的 routes 数组中添加业务路由
 5. 在 `src/views/` 下创建业务页面，遵循 Liquid Glass 设计体系

@@ -22,8 +22,8 @@
  *   T7: 前端 Vite 代理验证 (通过 /api 路径)
  */
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000'
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://127.0.0.1:5173'
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3333'
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://127.0.0.1:5555'
 
 // ─── 测试用例定义 ──────────────────────────────────────────────────────
 
@@ -139,7 +139,7 @@ const TESTS = [
       } catch (err) {
         return {
           passed: false,
-          detail: `Vite 代理不可达: ${err.message}。请确认前端服务已启动（cd apps/web && npm run dev）`,
+          detail: `Vite 代理不可达: ${err.message}。请确认前端服务已启动（cd demo-frontend && bun run dev）`,
         }
       }
     },
@@ -196,20 +196,20 @@ async function runTests(args) {
 
   if (failed === 0) {
     console.log('  ✅ 冒烟测试全部通过！可进行人工验收或运行完整 E2E 测试:')
-    console.log('     npx playwright test')
+    console.log('     bunx playwright test')
     console.log('')
     process.exit(0)
   } else {
     console.log('  ❌ 冒烟测试未通过！请按以下步骤排查:')
     console.log('')
     console.log('  1. 确认 seed 数据已初始化:')
-    console.log('     npx tsx templates/e2e/seed.ts')
+    console.log('     bun run templates/e2e/seed.ts')
     console.log('')
     console.log('  2. 确认后端服务已启动:')
-    console.log('     npx tsx templates/e2e/start-server.ts')
+    console.log('     bun run templates/e2e/start-server.ts')
     console.log('')
     console.log('  3. 确认前端服务已启动:')
-    console.log('     cd apps/web && npm run dev')
+    console.log('     cd demo-frontend && bun run dev')
     console.log('')
     console.log('  4. 完整环境检查:')
     console.log('     node scripts/check-e2e-env.js')

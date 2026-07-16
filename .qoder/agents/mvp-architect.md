@@ -26,7 +26,7 @@ skills:
 ## Technical stack (default recommendation)
 - Backend: Hono (TypeScript)
 - Database: Drizzle ORM + SQLite
-- Frontend: Vue 3 + Vite
+- Frontend: React 19 + Vite
 - Testing: Vitest
 
 **如果用户指定了其他技术栈，以用户指定为准。**

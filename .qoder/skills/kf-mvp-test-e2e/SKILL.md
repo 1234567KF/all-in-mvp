@@ -472,7 +472,7 @@ describe('[Scenario] Business Rules', () => {
 | Zod enum 不匹配 | productName / status 值与 Schema enum 不一致 | 测试前验证 test data 中的枚举值与 Zod schema 定义严格一致 |
 | 认证 token 过期 | 长流程测试中 401 Unauthorized | 使用 `ensureAccountReady()` 自修复模式，每个 `beforeAll` 重新获取 token |
 | 端口被占用 | EADDRINUSE: address already in use | 启动前 `taskkill /F /IM node.exe` 清理旧进程 |
-| tsconfig 路径别名 | Cannot find module '@wecrm/shared' | 测试前执行 `npm run build` 验证构建配置正确 |
+| tsconfig 路径别名 | Cannot find module '@wecrm/shared' | 测试前执行 `bun run build` 验证构建配置正确 |
 
 > **P0 红线**：Stage 4 首次 E2E 执行遇到 3+ 技术障碍 → 流程缺陷，说明 Stage 3 的 E2E 就绪检查未执行。纳入复盘。
 

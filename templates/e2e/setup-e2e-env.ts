@@ -4,10 +4,10 @@
  * 按顺序执行: seed → 验证 → 启动服务，确保环境就绪。
  *
  * 用法:
- *   npx tsx templates/e2e/setup-e2e-env.ts
+ *   bun run templates/e2e/setup-e2e-env.ts
  *
  * 等价于:
- *   1. npx tsx templates/e2e/seed.ts
+ *   1. bun run templates/e2e/seed.ts
  *   2. node scripts/check-e2e-env.js --ci
  */
 
@@ -35,7 +35,7 @@ function main(): void {
   console.log('═══════════════════════════════════════════')
 
   // Step 1: 初始化文件数据库（--reset 确保干净状态）
-  run('npx tsx templates/e2e/seed.ts --reset', 'Step 1/3: 重置数据库 + Seed 数据')
+  run('bun run templates/e2e/seed.ts --reset', 'Step 1/3: 重置数据库 + Seed 数据')
 
   // Step 2: 环境检查
   console.log('\n▶ Step 2/3: 环境完整性检查')
@@ -51,13 +51,13 @@ function main(): void {
   console.log('▶ Step 3/3: 启动服务（请手动执行）')
   console.log('')
   console.log('  终端 1 — 后端服务:')
-  console.log('    npx tsx templates/e2e/start-server.ts')
+  console.log('    bun run templates/e2e/start-server.ts')
   console.log('')
   console.log('  终端 2 — 前端服务:')
-  console.log('    cd apps/web && npm run dev')
+  console.log('    cd demo-frontend && bun run dev')
   console.log('')
   console.log('  然后运行 E2E 测试:')
-  console.log('    npx playwright test')
+  console.log('    bunx playwright test')
   console.log('')
   console.log('═══════════════════════════════════════════')
   console.log('  ✅ 环境初始化完成！')

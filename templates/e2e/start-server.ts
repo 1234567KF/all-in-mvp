@@ -5,7 +5,7 @@
  * 区别于开发模式（内存数据库），此脚本使用 wecrm.db 文件数据库。
  *
  * 使用方式:
- *   npx tsx templates/e2e/start-server.ts
+ *   bun run templates/e2e/start-server.ts
  *
  * 关键兼容性:
  *   - Node.js 24+: 需要 duplex: 'half'（否则 POST/PUT 请求报错）
@@ -21,7 +21,7 @@ import { resolve } from 'node:path'
 
 // ─── 配置 ──────────────────────────────────────────────────────────────
 
-const PORT = parseInt(process.env.PORT || '3000', 10)
+const PORT = parseInt(process.env.PORT || '3333', 10)
 // 支持 DB_PATH 环境变量（方便 E2E 测试隔离，如: DB_PATH=test-e2e.db）
 const DB_PATH = process.env.DB_PATH
   ? resolve(process.cwd(), process.env.DB_PATH)

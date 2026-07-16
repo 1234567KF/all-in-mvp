@@ -101,7 +101,7 @@ ls .qoder/        # Agent/Skill 配置
 | 复核项 | 检查内容 | 失败处理 |
 |--------|---------|---------|
 | 文件计数 | 应有文件数 vs 实有文件数 | 差距 > 20% → 驳回，要求补充 |
-| 编码抽查 | 随机 3 个 .vue/.ts 文件 grep `\ufffd` | 发现损坏 → 驳回修复 |
+| 编码抽查 | 随机 3 个 .tsx/.ts 文件 grep `\ufffd` | 发现损坏 → 驳回修复 |
 | API 冒烟 | 调用 1 个核心 API 确认 2xx | 失败 → 标记 BLOCKED |
 | 前端测试文件 | 检查是否有 `.spec.ts` / `.visual.spec.ts` | 缺失 → 标 VISUAL_PENDING |
 | **前端一致性（复盘 D-09）** | `diff -r starters/<name>/src/ src/` 确认无差异或 starters 已删 | 有差异 → P0 驳回，禁止标 COMPLETE |

@@ -40,10 +40,10 @@
 ```
 Step 1: 冷启动
   ├── 全新 clone 或 git clean -fd
-  ├── npm install / pnpm install（从零安装依赖）
-  ├── npm run db:push（初始化数据库）
-  ├── npm run db:seed（种子数据）
-  └── npm run dev（启动开发服务器）
+  ├── bun install（从零安装依赖）
+  ├── bun run db:push（初始化数据库）
+  ├── bun run db:seed（种子数据）
+  └── bun run dev（启动开发服务器）
 
 Step 2: 打开浏览器
   ├── 使用 Playwright（有头模式）
@@ -72,7 +72,7 @@ Step 5: 输出验证报告
 
 | 编号 | 判定标准 | 检测方式 | 典型表现 |
 |------|---------|---------|---------|
-| A1 | 应用无法启动 | `npm run dev` 报错退出 | 端口冲突、依赖缺失、编译错误 |
+| A1 | 应用无法启动 | `bun run dev` 报错退出 | 端口冲突、依赖缺失、编译错误 |
 | A2 | 首页/登录页白屏 | 导航到首页，截图全白或无内容 | JS 报错阻断渲染、路由配置错误 |
 | A3 | 核心菜单 404 | 逐一点击所有菜单项 | 路由未注册、路径拼写错误 |
 | A4 | 登录流程不可用 | 输入凭证→点击登录→失败 | API 未启动、CORS 错误、Token 存储失败 |
@@ -113,7 +113,7 @@ Step 5: 输出验证报告
 ### 页面清单解析
 
 从 task.md + src/views/ 推断路由清单：
-1. 扫描 `src/views/**/*.vue` → 提取路由路径
+1. 扫描 `src/**/*.tsx` → 提取路由路径
 2. 对照 spec.md 中的页面路由表
 3. 生成「视觉回归页面清单」
 
@@ -167,13 +167,13 @@ tests/visual-regression/
 - **验证 Agent**：<agent-id>（独立于开发 Agent）
 - **验证时间**：<ISO 8601>
 - **应用版本**：<git commit hash>
-- **环境**：Node vXX, npm vXX, Chrome vXX
+- **环境**：Node vXX, Bun vXX, Chrome vXX
 
 ## 冷启动结果
-- npm install: ✅ 成功 / ❌ 失败
-- npm run db:push: ✅ 成功 / ❌ 失败
-- npm run db:seed: ✅ 成功 / ❌ 失败
-- npm run dev: ✅ 成功（端口 XXXX）/ ❌ 失败
+- bun install: ✅ 成功 / ❌ 失败
+- bun run db:push: ✅ 成功 / ❌ 失败
+- bun run db:seed: ✅ 成功 / ❌ 失败
+- bun run dev: ✅ 成功（端口 XXXX）/ ❌ 失败
 
 ## 菜单完整性检查
 | 序号 | 菜单项 | 目标路由 | 点击结果 | 截图 |
@@ -193,7 +193,7 @@ tests/visual-regression/
 | 级别 | 消息 | 来源 |
 |------|------|------|
 | 🔴 ERROR | Uncaught TypeError: Cannot read properties of undefined | products.js:42 |
-| 🟡 WARNING | [Vue warn]: Failed to resolve component | App.vue |
+| 🟡 WARNING | Warning: React does not recognize the prop on a DOM element | App.tsx |
 
 ## A 类 Bug 清单
 | 编号 | 类型 | 描述 | 严重程度 |
@@ -229,7 +229,7 @@ tests/visual-regression/
 - `delivery/reports/smoke-report-msvp<等级>.md` — 验证报告
 
 ## Constraints
-- **MUST** 从零冷启动（npm install + db:push + dev）
+- **MUST** 从零冷启动（bun install + db:push + dev）
 - **MUST** 使用真实浏览器（Playwright 有头模式）
 - **MUST** 每个检查步骤截图
 - **MUST** Console error 全部报告为 P0

@@ -1,8 +1,8 @@
----
+﻿---
 name: kf-mvp-frontend-dev
 description: >-
-  Load when user asks to develop frontend, create Vue components, or build pages
-  with mock API. Triggers: 前端开�? vue, 页面开�? frontend, 组件开�?
+  Load when user asks to develop frontend, create React components, or build pages
+  with mock API. Triggers: 前端开发, react, 页面开发, frontend, 组件开发,
   前端, create page, build UI. NOT for: backend development, database design,
   or API contract design.
 metadata:
@@ -25,15 +25,15 @@ graph:
 
 > **Core Belief**: Frontend should never wait for backend. Build against mock, swap for real API when ready. Component by component, page by page.
 
-**Division of Labor**: This Skill focuses on **Vue 3 component development** with mock API integration. It outputs pages, components, and composables. Follows Tool Wrapper pattern for API integration.
+**Division of Labor**: This Skill focuses on **React component development** with mock API integration. It outputs pages, components, and hooks. Follows Tool Wrapper pattern for API integration.
 
 **Default Tech Stack** (enforced unless user explicitly overrides):
-- Framework: Vue 3.4+ (Composition API)
+- Framework: React 19 (Hooks)
 - Build: Vite 5.x
-- State: Pinia 2.x
-- Routing: Vue Router 4.x
+- State: Zustand 4.x
+- Routing: React Router 6.x
 - HTTP: Axios 1.x
-- UI Framework: 6�? (Ant Design Vue / Element Plus / Arco Design / Vant / shadcn-vue / Tailwind CSS)
+- UI Framework: 6选1 (Ant Design / shadcn/ui / Arco Design / Vant / Tailwind CSS)
 
 Load `references/mvp-tech-stack-default.md` for full specification.
 
@@ -43,7 +43,7 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 1. **Mock-first** �?Build against mock server, swap API later
 2. **Component-based** �?Reusable components, clean architecture
-3. **Composition API** �?Vue 3 Composition API throughout
+3. **Hooks** — React 19 Hooks throughout
 4. **TypeScript** �?Full type safety
 5. **UI Framework locked** �?Once selected in Phase 0, never mix frameworks
 
@@ -53,17 +53,17 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 | Layer | Technology | Version | Notes |
 |-------|------------|---------|-------|
-| Framework | Vue 3 | 3.4+ | Composition API only |
+| Framework | React | 19 | Hooks |
 | Build | Vite | 5.x | |
 | Language | TypeScript | 5.0+ | |
-| State | Pinia | 2.1+ | Vue official |
-| Routing | Vue Router | 4.0+ | |
+| State | Zustand | 4.x | |
+| Routing | React Router | 6.x | |
 | HTTP | Axios | 1.6+ | |
 | UI | {{UI_FRAMEWORK}} | varies | Selected in Phase 0, locked |
 
 **UI Framework Selection** (from `references/mvp-tech-stack-default.md`):
-- Enterprise/B2B admin: Ant Design Vue (default) / Element Plus / Arco Design
-- Modern branded web: Tailwind CSS / shadcn-vue
+- Enterprise/B2B admin: Ant Design (default) / shadcn/ui
+- Modern branded web: Tailwind CSS / shadcn/ui
 - H5 mobile: Vant
 
 **MUST NOT mix UI frameworks** within the same project.
@@ -76,35 +76,35 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 src/
 ├── components/
 �?  ├── common/           # Shared components
-�?  �?  ├── Button.vue
-�?  �?  ├── Input.vue
-�?  �?  ├── Modal.vue
-�?  �?  └── Table.vue
+�?  �?  ├── .tsx
+�?  �?  ├── Input.tsx
+�?  �?  ├── Modal.tsx
+�?  �?  └── Table.tsx
 �?  └── [module]/
-�?      ├── [Module]List.vue
-�?      ├── [Module]Form.vue
-�?      └── [Module]Card.vue
-├── composables/
+�?      ├── [Module]List.tsx
+�?      ├── [Module]Form.tsx
+�?      └── [Module]Card.tsx
+├── hooks/
 �?  ├── useApi.ts         # API wrapper
 �?  ├── useAuth.ts        # Auth state
-�?  └── use[Feature].ts   # Feature composables
+�?  └── use[Feature].ts   # Feature hooks
 ├── stores/
 �?  ├── auth.ts           # Auth store
 �?  └── [module].ts       # Module stores
 ├── pages/
 �?  ├── [module]/
-�?  �?  ├── index.vue     # List page
-�?  �?  ├── [id].vue      # Detail page
-�?  �?  └── new.vue       # Create page
+�?  �?  ├── index.tsx     # List page
+�?  �?  ├── [id].tsx      # Detail page
+�?  �?  └── new.tsx       # Create page
 �?  └── layout/
-�?      ├── Default.vue
-�?      └── Auth.vue
+�?      ├── Default.tsx
+�?      └── Auth.tsx
 ├── api/
 �?  └── [module].ts       # API clients
 ├── types/
 �?  └── index.ts          # Shared types
 └── router/
-    └── index.ts          # Routes
+    └── index.tsx     # Routes
 ```
 
 ---
@@ -119,19 +119,19 @@ ls starters/liquid-glass-frontend/
 
 # 步骤 2: 如果脚手架存在 → 直接复制（推荐）
 cp -r starters/liquid-glass-frontend/ frontend/
-cd frontend && npm install
+cd frontend && bun install
 
 # 步骤 3: 仅在脚手架确实不存在时 → 手动创建
-npm create vite@latest frontend -- --template vue-ts
+bun create vite@latest frontend -- --template react-ts
 cd frontend
-npm install tailwindcss @tailwindcss/vite tw-animate-css
+bun install tailwindcss @tailwindcss/vite tw-animate-css
 # 然后手动复制 .qoder/skills/references/liquid-glass/theme-tokens.css 等
 ```
 
-> **红线**：发现 `starters/liquid-glass-frontend/` 存在却仍然 `npm create vite` → P0 错误，上一轮实际发生了。脚手架含完整路由/布局/KpiCard/主题/设计体系，从零创建会丢失所有预设。
+> **红线**：发现 `starters/liquid-glass-frontend/` 存在却仍然 `bun create vite` → P0 错误，上一轮实际发生了。脚手架含完整路由/布局/KpiCard/主题/设计体系，从零创建会丢失所有预设。
 
 **验证初始化完成**：
-- [ ] `npm run dev` 可正常启动
+- [ ] `bun run dev` 可正常启动
 - [ ] 访问 `http://localhost:5173` 可看到首页（含 blob 动画背景）
 - [ ] `@/` 路径别名生效
 - [ ] CSS 变量 `--lg-background` 等可用
@@ -195,8 +195,8 @@ export const [module]Api = {
 # Stage 2: Composable Development
 
 ```typescript
-// src/composables/use[Module].ts
-import { ref, computed } from 'vue';
+// src/hooks/use[Module].ts
+import { useState, useMemo } from 'react';
 import type { ModuleItem, CreateModuleDto, UpdateModuleDto, ListParams } from '@/types';
 import { [module]Api } from '@/api/[module]';
 
@@ -301,13 +301,13 @@ export function use[Module]() {
 ## List Page Template
 
 ```vue
-<!-- src/pages/[module]/index.vue -->
+<!-- src/pages/[module]/index.tsx -->
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { use[Module] } from '@/composables/use[Module]';
-import { useRouter } from 'vue-router';
+import { useState, useEffect } from 'react';
+import { use[Module] } from '@/hooks/use[Module]';
+import { useNavigate } from 'react-router';
 
-const router = useRouter();
+const router = useNavigate();
 const { items, loading, error, fetchList, remove } = use[Module]();
 const pagination = ref({ page: 1, limit: 10 });
 
@@ -391,9 +391,9 @@ function handleCreate() {
 ## Form Component Template
 
 ```vue
-<!-- src/pages/[module]/Form.vue -->
+<!-- src/pages/[module]/Form.tsx -->
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { useState, useEffect } from 'react';
 import type { CreateModuleDto, UpdateModuleDto } from '@/types';
 
 const props = defineProps<{
@@ -452,35 +452,35 @@ async function handleSubmit() {
 
 ```typescript
 // src/router/index.ts
-import { createRouter, createWebHistory } from 'vue-router';
-import type { RouteRecordRaw } from 'vue-router';
+import { createBrowserRouter,  } from 'react-router';
+import type { RouteObject } from 'react-router';
 
-const routes: RouteRecordRaw[] = [
+const routes: RouteObject[] = [
   {
     path: '/[module]',
-    component: () => import('@/pages/layout/Default.vue'),
+    component: () => import('@/pages/layout/Default.tsx'),
     children: [
       {
         path: '',
         name: '[module]-list',
-        component: () => import('@/pages/[module]/index.vue'),
+        component: () => import('@/pages/[module]/index.tsx'),
       },
       {
         path: ':id',
         name: '[module]-detail',
-        component: () => import('@/pages/[module]/[id].vue'),
+        component: () => import('@/pages/[module]/[id].tsx'),
       },
       {
         path: 'new',
         name: '[module]-create',
-        component: () => import('@/pages/[module]/new.vue'),
+        component: () => import('@/pages/[module]/new.tsx'),
       },
     ],
   },
 ];
 
-export const router = createRouter({
-  history: createWebHistory(),
+export const router = createBrowserRouter({
+  history: (),
   routes,
 });
 ```
@@ -498,14 +498,14 @@ export const router = createRouter({
 ```typescript
 // src/components/cart/CartItem.spec.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount, flushPromises } from '@vue/test-utils';
-import CartItem from './CartItem.vue';
-import { createPinia, setActivePinia } from 'pinia';
+import { mount, flushPromises } from '@testing-library/react';
+import CartItem from './CartItem.tsx';
+import { createZustand, setActiveZustand } from 'zustand';
 import { useCartStore } from '@/stores/cart';
 
 describe('CartItem Component �?E-commerce Frontend', () => {
   beforeEach(() => {
-    setActivePinia(createPinia());
+    setActiveZustand(createZustand());
   });
 
   // 渲染测试
@@ -596,14 +596,14 @@ describe('CartItem Component �?E-commerce Frontend', () => {
 
   // 状态同步测�?
   describe('State Synchronization', () => {
-    it('should sync with Pinia store', async () => {
-      const pinia = createPinia();
-      setActivePinia(pinia);
+    it('should sync with Zustand store', async () => {
+      const zustand = createZustand();
+      setActiveZustand(zustand);
       const cartStore = useCartStore();
       cartStore.addItem({ id: 1, name: 'iPhone', price: 999 });
       
       const wrapper = mount(CartItem, {
-        global: { plugins: [pinia] },
+        global: { plugins: [zustand] },
         props: { item: cartStore.items[0] }
       });
       
@@ -698,7 +698,7 @@ describe('CartItem Component �?E-commerce Frontend', () => {
 |---------|---------|------|
 | 渲染测试 | 每个组件 | props变化、空状态、加载状�?|
 | 交互测试 | 每个可交互元�?| 点击、输入、选择、提�?|
-| 状态同�?| 每个store关联 | Pinia状态变更同�?|
+| 状态同�?| 每个store关联 | Zustand状态变更同�?|
 | 表单验证 | 每个表单 | 必填、格式、长度、异步校�?|
 | 生命周期 | 每个有副作用的组�?| mount、update、unmount |
 
@@ -707,10 +707,10 @@ describe('CartItem Component �?E-commerce Frontend', () => {
 ```typescript
 // vitest.config.ts
 import { defineConfig } from 'vitest/config';
-import vue from '@vitejs/plugin-vue';
+import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [react()],
   test: {
     environment: 'jsdom', // MUST: 模拟DOM环境
     globals: true,
@@ -721,7 +721,7 @@ export default defineConfig({
 
 # Quality Checklist
 
-- [ ] All API calls use composable
+- [ ] All API calls use hook
 - [ ] Loading states handled
 - [ ] Error states handled
 - [ ] Form validation implemented
@@ -761,8 +761,8 @@ export default defineConfig({
 - **Response envelope** �?Always check `response.data.success` first
 - **Error handling** �?API errors throw, handle with try/catch
 - **Type safety** �?Define DTO types before using in components
-- **UI Framework lock-in** �?Once Phase 0 selects a UI framework (e.g., Ant Design Vue), ALL components MUST use that framework. Never mix Element Plus buttons with Ant Design tables
-- **Default stack** �?If no UI framework specified, use Ant Design Vue for B2B/admin, Tailwind CSS for branded web
+- **UI Framework lock-in** �?Once Phase 0 selects a UI framework (e.g., Ant Design), ALL components MUST use that framework. Never mix Element Plus buttons with Ant Design tables
+- **Default stack** �?If no UI framework specified, use Ant Design for B2B/admin, Tailwind CSS for branded web
 - **MVP exemptions** �?No SSR, no PWA, no complex state hydration. Keep it simple.
 - **Axios baseURL** �?Always use env var `VITE_API_BASE_URL`, default to `/api`
 - **Mock env setup** �?Development: `VITE_API_BASE_URL=http://localhost:3001/api`；Production: `/api`
@@ -770,7 +770,7 @@ export default defineConfig({
 - **VISUAL_PENDING �?DONE** �?Modifying CSS or layout �?mark VISUAL_PENDING, not DONE. Only human eyes can confirm visual correctness. Autonomously claiming visual correctness is a P0 error.
 - **Computed styles are deterministic** �?`toHaveCSS('color', 'rgb(...)')` is reliable and doesn't need AI vision. Use it aggressively.
 - **Screenshot retries** �?Visual regression failures due to font/OS differences can be retried once. Second failure �?VISUAL_PENDING.
-- **🇨🇳 中文编码规范（复盘问题B）** �?placeholder/label 等 HTML 属性值禁止使用 U+201C/U+201D（“”），一律用 ASCII 双引号 `"` 包裹。Write 每个 .vue 后执行 `grep -rnP '[\x{fffd}]' <file>` 自检，发现 � 损坏字符必须立即修复。参考 `.qoder/skills/references/encoding-guard.md`。
+- **🇨🇳 中文编码规范（复盘问题B）** �?placeholder/label 等 HTML 属性值禁止使用 U+201C/U+201D（“”），一律用 ASCII 双引号 `"` 包裹。Write 每个 .tsx 后执行 `grep -rnP '[\x{fffd}]' <file>` 自检，发现 � 损坏字符必须立即修复。参考 `.qoder/skills/references/encoding-guard.md`。
 
 ---
 
@@ -780,8 +780,8 @@ export default defineConfig({
 
 | 层级 | 测试类型 | 工具 | 覆盖目标 |
 |------|---------|------|---------|
-| **FT1** | 组件单元测试 | Vitest + @vue/test-utils | 组件渲染、props、事件、slot、composable |
-| **FT2** | 页面交互测试 | Vitest + @vue/test-utils + Mock API | 表单验证、状态管理、路由跳转、API 调用 |
+| **FT1** | 组件单元测试 | Vitest + @testing-library/react | 组件渲染、props、事件、slot、hook |
+| **FT2** | 页面交互测试 | Vitest + @testing-library/react + Mock API | 表单验证、状态管理、路由跳转、API 调用 |
 | **FT3** | 端到端流程测�?| Playwright | 完整用户旅程、跨页面流程、真实浏览器渲染 |
 
 **测试文件位置**�?
@@ -824,12 +824,12 @@ export const apiConfig = {
 
 ## Mock 持续验证
 
-开发期间每�?`npm run dev` 时自动验�?Mock 契约�?
+开发期间每�?`bun run dev` 时自动验�?Mock 契约�?
 ```json
 {
   "scripts": {
     "mock:sync": "node scripts/verify-mock-contract.ts",
-    "dev": "npm run mock:sync && vite"
+    "dev": "bun run mock:sync && vite"
   }
 }
 ```
@@ -1043,10 +1043,10 @@ test.describe('Visual Regression �?Dashboard', () => {
 
 ```bash
 # 首次：生成基线截图（在本地有头浏览器运行�?
-npx playwright test --project=chromium-headed --update-snapshots
+bunx playwright test --project=chromium-headed --update-snapshots
 
 # CI：对比基线（无头浏览器）
-npx playwright test --project=chromium-headless
+bunx playwright test --project=chromium-headless
 
 # 基线存储在版本控制中
 tests/visual/
@@ -1104,18 +1104,18 @@ function extractRoles(node: any, roles: string[] = []): string[] {
 
 ```
 1. 启动 dev server
-   npx vite --port 5173 &
+   bunx --bun vite --port 5173 &
 
 2. 运行 computed style 断言
-   npx playwright test tests/visual/<page>.visual.spec.ts
+   bunx playwright test tests/visual/<page>.visual.spec.ts
    �?全部 PASS 才继�?
 
 3. 运行视觉回归快照
-   npx playwright test tests/visual/<page>.screenshot.spec.ts
+   bunx playwright test tests/visual/<page>.screenshot.spec.ts
    �?首次运行自动生成基线；后续运行对比基�?
 
 4. 运行布局完整性检�?
-   npx playwright test tests/visual/<page>.visual.spec.ts -g "overlapping"
+   bunx playwright test tests/visual/<page>.visual.spec.ts -g "overlapping"
    �?无重叠元�?
 
 5. 产出视觉验证报告 �?写入 Done 文件 visual_verification 字段
@@ -1132,7 +1132,7 @@ function extractRoles(node: any, roles: string[] = []): string[] {
 | 修改 .css / scoped style | VISUAL_PENDING | 人类审核截图 �?改标 DONE |
 | 新增/修改组件布局结构 | VISUAL_PENDING | 人类审核截图 �?改标 DONE |
 | 新增/修改动画/过渡 | VISUAL_PENDING | 人类审核截图 �?改标 DONE |
-| 纯逻辑修复（composable/api/store�?| 可自�?DONE | 所�?computed style 断言通过 |
+| 纯逻辑修复（hook/api/store�?| 可自�?DONE | 所�?computed style 断言通过 |
 | 纯文�?文案修改 | 可自�?DONE | 所�?computed style 断言通过 |
 
 **VISUAL_PENDING 标记模板**（写入模块目录下�?`VISUAL_PENDING` 文件）：

@@ -98,7 +98,7 @@ export default defineConfig({
 
   // Dev server — auto-start for local, skip in CI
   webServer: {
-    command: 'npm run dev',
+    command: 'bun run dev',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
@@ -137,19 +137,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: 'npm'
+          bun-version: latest
 
       - name: Install dependencies
-        run: npm ci
+        run: bun install
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: bunx playwright install --with-deps chromium
 
       - name: Run E2E tests (headless)
-        run: npx playwright test --project=chromium-headless
+        run: bunx playwright test --project=chromium-headless
         env:
           CI: 'true'
           BASE_URL: http://localhost:5173
@@ -197,9 +196,9 @@ e2e/
 
 | Scenario | Command | When |
 |----------|---------|------|
-| First run (no baselines) | `npx playwright test --update-snapshots` | Initial test creation |
-| Intentional UI change | `npx playwright test --update-snapshots` | After PRD-approved visual changes |
-| CI drift (OS/font rendering) | `npx playwright test --update-snapshots` | When CI runner OS updates |
+| First run (no baselines) | `bunx playwright test --update-snapshots` | Initial test creation |
+| Intentional UI change | `bunx playwright test --update-snapshots` | After PRD-approved visual changes |
+| CI drift (OS/font rendering) | `bunx playwright test --update-snapshots` | When CI runner OS updates |
 | Accidental mismatch | **Do NOT update** — fix the code | When a real regression is found |
 
 ## Tolerance Configuration
@@ -276,12 +275,12 @@ export { expect } from '@playwright/test';
 // If tests need multiple backend instances, use dynamic ports:
 webServer: [
   {
-    command: 'npm run dev:api -- --port 3001',
+    command: 'bun run dev:api -- --port 3001',
     url: 'http://localhost:3001/health',
     reuseExistingServer: !process.env.CI,
   },
   {
-    command: 'npm run dev:frontend -- --port 5173',
+    command: 'bun run dev:frontend -- --port 5173',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
   },

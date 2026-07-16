@@ -49,12 +49,12 @@ const CHECKS = {
   },
   backend: {
     name: '后端服务',
-    description: 'http://localhost:3000/health 可访问',
+    description: 'http://localhost:3333/health 可访问',
     severity: 'critical',
   },
   frontend: {
     name: '前端服务',
-    description: 'http://127.0.0.1:5173 可访问',
+    description: 'http://127.0.0.1:5555 可访问',
     severity: 'warning',
   },
   login: {
@@ -87,7 +87,7 @@ function checkDb() {
   if (!dbPath) {
     return {
       passed: false,
-      message: '未找到文件数据库（wecrm.db），请运行: npx tsx templates/e2e/seed.ts',
+      message: '未找到文件数据库（wecrm.db），请运行: bun run templates/e2e/seed.ts',
       detail: `搜索路径: ${process.cwd()}`,
     }
   }
@@ -118,7 +118,7 @@ function checkTables() {
     if (missing.length > 0) {
       return {
         passed: false,
-        message: `缺少表: ${missing.join(', ')}。请运行: npx tsx templates/e2e/seed.ts`,
+        message: `缺少表: ${missing.join(', ')}。请运行: bun run templates/e2e/seed.ts`,
         detail: `已有表: ${tables.join(', ') || '无'}`,
       }
     }
@@ -157,7 +157,7 @@ function checkSeed() {
     if (actualCount < 4) {
       return {
         passed: false,
-        message: `测试用户不足: ${actualCount}/4。请运行: npx tsx templates/e2e/seed.ts`,
+        message: `测试用户不足: ${actualCount}/4。请运行: bun run templates/e2e/seed.ts`,
         detail: `需要至少 admin/sales1/sales2/partner1 四个用户`,
       }
     }
@@ -177,7 +177,7 @@ function checkSeed() {
 }
 
 async function checkBackend() {
-  const url = 'http://localhost:3000/health'
+  const url = 'http://localhost:3333/health'
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 5000)
@@ -196,19 +196,19 @@ async function checkBackend() {
     return {
       passed: false,
       message: `后端返回 ${res.status}`,
-      detail: `请运行: npx tsx templates/e2e/start-server.ts`,
+      detail: `请运行: bun run templates/e2e/start-server.ts`,
     }
   } catch (err) {
     return {
       passed: false,
       message: '后端服务不可达',
-      detail: `请运行: npx tsx templates/e2e/start-server.ts (${err.message})`,
+      detail: `请运行: bun run templates/e2e/start-server.ts (${err.message})`,
     }
   }
 }
 
 async function checkFrontend() {
-  const url = 'http://127.0.0.1:5173'
+  const url = 'http://127.0.0.1:5555'
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 3000)
@@ -225,13 +225,13 @@ async function checkFrontend() {
     return {
       passed: false,
       message: '前端服务不可达',
-      detail: `请运行: cd apps/web && npm run dev`,
+      detail: `请运行: cd demo-frontend && bun run dev`,
     }
   }
 }
 
 async function checkLogin() {
-  const url = 'http://localhost:3000/auth/login'
+  const url = 'http://localhost:3333/auth/login'
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 5000)
@@ -262,13 +262,13 @@ async function checkLogin() {
     return {
       passed: false,
       message: `登录失败: HTTP ${res.status}`,
-      detail: `请确认 seed 数据已初始化: npx tsx templates/e2e/seed.ts`,
+      detail: `请确认 seed 数据已初始化: bun run templates/e2e/seed.ts`,
     }
   } catch (err) {
     return {
       passed: false,
       message: '登录接口不可达',
-      detail: `请确认后端已启动: npx tsx templates/e2e/start-server.ts (${err.message})`,
+      detail: `请确认后端已启动: bun run templates/e2e/start-server.ts (${err.message})`,
     }
   }
 }
@@ -295,7 +295,7 @@ function checkProxy() {
   return {
     passed: false,
     message: '未找到 Vite 代理配置',
-    detail: '请在 vite.config.ts 中配置 /api → http://localhost:3000 的 proxy',
+    detail: '请在 vite.config.ts 中配置 /api → http://localhost:3333 的 proxy',
   }
 }
 
@@ -367,18 +367,18 @@ async function runChecks(args) {
   if (allCriticalPassed) {
     console.log('')
     console.log('  ✅ 所有关键项通过！可以运行 E2E 测试:')
-    console.log('     npx playwright test')
+    console.log('     bunx playwright test')
   } else {
     console.log('')
     console.log('  ❌ 关键项未通过！请按以下顺序初始化:')
     console.log('')
     console.log('  方式 1 (一键):')
-    console.log('     npx tsx templates/e2e/setup-e2e-env.ts')
+    console.log('     bun run templates/e2e/setup-e2e-env.ts')
     console.log('')
     console.log('  方式 2 (分步):')
-    console.log('     1. npx tsx templates/e2e/seed.ts          # 初始化数据库')
-    console.log('     2. npx tsx templates/e2e/start-server.ts  # 启动后端（3000）')
-    console.log('     3. cd apps/web && npm run dev              # 启动前端（5173）')
+    console.log('     1. bun run templates/e2e/seed.ts          # 初始化数据库')
+    console.log('     2. bun run templates/e2e/start-server.ts  # 启动后端（3333）')
+    console.log('     3. cd demo-frontend && bun run dev              # 启动前端（5555）')
     console.log('     4. node scripts/check-e2e-env.js           # 重新检查')
   }
   console.log('')

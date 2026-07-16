@@ -20,7 +20,7 @@ async function globalSetup(): Promise<void> {
 
   try {
     // 强制重置数据库（--reset 删除旧文件 + 重建）
-    execSync('npx tsx templates/e2e/seed.ts --reset', {
+    execSync('bun run templates/e2e/seed.ts --reset', {
       cwd: process.cwd(),
       stdio: 'inherit',
       timeout: 30_000,

@@ -10,8 +10,8 @@
  *   - workers: 1（同一 SQLite 文件串行操作，避免锁冲突）
  *
  * 使用方式:
- *   npx playwright test              # 自动重置 DB + 启动服务 + 运行测试
- *   npx playwright test --ui         # UI 模式调试
+ *   bunx playwright test              # 自动重置 DB + 启动服务 + 运行测试
+ *   bunx playwright test --ui         # UI 模式调试
  */
 
 import { defineConfig, devices } from '@playwright/test'
@@ -47,10 +47,21 @@ export default defineConfig({
     ['list'],
   ],
 
+  // ─── @headed 标签约定 ──────────────────────────────────────────────
+  //
+  // 在测试标题中标注 @headed 以标记必须在有头浏览器运行的用例:
+  //   test('登录页面渲染动画 @headed', async ({ page }) => { ... })
+  //
+  // 全量回归仅运行 @headed 用例:
+  //   bunx playwright test --headed --project=chromium --grep @headed
+  //
+  // 至少 5 条核心用例必须带 @headed 标签:
+  //   1. 登录页面渲染  2. 仪表盘渲染  3. 导航跳转  4. 404页面  5. 主题切换
+
   // 全局配置
   use: {
     // 基础 URL（指向 Vite 前端）
-    baseURL: 'http://127.0.0.1:5173',
+    baseURL: 'http://127.0.0.1:5555',
 
     // 截图策略: 仅失败时截图
     screenshot: 'only-on-failure',
@@ -69,16 +80,16 @@ export default defineConfig({
   webServer: [
     // 后端服务: 使用文件数据库
     {
-      command: 'npx tsx templates/e2e/start-server.ts',
-      url: 'http://localhost:3000/health',
+      command: 'bun run templates/e2e/start-server.ts',
+      url: 'http://localhost:3333/health',
       timeout: 30 * 1000,
       reuseExistingServer: !process.env.CI,
       cwd: process.cwd(),
     },
     // 前端服务: Vite dev server
     {
-      command: 'cd apps/web && npm run dev',
-      url: 'http://127.0.0.1:5173',
+      command: 'cd demo-frontend && bun run dev',
+      url: 'http://127.0.0.1:5555',
       timeout: 30 * 1000,
       reuseExistingServer: !process.env.CI,
     },

@@ -17,14 +17,15 @@
     "sync:qoder": "node scripts/sync-skills.js --mode push --target qoder",
     "sync:trae": "node scripts/sync-skills.js --mode push --target trae",
     "sync:dry-run": "node scripts/sync-skills.js --mode push --dry-run",
-    "sync:backup": "node scripts/sync-skills.js --mode push --backup"
+    "sync:backup": "node scripts/sync-skills.js --mode push --backup",
+    "e2e:sanitize": "node scripts/e2e-sanitizer.js",
+    "e2e:full": "node scripts/e2e-full-regression.js",
+    "e2e:env": "node scripts/check-e2e-env.js",
+    "e2e:coverage": "node scripts/check-e2e-coverage.js"
   },
   "dependencies": {
-    "@vitejs/plugin-vue": "^6.0.7",
     "typescript": "^6.0.3",
-    "vite": "^8.0.14",
-    "vue": "^3.5.34",
-    "vue-tsc": "^3.3.2"
+    "vite": "^8.0.14"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
