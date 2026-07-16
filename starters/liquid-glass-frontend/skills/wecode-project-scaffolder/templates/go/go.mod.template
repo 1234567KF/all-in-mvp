@@ -1,3 +1,0 @@
-module {{PROJECT_NAME}}-backend
-
-go 1.26
