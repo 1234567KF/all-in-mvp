@@ -1,0 +1,490 @@
+/* ===========================
+   Liquid Glass Theme Tokens
+   ===========================
+   所有颜色通过 CSS 变量定义，修改主题色只需改此文件。
+   当前默认主色：绿色系 #22c55e / #4be277
+   =========================== */
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* Fonts */
+  --font-heading: "Manrope", sans-serif;
+  --font-body:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* Liquid Glass surface / text / outline */
+  --color-surface: var(--lg-surface);
+  --color-surface-dim: var(--lg-surface);
+  --color-surface-bright: var(--lg-surface-bright);
+  --color-surface-lowest: var(--lg-background);
+  --color-surface-low: var(--lg-surface-low);
+  --color-surface-container: var(--lg-surface-container);
+  --color-surface-high: var(--lg-surface-high);
+  --color-surface-highest: var(--lg-surface-highest);
+  --color-on-surface: var(--lg-text-primary);
+  --color-on-surface-variant: var(--lg-text-secondary);
+  --color-outline: var(--lg-text-muted);
+  --color-outline-variant: var(--lg-outline-variant);
+  --color-primary-accent: var(--lg-primary-light);
+  --color-primary-container: var(--lg-primary-container);
+  --color-on-primary: var(--lg-on-primary);
+  --color-on-primary-container: var(--lg-on-primary-container);
+  --color-secondary-accent: var(--lg-secondary-accent);
+  --color-secondary-container: var(--lg-secondary-container);
+  --color-tertiary-accent: var(--lg-tertiary-accent);
+  --color-tertiary-container: var(--lg-tertiary-container);
+  --color-error-accent: var(--lg-error-accent);
+  --color-error-container: var(--lg-error-container);
+  --color-warning-accent: var(--lg-warning-accent);
+  --color-info-accent: var(--lg-info-accent);
+
+  /* Semantic Data Colors */
+  --color-data-link: var(--lg-info);
+  --color-data-added: var(--lg-primary-light);
+  --color-data-deleted: var(--lg-danger);
+  --color-data-ai: var(--lg-data-ai);
+  --color-data-link-bg: var(--data-link-bg);
+  --color-data-added-bg: var(--data-added-bg);
+  --color-data-deleted-bg: var(--data-deleted-bg);
+  --color-data-ai-bg: var(--data-ai-bg);
+  --color-data-link-border: var(--data-link-border);
+  --color-data-added-border: var(--data-added-border);
+  --color-data-deleted-border: var(--data-deleted-border);
+  --color-data-ai-border: var(--data-ai-border);
+
+  /* shadcn mapped colors：直接映射 shadcn/ui 组件内部使用的语义变量，自定义代码应优先使用 lg-* 变量 */
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+
+  /* Border Radius */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* ===========================
+   Dark Theme (Default)
+   =========================== */
+:root {
+  /* ── shadcn semantic tokens ── */
+  /* 基础色：页面背景与前景文字、卡片、浮层 */
+  --background: #0e0e11;
+  --foreground: #e4e1e6;
+  --card: rgba(27, 27, 30, 0.7);
+  --card-foreground: #e4e1e6;
+  --popover: rgba(27, 27, 30, 0.95);
+  --popover-foreground: #e4e1e6;
+
+  /* ★★★ 主色 — 改这里切换主题色 ★★★ */
+  --primary: #22c55e;
+  --primary-foreground: #000000;
+  --secondary: #571bc1;
+  --secondary-foreground: #d0bcff;
+  /* 中性/弱化色：次要文字、禁用态背景 */
+  --muted: #1f1f22;
+  --muted-foreground: #bccbb9;
+  /* 交互状态色：强调背景、强调文字、危险操作、边框、输入框、聚焦环 */
+  --accent: rgba(34, 197, 94, 0.1);
+  --accent-foreground: #4be277;
+  --destructive: #ffb4ab;
+  --border: rgba(61, 74, 61, 0.4);
+  --input: rgba(61, 74, 61, 0.4);
+  --ring: rgba(75, 226, 119, 0.5);
+
+  /* Chart palette */
+  --chart-1: #4be277;
+  --chart-2: #22c55e;
+  --chart-3: #d0bcff;
+  --chart-4: #8bcfff;
+  --chart-5: #facc15;
+  --radius: 0.75rem;
+
+  /* Sidebar */
+  --sidebar: rgba(19, 19, 22, 0.8);
+  --sidebar-foreground: #e4e1e6;
+  --sidebar-primary: #4be277;
+  --sidebar-primary-foreground: #003915;
+  --sidebar-accent: rgba(34, 197, 94, 0.1);
+  --sidebar-accent-foreground: #4be277;
+  --sidebar-border: rgba(61, 74, 61, 0.2);
+  --sidebar-ring: rgba(75, 226, 119, 0.5);
+  --sidebar-active-hover-bg: rgba(34, 197, 94, 0.22);
+  --sidebar-active-hover-border: rgba(34, 197, 94, 0.24);
+
+  /* ── Liquid Glass tokens ── */
+  --lg-background: #0e0e11;
+  --lg-surface: #131316;
+  --lg-surface-glass: rgba(27, 27, 30, 0.7);
+  --lg-surface-elevated: rgba(19, 19, 22, 0.8);
+  --lg-surface-bright: #39393c;
+  --lg-surface-low: #1b1b1e;
+  --lg-surface-container: #1f1f22;
+  --lg-surface-high: #2a2a2d;
+  --lg-surface-highest: #353438;
+  --lg-outline-variant: #3d4a3d;
+
+  /* ★★★ 主色系 Liquid Glass — 改这里 ★★★ */
+  /* 主色系变体：base/light(浅化)/dim(暗化)/glow(发光效果)/border(边框)/hover(悬停)/highlight(高亮选中) */
+  --lg-primary: #22c55e;
+  --lg-primary-light: #4be277;
+  --lg-primary-dim: rgba(34, 197, 94, 0.15);
+  --lg-primary-glow: rgba(34, 197, 94, 0.4);
+  --lg-primary-border: rgba(34, 197, 94, 0.3);
+  --lg-primary-hover: var(--lg-primary-light);
+  --lg-primary-highlight: rgba(34, 197, 94, 0.28);
+  --lg-primary-highlight-glow: rgba(34, 197, 94, 0.45);
+  --lg-primary-highlight-pulse: rgba(34, 197, 94, 0.16);
+  --lg-primary-highlight-pulse-glow: rgba(34, 197, 94, 0.25);
+  --lg-primary-container: #22c55e;
+  --lg-on-primary: #003915;
+  --lg-on-primary-container: #004b1e;
+
+  /* Secondary / Tertiary / Error / Warning / Info：次要色/第三色/错误/警告/信息等语义强调色 */
+  --lg-secondary-accent: #d0bcff;
+  --lg-secondary-container: #571bc1;
+  --lg-secondary-dim: rgba(208, 188, 255, 0.15);
+  --lg-tertiary-accent: #8bcfff;
+  --lg-tertiary-container: #36b6fb;
+  --lg-tertiary-dim: rgba(139, 207, 255, 0.15);
+  --lg-error-accent: #ffb4ab;
+  --lg-error-container: #93000a;
+  --lg-warning-accent: #facc15;
+  --lg-info-accent: #89ceff;
+  --lg-data-ai: #d0bcff;
+
+  /* Accent Blue：链接/信息类元素 */
+  --lg-accent-blue: #36b6fb;
+  --lg-accent-blue-light: #8bcfff;
+  --lg-accent-blue-dim: rgba(54, 182, 251, 0.15);
+  --lg-accent-blue-glow: rgba(54, 182, 251, 0.4);
+  --lg-accent-blue-border: rgba(54, 182, 251, 0.3);
+
+  /* Accent Red：删除/错误状态 */
+  --lg-accent-red: #ef4444;
+  --lg-accent-red-light: #ffb4ab;
+  --lg-accent-red-dim: rgba(239, 68, 68, 0.15);
+  --lg-accent-red-glow: rgba(239, 68, 68, 0.4);
+  --lg-accent-red-border: rgba(239, 68, 68, 0.3);
+
+  /* Accent Purple：AI 功能/特殊标记 */
+  --lg-accent-purple: #a855f7;
+  --lg-accent-purple-light: #d0bcff;
+  --lg-accent-purple-dim: rgba(168, 85, 247, 0.15);
+  --lg-accent-purple-glow: rgba(168, 85, 247, 0.4);
+  --lg-accent-purple-border: rgba(168, 85, 247, 0.3);
+
+  /* Accent Yellow：警告/注意事项 */
+  --lg-accent-yellow: #eab308;
+  --lg-accent-yellow-light: #facc15;
+  --lg-accent-yellow-dim: rgba(234, 179, 8, 0.15);
+  --lg-accent-yellow-glow: rgba(234, 179, 8, 0.4);
+  --lg-accent-yellow-border: rgba(234, 179, 8, 0.3);
+
+  /* Border / Text */
+  --lg-border: rgba(61, 74, 61, 0.4);
+  --lg-border-subtle: rgba(255, 255, 255, 0.06);
+  --lg-text-primary: #e4e1e6;
+  --lg-text-secondary: #bccbb9;
+  --lg-text-muted: #869585;
+  --lg-danger: #ffb4ab;
+  --lg-warning: #facc15;
+  --lg-info: #8bcfff;
+
+  /* Semantic solid colors for progress bars, indicators etc. */
+  --data-danger: var(--lg-danger);
+  --data-warning: var(--lg-warning);
+  --data-success: var(--lg-primary-light);
+
+  /* Info glow (matching error/warning/info accent glow pattern) */
+  --lg-info-glow: rgba(137, 206, 255, 0.3);
+
+  /* Semantic Data Colors：-bg=浅背景填充, -border=边框描边, -rgb=用于 rgba() 自定义透明度 */
+  --data-link-bg: rgba(139, 207, 255, 0.15);
+  --data-added-bg: rgba(75, 226, 119, 0.15);
+  --data-deleted-bg: rgba(255, 180, 171, 0.15);
+  --data-warning-bg: rgba(250, 204, 21, 0.15);
+  --data-ai-bg: rgba(208, 188, 255, 0.15);
+  --data-link-border: rgba(139, 207, 255, 0.3);
+  --data-added-border: rgba(75, 226, 119, 0.3);
+  --data-deleted-border: rgba(255, 180, 171, 0.3);
+  --data-warning-border: rgba(250, 204, 21, 0.3);
+  --data-ai-border: rgba(208, 188, 255, 0.3);
+  --data-link-rgb: 139, 207, 255;
+  --data-added-rgb: 75, 226, 119;
+  --data-deleted-rgb: 255, 180, 171;
+  --data-warning-rgb: 250, 204, 21;
+  --data-ai-rgb: 208, 188, 255;
+
+  /* Typography */
+  --font-heading: "Manrope", sans-serif;
+  --font-body:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* Spacing */
+  --spacing-page: 32px;
+  --spacing-card: 24px;
+  --spacing-element: 16px;
+
+  /* Radius */
+  --radius-glass-sm: 8px;
+  --radius-glass-md: 12px;
+  --radius-glass-lg: 16px;
+  --radius-glass-xl: 20px;
+
+  /* Shadows & Effects */
+  --glass-blur: 12px; /* 普通卡片/面板的常规模糊 */
+  --glass-blur-heavy: 20px; /* 全屏遮罩/弹层等重度模糊场景 */
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3); /* 卡片默认投影，营造层级 */
+  --shadow-glow-primary: 0 0 8px rgba(34, 197, 94, 0.4); /* 主色发光，用于强调/激活元素 */
+  --shadow-glow-soft: 0 0 20px rgba(34, 197, 94, 0.1); /* 主色柔和光晕，用于氛围点缀 */
+  --glass-gradient-top: rgba(255, 255, 255, 0.03);
+  --btn-secondary-bg: rgba(27, 27, 30, 0.5);
+  --btn-secondary-hover-bg: rgba(27, 27, 30, 0.8);
+  --glass-input-bg: rgba(27, 27, 30, 0.7);
+  --glass-input-focus-bg: rgba(14, 14, 17, 0.8);
+  --glass-input-placeholder: rgba(188, 203, 185, 0.5);
+  --glass-row-bg: rgba(27, 27, 30, 0.4);
+  --glass-row-hover-bg: rgba(42, 42, 45, 0.7);
+  --skeleton-from: rgba(42, 42, 45, 0.5);
+  --skeleton-mid: rgba(53, 52, 56, 0.5);
+
+  /* Layout */
+  --sidebar-width: 256px;
+  --topbar-height: 64px;
+}
+
+/* Responsive spacing */
+@media (max-width: 640px) {
+  :root {
+    --spacing-page: 16px;
+  }
+  .light {
+    --spacing-page: 16px;
+  }
+}
+
+/* .dark 块与 :root 变量完全一致，此处保留是为了支持局部/嵌套暗色主题（例如在浅色页面中强制渲染暗色卡片或侧边栏）。 */
+.dark {
+  --background: #0e0e11;
+  --foreground: #e4e1e6;
+  --card: rgba(27, 27, 30, 0.7);
+  --card-foreground: #e4e1e6;
+  --popover: rgba(27, 27, 30, 0.95);
+  --popover-foreground: #e4e1e6;
+  --primary: #22c55e;
+  --primary-foreground: #000000;
+  --secondary: #571bc1;
+  --secondary-foreground: #d0bcff;
+  --muted: #1f1f22;
+  --muted-foreground: #bccbb9;
+  --accent: rgba(34, 197, 94, 0.1);
+  --accent-foreground: #4be277;
+  --destructive: #ffb4ab;
+  --border: rgba(61, 74, 61, 0.4);
+  --input: rgba(61, 74, 61, 0.4);
+  --ring: rgba(75, 226, 119, 0.5);
+  --chart-1: #4be277;
+  --chart-2: #22c55e;
+  --chart-3: #d0bcff;
+  --chart-4: #8bcfff;
+  --chart-5: #facc15;
+  --sidebar: rgba(19, 19, 22, 0.8);
+  --sidebar-foreground: #e4e1e6;
+  --sidebar-primary: #4be277;
+  --sidebar-primary-foreground: #003915;
+  --sidebar-accent: rgba(34, 197, 94, 0.1);
+  --sidebar-accent-foreground: #4be277;
+  --sidebar-border: rgba(61, 74, 61, 0.2);
+  --sidebar-ring: rgba(75, 226, 119, 0.5);
+}
+
+/* ===========================
+   Light Theme
+   =========================== */
+.light {
+  --background: #f7f9fb;
+  --foreground: #191c1e;
+  --card: rgba(255, 255, 255, 0.7);
+  --card-foreground: #191c1e;
+  --popover: rgba(255, 255, 255, 0.95);
+  --popover-foreground: #191c1e;
+
+  /* ★★★ Light 主色 — 改这里 ★★★ */
+  --primary: #006e2f;
+  --primary-foreground: #ffffff;
+  --secondary: #565e74;
+  --secondary-foreground: #ffffff;
+  --muted: #f2f4f6;
+  --muted-foreground: #6d7b6c;
+  --accent: rgba(34, 197, 94, 0.1);
+  --accent-foreground: #006e2f;
+  --destructive: #ba1a1a;
+  --border: rgba(109, 123, 108, 0.3);
+  --input: rgba(109, 123, 108, 0.3);
+  --ring: rgba(0, 110, 47, 0.5);
+
+  --chart-1: #22c55e;
+  --chart-2: #006e2f;
+  --chart-3: #dae2fd;
+  --chart-4: #82abff;
+  --chart-5: #eab308;
+
+  --sidebar: rgba(247, 249, 251, 0.8);
+  --sidebar-foreground: #191c1e;
+  --sidebar-primary: #006e2f;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(34, 197, 94, 0.06);
+  --sidebar-accent-foreground: #006e2f;
+  --sidebar-border: rgba(109, 123, 108, 0.2);
+  --sidebar-ring: rgba(0, 110, 47, 0.5);
+  --sidebar-active-hover-bg: rgba(34, 197, 94, 0.12);
+  --sidebar-active-hover-border: rgba(34, 197, 94, 0.18);
+
+  /* Liquid Glass — Light */
+  --lg-background: #ffffff;
+  --lg-surface: #f7f9fb;
+  --lg-surface-glass: rgba(255, 255, 255, 0.7);
+  --lg-surface-elevated: rgba(247, 249, 251, 0.8);
+  --lg-surface-bright: #e6e8ea;
+  --lg-surface-low: #f2f4f6;
+  --lg-surface-container: #eceef0;
+  --lg-surface-high: #e6e8ea;
+  --lg-surface-highest: #e0e3e5;
+  --lg-outline-variant: #bccbb9;
+
+  --lg-primary: #006e2f;
+  --lg-primary-light: #22c55e;
+  --lg-primary-dim: rgba(34, 197, 94, 0.08);
+  --lg-primary-glow: rgba(0, 110, 47, 0.3);
+  --lg-primary-border: rgba(0, 110, 47, 0.2);
+  --lg-primary-hover: #16a34a;
+  --lg-primary-highlight: rgba(0, 110, 47, 0.15);
+  --lg-primary-highlight-glow: rgba(0, 110, 47, 0.3);
+  --lg-primary-highlight-pulse: rgba(0, 110, 47, 0.08);
+  --lg-primary-highlight-pulse-glow: rgba(0, 110, 47, 0.15);
+  --lg-primary-container: #22c55e;
+  --lg-on-primary: #ffffff;
+  --lg-on-primary-container: #004b1e;
+
+  --lg-secondary-accent: #dae2fd;
+  --lg-secondary-container: #dae2fd;
+  --lg-secondary-dim: rgba(86, 94, 116, 0.08);
+  --lg-tertiary-accent: #82abff;
+  --lg-tertiary-container: #82abff;
+  --lg-tertiary-dim: rgba(0, 90, 194, 0.08);
+  --lg-error-accent: #ba1a1a;
+  --lg-error-container: #ffdad6;
+  --lg-warning-accent: #eab308;
+  --lg-info-accent: #005ac2;
+  --lg-data-ai: #565e74;
+
+  /* Accent Blue */
+  --lg-accent-blue: #005ac2;
+  --lg-accent-blue-light: #005ac2;
+  --lg-accent-blue-dim: rgba(0, 90, 194, 0.08);
+  --lg-accent-blue-glow: rgba(0, 90, 194, 0.3);
+  --lg-accent-blue-border: rgba(0, 90, 194, 0.2);
+
+  /* Accent Red */
+  --lg-accent-red: #ba1a1a;
+  --lg-accent-red-light: #ba1a1a;
+  --lg-accent-red-dim: rgba(186, 26, 26, 0.08);
+  --lg-accent-red-glow: rgba(186, 26, 26, 0.3);
+  --lg-accent-red-border: rgba(186, 26, 26, 0.2);
+
+  /* Accent Purple */
+  --lg-accent-purple: #571bc1;
+  --lg-accent-purple-light: #571bc1;
+  --lg-accent-purple-dim: rgba(87, 27, 193, 0.08);
+  --lg-accent-purple-glow: rgba(87, 27, 193, 0.3);
+  --lg-accent-purple-border: rgba(87, 27, 193, 0.2);
+
+  /* Accent Yellow */
+  --lg-accent-yellow: #eab308;
+  --lg-accent-yellow-light: #eab308;
+  --lg-accent-yellow-dim: rgba(234, 179, 8, 0.08);
+  --lg-accent-yellow-glow: rgba(234, 179, 8, 0.3);
+  --lg-accent-yellow-border: rgba(234, 179, 8, 0.2);
+  --lg-border: rgba(109, 123, 108, 0.3);
+  --lg-border-subtle: rgba(0, 0, 0, 0.06);
+  --lg-text-primary: #191c1e;
+  --lg-text-secondary: #3d4a3d;
+  --lg-text-muted: #6d7b6c;
+  --lg-danger: #ba1a1a;
+  --lg-warning: #eab308;
+  --lg-info: #005ac2;
+
+  --data-danger: var(--lg-danger);
+  --data-warning: var(--lg-warning);
+  --data-success: var(--lg-primary-light);
+
+  --lg-info-glow: rgba(0, 90, 194, 0.3);
+
+  --data-link-bg: rgba(0, 90, 194, 0.08);
+  --data-added-bg: rgba(0, 110, 47, 0.08);
+  --data-deleted-bg: rgba(186, 26, 26, 0.08);
+  --data-warning-bg: rgba(234, 179, 8, 0.08);
+  --data-ai-bg: rgba(86, 94, 116, 0.08);
+  --data-link-border: rgba(0, 90, 194, 0.2);
+  --data-added-border: rgba(0, 110, 47, 0.2);
+  --data-deleted-border: rgba(186, 26, 26, 0.2);
+  --data-warning-border: rgba(234, 179, 8, 0.2);
+  --data-ai-border: rgba(86, 94, 116, 0.2);
+  --data-link-rgb: 0, 90, 194;
+  --data-added-rgb: 0, 110, 47;
+  --data-deleted-rgb: 186, 26, 26;
+  --data-warning-rgb: 234, 179, 8;
+  --data-ai-rgb: 86, 94, 116;
+
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.06);
+  --shadow-glow-primary: 0 0 8px rgba(0, 110, 47, 0.3);
+  --shadow-glow-soft: 0 0 20px rgba(0, 110, 47, 0.08);
+  --glass-gradient-top: rgba(0, 0, 0, 0.03);
+  --btn-secondary-bg: rgba(255, 255, 255, 0.5);
+  --btn-secondary-hover-bg: rgba(255, 255, 255, 0.8);
+  --glass-input-bg: rgba(255, 255, 255, 0.7);
+  --glass-input-focus-bg: rgba(255, 255, 255, 0.95);
+  --glass-input-placeholder: rgba(109, 123, 108, 0.5);
+  --glass-row-bg: rgba(0, 0, 0, 0.02);
+  --glass-row-hover-bg: rgba(0, 0, 0, 0.04);
+  --skeleton-from: rgba(230, 232, 234, 0.6);
+  --skeleton-mid: rgba(226, 227, 229, 0.6);
+}

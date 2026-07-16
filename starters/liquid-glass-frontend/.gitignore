@@ -1,0 +1,69 @@
+# dependencies
+node_modules/
+
+# production / build outputs
+dist/
+build/
+.gradle/
+*.out
+*.exe
+*.bun-build
+
+# logs
+*.log*
+
+# environment variables (keep .env.example as template, ignore actual secrets)
+.env
+.env.local
+.env.*.local
+.env.production
+
+# IDEs and editors
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# testing / coverage
+/coverage
+coverage/
+.nyc_output/
+
+# caches and temp
+.eslintcache
+.parcel-cache
+.turbo
+.vite
+*.tsbuildinfo
+
+# database files and data directory (SQLite + WAL 副产物)
+apps/api/data/
+*.db
+*.sqlite
+*.sqlite-journal
+*.db-shm
+*.db-wal
+
+# bun binary lockfile (强制使用 bun.lock 文本格式，避免二进制 lockfile 引起 diff 噪音)
+bun.lockb
+
+# package archives
+*.tgz
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# root-level images / AI 临时产物
+/*.png
+/*.jpg
+/*.jpeg
+.git-diff.tmp
+
+# uploaded files（业务附件、知识库）
+uploads/

@@ -1,0 +1,14 @@
+node_modules/
+apps/*/node_modules/
+apps/*/dist/
+packages/*/dist/
+*.db
+*.db-shm
+*.db-wal
+.git
+.github
+.gitlab-ci.yml
+.vscode
+.husky
+docs/
+*.md

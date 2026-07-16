@@ -1,0 +1,651 @@
+/* ===========================
+   Liquid Glass Design Utilities
+   ===========================
+   Utility classes, animations, scrollbar, base styles.
+   依赖 theme-tokens.css 中的 CSS 变量。
+   =========================== */
+
+/* ===========================
+   Base Layer
+   =========================== */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-background font-body text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.6;
+    background-image: radial-gradient(
+      circle at 50% -20%,
+      var(--lg-primary-dim) 0%,
+      transparent 50%
+    );
+    background-attachment: fixed;
+  }
+
+  html {
+    @apply font-body;
+  }
+}
+
+/* ===========================
+   Frozen Columns — activate only when table overflows horizontally
+   The Table component sets [data-scrollable] via ResizeObserver.
+   When width is sufficient, frozen cells are plain cells (no sticky/bg/shadow).
+   =========================== */
+
+/* Always use border-collapse:separate to prevent backdrop-blur on header
+   rows from hiding collapsed borders. border-spacing:0 keeps visual parity. */
+[data-slot="table-container"] [data-slot="table"] {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+@media (min-width: 640px) {
+  /* --- Left frozen --- */
+  [data-slot="table-container"][data-scrollable] [data-frozen="left"] {
+    position: sticky;
+    left: 0;
+    z-index: 10;
+    background: color-mix(
+      in oklch,
+      var(--lg-surface-elevated) 95%,
+      transparent
+    );
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  [data-slot="table-container"][data-scrollable]
+    [data-frozen="left"][data-slot="table-head"] {
+    z-index: 20;
+  }
+
+  /* --- Right frozen --- */
+  [data-slot="table-container"][data-scrollable] [data-frozen="right"] {
+    position: sticky;
+    right: 0;
+    z-index: 10;
+    background: color-mix(
+      in oklch,
+      var(--lg-surface-elevated) 95%,
+      transparent
+    );
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  [data-slot="table-container"][data-scrollable]
+    [data-frozen="right"][data-slot="table-head"] {
+    z-index: 20;
+  }
+
+  /* --- Shadow pseudo-elements --- */
+  [data-slot="table-container"][data-scrollable] [data-frozen="left"]::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 5px;
+    transform: translateX(100%);
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.06), transparent);
+  }
+  [data-slot="table-container"][data-scrollable] [data-frozen="right"]::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 5px;
+    transform: translateX(-100%);
+    background: linear-gradient(to left, rgba(0, 0, 0, 0.06), transparent);
+  }
+
+  /* --- Row hover for frozen cells --- */
+  [data-slot="table-container"][data-scrollable]
+    [data-slot="table-row"]:hover
+    [data-frozen][data-slot="table-cell"] {
+    background: color-mix(
+      in oklch,
+      var(--accent) 30%,
+      color-mix(in oklch, var(--lg-surface-elevated) 95%, transparent)
+    );
+  }
+
+  /* --- Frozen cells always use stronger border for row visibility ---
+     --lg-border-subtle (6% opacity) is too faint against transparent bg.
+     This replaces the implicit contrast that sm:bg-elevated used to provide. */
+  [data-frozen][data-slot="table-cell"],
+  [data-frozen][data-slot="table-head"] {
+    border-bottom-color: var(--lg-border);
+  }
+
+  /* --- Frozen cells border when scrollable ---
+     Use same subtle border as non-frozen cells for visual consistency. */
+  [data-slot="table-container"][data-scrollable]
+    [data-frozen][data-slot="table-cell"],
+  [data-slot="table-container"][data-scrollable]
+    [data-frozen][data-slot="table-head"] {
+    border-bottom-color: var(--lg-border-subtle) !important;
+  }
+}
+
+/* ===========================
+   Scrollbar
+   =========================== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(134, 149, 133, 0.25);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(134, 149, 133, 0.55);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::selection {
+  background: var(--lg-primary);
+  color: var(--lg-on-primary);
+}
+
+/* ===========================
+   Material Symbols Icons
+   =========================== */
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined", sans-serif;
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 400,
+    "GRAD" 0,
+    "opsz" 24;
+  font-size: 20px;
+  line-height: 1;
+  vertical-align: middle;
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  overflow: hidden;
+}
+
+.icon-fill {
+  font-variation-settings:
+    "FILL" 1,
+    "wght" 400,
+    "GRAD" 0,
+    "opsz" 24;
+}
+
+/* ===========================
+   Glass Panels & Cards
+   =========================== */
+
+/* Base glass panel class. Use this for general containers, rows, or layout panels. */
+.liquid-glass,
+.liquid-card,
+.glass-card {
+  background: var(--lg-surface-glass);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--lg-border);
+  border-radius: var(--radius-glass-md);
+  background-image: linear-gradient(
+    to bottom,
+    var(--glass-gradient-top),
+    transparent
+  );
+}
+
+/* Glass-card variant: adds shadow elevation. Recommended for page layout cards. */
+.glass-card {
+  box-shadow: var(--shadow-card);
+}
+
+/* Matte-card variant: flat glass panel with no sheen reflection gradient and no shadow. */
+.matte-card {
+  background: var(--lg-surface-glass);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--lg-border);
+  border-radius: var(--radius-glass-md);
+}
+
+/* ===========================
+   Glass Row (Tables)
+   =========================== */
+.glass-row {
+  background: var(--glass-row-bg);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--lg-border);
+  transition: all 0.2s ease-in-out;
+}
+
+.glass-row:hover {
+  background: var(--glass-row-hover-bg);
+  border-left: 2px solid var(--lg-primary-light);
+}
+
+/* ===========================
+   Accent Bars
+   =========================== */
+/* KPI 强调条：左侧带发光竖条，用于 KPI 卡片突出关键指标 */
+.kpi-accent {
+  position: relative;
+  padding-left: 16px;
+}
+
+.kpi-accent::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: var(--lg-primary);
+  border-radius: 2px;
+  box-shadow: var(--shadow-glow-primary);
+}
+
+/* 通用强调条：左侧无发光竖条，用于通用列表/区块的视觉引导 */
+.liquid-accent {
+  position: relative;
+  padding-left: 16px;
+}
+
+.liquid-accent::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 80%;
+  width: 2px;
+  background: var(--lg-primary);
+  border-radius: 2px;
+}
+
+/* ===========================
+   Progress / Glow
+   =========================== */
+.progress-indicator {
+  box-shadow: var(--shadow-glow-primary);
+}
+
+.glow-progress {
+  box-shadow: 0 0 8px var(--lg-primary-glow);
+}
+
+.ambient-shadow {
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* ===========================
+   Status Badges
+   =========================== */
+/* 激活徽章：绿色，表示激活/在线/已启用 */
+.badge-active {
+  background: var(--lg-primary-dim);
+  color: var(--lg-primary-light);
+  border: 1px solid var(--lg-primary-border);
+  border-radius: 9999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* 停用徽章：红色，表示停用/离线/禁用 */
+.badge-inactive {
+  background: var(--data-deleted-bg);
+  color: var(--lg-danger);
+  border: 1px solid var(--data-deleted-border);
+  border-radius: 9999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ===========================
+   Tags
+   =========================== */
+/* 数据标签基类 */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--lg-border);
+}
+
+/* 绿色标签：成功/已添加 */
+.tag-green {
+  background: var(--lg-primary-dim);
+  color: var(--lg-primary-light);
+  border-color: var(--lg-primary-border);
+}
+
+/* 蓝色标签：信息/链接 */
+.tag-blue {
+  background: var(--data-link-bg);
+  color: var(--lg-info);
+  border-color: var(--data-link-border);
+}
+
+/* 紫色标签：AI 生成/特殊标记 */
+.tag-purple {
+  background: var(--data-ai-bg);
+  color: var(--lg-data-ai);
+  border-color: var(--data-ai-border);
+}
+
+/* 红色标签：已删除/风险 */
+.tag-red {
+  background: var(--data-deleted-bg);
+  color: var(--lg-danger);
+  border-color: var(--data-deleted-border);
+}
+
+/* ===========================
+   Buttons
+   ===========================
+   注：此处使用 !important 是为了在不修改 shadcn/ui 组件源码的情况下，
+   强行覆盖组件内部硬编码的 Tailwind 基础类（如 bg-primary, hover:bg-primary/90 等）。 */
+/* 主操作按钮：提交、确认、CTA */
+.btn-primary,
+[data-slot="button"][data-variant="default"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--lg-primary) !important;
+  color: var(--lg-on-primary) !important;
+  font-weight: 600;
+  font-family: var(--font-body);
+  font-size: 14px;
+  border-radius: var(--radius-glass-sm);
+  padding: 8px 16px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.btn-primary:hover,
+[data-slot="button"][data-variant="default"]:hover {
+  background: var(--lg-primary-hover) !important;
+  color: var(--lg-on-primary-container) !important;
+  box-shadow: 0 0 20px var(--lg-primary-glow) !important;
+}
+
+/* Light mode overrides to keep text color white on hover and soften background hover */
+.light .btn-primary:hover,
+.light [data-slot="button"][data-variant="default"]:hover {
+  color: var(--lg-on-primary) !important; /* Keep text color white */
+  box-shadow: 0 4px 12px var(--lg-primary-glow) !important;
+}
+
+/* 辅助操作按钮：取消、返回 */
+.btn-secondary,
+[data-slot="button"][data-variant="secondary"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--btn-secondary-bg) !important;
+  backdrop-filter: blur(var(--glass-blur)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur)) !important;
+  border: 1px solid var(--lg-border) !important;
+  color: var(--lg-text-primary) !important;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 400;
+  border-radius: var(--radius-glass-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.btn-secondary:hover,
+[data-slot="button"][data-variant="secondary"]:hover {
+  background: var(--btn-secondary-hover-bg) !important;
+}
+
+/* ===========================
+   Glass Input
+   =========================== */
+.glass-input {
+  width: 100%;
+  background: var(--glass-input-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--lg-border);
+  border-radius: var(--radius-glass-sm);
+  padding: 10px 14px;
+  color: var(--lg-text-primary);
+  font-family: var(--font-body);
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.glass-input::placeholder {
+  color: var(--glass-input-placeholder);
+}
+
+.glass-input:focus {
+  border-color: var(--lg-primary-light);
+  box-shadow: 0 0 0 1px var(--lg-primary-border);
+  background: var(--glass-input-focus-bg);
+}
+
+/* Reset inner inputs inside InputGroup to prevent nested borders, backgrounds, and shadows */
+/* 重置复合输入组件内部输入框样式，避免嵌套边框/背景/阴影 */
+[data-slot="input-group"] input,
+[data-slot="input-group"] [data-slot="input"] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* ===========================
+   Typography Helpers
+   =========================== */
+/* 模块/区域标题 */
+.section-title {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--lg-text-primary);
+}
+
+/* 数据标签（大写、宽间距） */
+.data-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--lg-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.form-label {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--lg-text-primary);
+  margin-bottom: 6px;
+}
+
+/* 页面大标题 */
+.font-h1 {
+  font-family: var(--font-heading);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+/* 子标题 */
+.font-h2 {
+  font-family: var(--font-heading);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+/* 数据数值展示（大字号） */
+.font-data-display {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* 等宽小字标签 */
+.font-label-mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+}
+
+/* ===========================
+   Chart Container
+   =========================== */
+.chart-container {
+  background: var(--lg-surface-glass);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--lg-border);
+  border-radius: var(--radius-glass-md);
+  padding: var(--spacing-card);
+}
+
+/* ===========================
+   Sidebar Glass Override
+   =========================== */
+/* 侧边栏背景加强玻璃效果 */
+[data-slot="sidebar-inner"] {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+/* ===========================
+   Skeleton Loading
+   =========================== */
+.skeleton-glass {
+  background: linear-gradient(
+    90deg,
+    var(--skeleton-from) 25%,
+    var(--skeleton-mid) 50%,
+    var(--skeleton-from) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.shimmer-glare {
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.6) 50%,
+    transparent 80%
+  );
+  background-size: 220% 100%;
+  animation: shimmer 1.6s infinite linear;
+}
+
+.dark .shimmer-glare {
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 80%
+  );
+  background-size: 220% 100%;
+}
+
+/* ===========================
+   Floating Animations
+   =========================== */
+@keyframes float {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+}
+
+.animate-blob {
+  animation: float 20s infinite alternate ease-in-out;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+/* ===========================
+   Search Highlight
+   =========================== */
+@keyframes search-highlight-pulse {
+  0% {
+    background-color: var(--lg-primary-highlight);
+    box-shadow: 0 0 0 2px var(--lg-primary-highlight-glow);
+  }
+  60% {
+    background-color: var(--lg-primary-highlight-pulse);
+    box-shadow: 0 0 0 2px var(--lg-primary-highlight-pulse-glow);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 2px transparent;
+  }
+}
+
+[data-search-highlight="true"] {
+  animation: search-highlight-pulse 2.4s ease-out forwards;
+  border-radius: 8px;
+}

@@ -1,0 +1,81 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+)
+
+type User struct {
+	ID    uint   `gorm:"primaryKey" json:"id"`
+	Email string `gorm:"uniqueIndex;not null" json:"email"`
+	Name  string `json:"name"`
+	Role  string `json:"role"`
+}
+
+type Response struct {
+	Success bool   `json:"success"`
+	Users   []User `json:"users,omitempty"`
+	Message string `json:"message,omitempty"`
+	Error   string `json:"error,omitempty"`
+}
+
+var db *gorm.DB
+
+func helloHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	response := map[string]interface{}{
+		"message":   "Hello from Go Backend with GORM & SQLite!",
+		"timestamp": "now",
+	}
+	json.NewEncoder(w).Encode(response)
+}
+
+func usersHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	var users []User
+	if err := db.Find(&users).Error; err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(Response{Success: false, Error: err.Error()})
+		return
+	}
+
+	json.NewEncoder(w).Encode(Response{Success: true, Users: users})
+}
+
+func main() {
+	var err error
+	db, err = gorm.Open(sqlite.Open("gorm.db"), &gorm.Config{})
+	if err != nil {
+		panic("failed to connect database")
+	}
+
+	// Auto Migrate
+	db.AutoMigrate(&User{})
+
+	// Seed Admin if empty
+	var count int64
+	db.Model(&User{}).Count(&count)
+	if count == 0 {
+		db.Create(&User{
+			Email: "admin@liquid.glass",
+			Name:  "Go Admin",
+			Role:  "admin",
+		})
+		fmt.Println("🌱 Seeded admin user into Go database.")
+	}
+
+	http.HandleFunc("/api/hello", helloHandler)
+	http.HandleFunc("/api/users", usersHandler)
+
+	fmt.Println("Server starting on :8080...")
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		panic(err)
+	}
+}

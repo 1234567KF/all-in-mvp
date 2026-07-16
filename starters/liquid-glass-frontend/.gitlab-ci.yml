@@ -1,0 +1,204 @@
+# ── Liquid Glass Starter CI/CD Pipeline ──
+#
+# 触发方式:
+#   1. Push 到仓库（自动）
+#   2. GitLab 手动触发（Web UI）
+#   3. 定时任务（CI/CD > Schedules）
+#
+# 所需 CI/CD Variables:
+#   FLOW_WEBHOOK_URL              - 阿里云 Flow 流水线 Webhook 地址（生产用）
+#                                   ⚠️ 模板项目不跑生产，替换为真值后再启用 deploy-prod
+#   G_LOCAL_SERVER_000_SSH_PKEY   - 内网测试机 SSH 私钥内容（GitLab 全局变量）
+#
+# 部署架构:
+#   main  → build 打 test-latest → SSH 到内网测试机 docker compose pull/up
+#   prod  → build 打 latest      → 触发阿里云 Flow Webhook 拉镜像部署（生产）
+
+workflow:
+  rules:
+    # 避免同一分支 push + MR 双流水线：有关联 MR 的 push 跳过
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - when: always
+
+stages:
+  - check
+  - build
+  - deploy
+
+variables:
+  FLOW_WEBHOOK_URL: "http://flow-openapi.aliyun.com/pipeline/webhook/REPLACE_ME"
+  IMAG_REG: "registry.cn-beijing.aliyuncs.com/wecode-cloud"
+  IMAGE_TAG: "$IMAG_REG/liquid-glass-starter:$CI_COMMIT_SHA"
+  # 内网测试机（SSH 部署）
+  TEST_HOST: "192.168.110.214"
+  TEST_PORT: "63022"
+  TEST_USER: "wecode"
+  TEST_PATH: "/home/wecode/liquid-glass-starter"
+
+# ── Stage 0: 质量门禁（迁移预检 + 架构约束 + 单元测试）──
+#
+# 沉淀自实战项目的 CI 趟坑经验：
+#   ▸ migrate:check     Journal / .sql / snapshot 三方一致 + 内存 SQLite 全量迁移 +
+#                       drizzle-kit 二次 generate 检测 schema.ts 漂移
+#                       （拦截手写迁移、column 冲突、缺失快照等历史事故）
+#   ▸ arch:check        UI 层禁 @/lib/api / axios / sonner 直连 + 页面必须 React.lazy
+#                       （守护 services/toast 抽象层，避免 AI 生成代码时走偏）
+#   ▸ test:ci           前端 Vitest 覆盖率阈值 + 后端 Bun 原生覆盖率阈值
+#                       （引入新 workspace 后需在 root package.json 同步 test:ci 里的 filter）
+check:
+  stage: check
+  image: registry.cn-beijing.aliyuncs.com/wecode-cloud/bun:1-alpine
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+  script:
+    - bun install --frozen-lockfile
+    - bun run build:shared
+    - echo '▶ 迁移预检…'
+    - bun --filter api migrate:check
+    - echo '▶ 架构约束检查…'
+    - bun run arch:check
+    - echo '▶ 单元测试 + 覆盖率阈值…'
+    - bun run test:ci
+
+# ── Stage 1a: 构建 Docker 镜像（main 分支） ──
+# 打 $SHA + test-latest 双标签，导出为 tar artifact
+# 由后续 push-registry (推阿里云) 与 deploy-test (SCP 到测试机) 并行消费
+# 缓解内网 Runner → 阿里云 Registry 慢推送阻塞 deploy-test 的问题
+# prod 分支不再重复 build，改由 retag job 复用 main 已构建的 $SHA 镜像
+build:
+  stage: build
+  image: registry.cn-beijing.aliyuncs.com/wecode-cloud/docker:cli-amd64
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+  variables:
+    DOCKER_BUILDKIT: "1"
+  script:
+    - docker pull $IMAG_REG/liquid-glass-starter:latest || true
+    - echo "▶ 构建镜像 $IMAGE_TAG + $IMAG_REG/liquid-glass-starter:test-latest"
+    - |
+      docker build --compress \
+        --build-arg BUILDKIT_INLINE_CACHE=1 \
+        --cache-from $IMAG_REG/liquid-glass-starter:latest \
+        -t $IMAGE_TAG \
+        -t $IMAG_REG/liquid-glass-starter:test-latest \
+        .
+    - echo "▶ 导出镜像为 tar (供 push-registry + deploy-test 并行消费)"
+    - docker save $IMAGE_TAG $IMAG_REG/liquid-glass-starter:test-latest | gzip > image.tar.gz
+    - ls -lh image.tar.gz
+    - echo "▶ 清理 Runner 宿主悬空镜像（保留 24h 内作为下次 build 缓存）"
+    - docker image prune -f --filter "until=24h" || true
+  artifacts:
+    paths:
+      - image.tar.gz
+    expire_in: 1 day
+
+# ── Stage 1b: 生产镜像复用（prod 分支） ──
+# FF 合并 → prod HEAD SHA == main 已构建的 SHA → 直接 pull + retag + push
+# 不再重复 build，保证测试通过的镜像 == 生产运行的镜像
+retag:
+  stage: build
+  image: registry.cn-beijing.aliyuncs.com/wecode-cloud/docker:cli-amd64
+  rules:
+    - if: $CI_COMMIT_BRANCH == "prod"
+  script:
+    - echo "▶ 复用 main 已构建镜像 $IMAGE_TAG → latest"
+    - |
+      if ! docker pull $IMAGE_TAG; then
+        echo ""
+        echo "════════════════════════════════════════════════════════════"
+        echo "❌ 拉取镜像失败：$IMAGE_TAG"
+        echo ""
+        echo "  当前 prod HEAD SHA ($CI_COMMIT_SHA) 在 Registry 中不存在。"
+        echo "  可能原因：本次 MR 使用了 Squash / Merge commit，导致"
+        echo "  prod 的 SHA 与 main 已构建的 SHA 不一致。"
+        echo ""
+        echo "  ✅ 正确做法：合并 main → prod 时必须选择"
+        echo "     『Fast-forward（快进式）合并』，不要勾选『压缩提交』"
+        echo ""
+        echo "  🛠 修复步骤："
+        echo "     1. 回退 prod 分支：git reset --hard <上一个正确的 SHA>"
+        echo "     2. 重新以 FF 方式合并 main → prod"
+        echo "════════════════════════════════════════════════════════════"
+        exit 1
+      fi
+    - docker tag  $IMAGE_TAG $IMAG_REG/liquid-glass-starter:latest
+    - docker push $IMAG_REG/liquid-glass-starter:latest
+
+# ── Stage 2a: 推送镜像到阿里云 Registry（main 分支） ──
+# 与 deploy-test 并行，不阻塞测试环境部署
+# prod 分支 retag job 依赖此 job 推送的 $SHA 标签（保证生产镜像同源）
+push-registry:
+  stage: deploy
+  needs:
+    - job: build
+      artifacts: true
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+  image: registry.cn-beijing.aliyuncs.com/wecode-cloud/docker:cli-amd64
+  script:
+    - echo "▶ 从 artifact 加载镜像"
+    - docker load -i image.tar.gz
+    - echo "▶ 推送 $IMAGE_TAG + test-latest 到阿里云"
+    - docker push $IMAGE_TAG
+    - docker push $IMAG_REG/liquid-glass-starter:test-latest
+    - echo "▶ 清理 Runner 宿主悬空镜像"
+    - docker image prune -f --filter "until=24h" || true
+
+# ── Stage 2b: 部署到内网测试机（main 分支） ──
+# 通过 SCP 传 tar 包到测试机，测试机 docker load 后启动，无需拉阿里云 Registry
+# 优点：内网 SCP ~10s vs 公网 pull ~2min
+deploy-test:
+  stage: deploy
+  needs:
+    - job: check
+    - job: build
+      artifacts: true
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  image: registry.cn-beijing.aliyuncs.com/wecode-cloud/ci-tools:alpine-3.20
+  before_script:
+    - echo "$G_LOCAL_SERVER_000_SSH_PKEY" > private_key && chmod 600 private_key
+    - eval "$(ssh-agent -s)"
+    - ssh-add private_key
+    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    - ssh-keyscan -p $TEST_PORT $TEST_HOST >> ~/.ssh/known_hosts 2>/dev/null
+  script:
+    - 'echo "▶ 确保测试机部署目录存在"'
+    - 'ssh -p $TEST_PORT $TEST_USER@$TEST_HOST "mkdir -p $TEST_PATH"'
+    - 'echo "▶ 同步 compose.test.yml + deploy.sh + 镜像 tar 包到测试机"'
+    - 'scp -P $TEST_PORT compose.test.yml $TEST_USER@$TEST_HOST:$TEST_PATH/compose.yml'
+    - 'scp -P $TEST_PORT deploy.sh $TEST_USER@$TEST_HOST:$TEST_PATH/deploy.sh'
+    - 'scp -P $TEST_PORT image.tar.gz $TEST_USER@$TEST_HOST:$TEST_PATH/image.tar.gz'
+    - 'echo "▶ 执行部署脚本 (tar 加载模式)"'
+    - 'ssh -p $TEST_PORT $TEST_USER@$TEST_HOST "cd $TEST_PATH && chmod +x deploy.sh && ./deploy.sh test-latest image.tar.gz"'
+    - 'echo "✓ Test deploy done: http://$TEST_HOST:11070"'
+  environment:
+    name: test
+    url: http://192.168.110.214:11070
+
+# ── Stage 2b: 触发阿里云 Flow 部署（prod 分支 / 生产） ──
+deploy-prod:
+  stage: deploy
+  needs:
+    - job: check
+    - job: retag
+  rules:
+    - if: $CI_COMMIT_BRANCH == "prod"
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+  image: registry.cn-beijing.aliyuncs.com/wecode-cloud/alpine:3.20
+  script:
+    - |
+      wget -qO- --post-data='{}' \
+        --header='Content-Type: application/json' \
+        "$FLOW_WEBHOOK_URL" && echo '✓ Deploy triggered' || exit 1
+  environment:
+    name: production

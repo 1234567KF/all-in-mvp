@@ -1,0 +1,27 @@
+# Bun test 配置
+#
+# 覆盖率阈值（仅在 --coverage 时生效；本地默认 `bun test` 不开）
+# 由 `bun run test:api:coverage`（package.json）或 CI check job 触发
+coverageReporter = ["text"]
+coverageSkipTestFiles = true
+coveragePathIgnorePatterns = [
+  "**/*.test.ts",
+  "**/test-helpers.ts",
+  "**/test-preload.ts",
+  "**/db.ts",
+  "**/db/schema.ts",
+  "**/dist/**",
+  "**/node_modules/**",
+  "**/packages/shared/**",
+]
+# ⚠️ 必须用单值写法：{ lines = ..., functions = ... } 的对象形式在 Bun 1.3.14 静默失效
+#    见 https://github.com/oven-sh/bun/issues/7367
+# 阈值模板阶段先设 0，重要的是配置骨架已到位（coverageReporter / coverageSkipTestFiles /
+# coveragePathIgnorePatterns / coverageThreshold 均已埋好）。引入正式业务 + 测试后
+# 模板阶段默认阀值 0；业务成型后按需上提（参考 0.85）。
+coverageThreshold = 0
+
+[test]
+# 项目引入 jsonwebtoken / bcrypt / crypto 等副作用依赖后，可通过 preload 统一 mock：
+#   preload = ["./src/test-preload.ts"]
+# 避免每个 *.test.ts 重复 mock.module(...)

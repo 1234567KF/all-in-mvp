@@ -1,0 +1,25 @@
+services:
+  liquid-glass-starter:
+    image: registry.cn-beijing.aliyuncs.com/wecode-cloud/liquid-glass-starter:test-latest
+    container_name: liquid-glass-starter-test
+    restart: unless-stopped
+    ports:
+      # 模板自身测试端口 11070（self-deploy 保留）；scaffold 出的新项目由 skill 自动分配 11081+ 写死至此
+      - "${WEB_PORT:-11070}:3000"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/hello || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    # tar 加载模式下，本地已有镜像就不再拉取（无需访问阿里云 Registry）
+    pull_policy: missing

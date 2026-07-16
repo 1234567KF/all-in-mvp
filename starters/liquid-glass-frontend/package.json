@@ -1,0 +1,62 @@
+{
+  "name": "liquid-glass-monorepo",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "bun --filter web dev",
+    "dev:api": "bun --filter api dev",
+    "dev": "bun run build:shared && concurrently \"bun run dev:web\" \"bun run dev:api\"",
+    "build:shared": "bun --filter shared build",
+    "build:web": "bun --filter web build",
+    "build:api": "bun --filter api build",
+    "build": "bun run build:shared && bun run build:api && bun run build:web",
+    "typecheck": "bun --filter web typecheck && bun --filter api typecheck",
+    "lint": "bun --filter web lint",
+    "arch:check": "bun run scripts/arch-check.ts",
+    "test": "bun run test:shared && bun run test:web && bun run test:api",
+    "test:ci": "bun run test:shared && bun run test:coverage && bun run test:api:coverage",
+    "test:api": "cd apps/api && bun test src/",
+    "test:api:coverage": "cd apps/api && bun test src/ --coverage",
+    "test:web": "cd apps/web && bunx vitest run",
+    "test:coverage": "cd apps/web && bunx vitest run --coverage",
+    "test:shared": "cd packages/shared && bunx vitest run",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "concurrently": "^10.0.3",
+    "eslint": "^10.5.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "eslint-plugin-simple-import-sort": "^13.0.0",
+    "globals": "^17.7.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.8",
+    "prettier": "^3.8.1",
+    "prettier-plugin-tailwindcss": "^0.8.0",
+    "typescript-eslint": "^8.57.1"
+  },
+  "lint-staged": {
+    "packages/shared/src/**/*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "apps/web/**/*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "apps/api/**/*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "**/*.{css,json,md}": [
+      "prettier --write"
+    ]
+  }
+}

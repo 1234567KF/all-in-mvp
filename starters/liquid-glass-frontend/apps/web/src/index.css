@@ -1,0 +1,85 @@
+/* Demo 入口 — 引用 theme CSS + 字体 */
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "./assets/fonts/fonts.css";
+@import "./theme-tokens.css";
+@import "./design-utils.css";
+
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+/* 浏览器自动填充（Autofill）样式重写 —— 用超长 transition-delay 冻结浏览器注入的背景色，
+   避免使用 box-shadow 遮罩（会与半透明 glass-input 背景冲突产生色差遮挡） */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--lg-text-primary) !important;
+  caret-color: var(--lg-text-primary);
+  transition:
+    background-color 9999s ease-in-out 0s,
+    color 9999s ease-in-out 0s;
+}
+
+/* ===========================
+   Page Transition Animations (View Transitions API)
+   =========================== */
+
+/* 仅在用户没有启用系统“减弱动态效果”时展示动效 */
+@media (prefers-reduced-motion: no-preference) {
+  /* 定制页面退出时的动画：旧页面淡出并轻微缩小 */
+  ::view-transition-old(root) {
+    animation:
+      180ms cubic-bezier(0.4, 0, 1, 1) both fade-out,
+      180ms cubic-bezier(0.4, 0, 0.2, 1) both scale-down;
+  }
+
+  /* 定制新页面进入时的动画：新页面淡入并从下方升起 */
+  ::view-transition-new(root) {
+    animation:
+      220ms cubic-bezier(0, 0, 0.2, 1) both fade-in,
+      220ms cubic-bezier(0.16, 1, 0.3, 1) both slide-up;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-down {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(0.993);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(6px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}

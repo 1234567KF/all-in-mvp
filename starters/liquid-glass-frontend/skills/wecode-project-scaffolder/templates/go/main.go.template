@@ -1,0 +1,26 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+)
+
+type HelloResponse struct {
+	Message string `json:"message"`
+}
+
+func helloHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	response := HelloResponse{Message: "Hello from Go Backend!"}
+	json.NewEncoder(w).Encode(response)
+}
+
+func main() {
+	http.HandleFunc("/api/hello", helloHandler)
+	fmt.Println("Server starting on :8080...")
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		panic(err)
+	}
+}

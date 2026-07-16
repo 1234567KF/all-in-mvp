@@ -1,0 +1,4 @@
+export PATH="$HOME/.bun/bin:$PATH"
+bun run scripts/check-migration-staged.ts
+bun run lint-staged
+bunx lint-staged
