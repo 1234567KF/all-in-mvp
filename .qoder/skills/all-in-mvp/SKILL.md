@@ -1763,6 +1763,8 @@ Step 5: 升级条件
   - L4 与 L5 结果一致，无 HIGH 级别差异
   - 类型1（无头独败）/ 类型2（有头独败）/ 类型3（双方失败）全部清零
 - [ ] **账号自修复验证**：ensureAccountReady 函数正常工作
+- [ ] **E2E Real 模式通过（v2.13）**：`E2E_MODE=real` 在真实后端（SQLite + bcrypt + JWT）上跑通核心链路，严禁只跑 Mock 后端交付
+- [ ] **冷启动验收清单通过（v2.13）**：删库重建→种子账号数量正确→快捷登录按钮逐角色真实登录通过（见 MSVP 协议 Step 1/Step 3）
 - [ ] **全流程深度测试**：每个角色核心业务闭环通过
 
 ### 质量审计清单
@@ -1819,18 +1821,21 @@ Step 5: 升级条件
 | A6 | Console 红色 Error | DevTools Console 中出现 `error` 级别日志 | 未捕获的异常、网络请求失败 |
 | A7 | 页面布局错乱 | 按钮重叠、文字溢出、组件未对齐 | CSS 未加载、样式冲突 |
 | A8 | 环境变量/配置缺失 | 应用启动但功能异常 | `.env` 文件缺失或值错误 |
+| A9 | 快捷登录凭证与种子不匹配（v2.13） | 登录页快捷按钮逐角色点击登录 | Mock 与真实 DB 种子数据不同步，真实后端缺少快捷按钮对应账号 |
 
-> **门禁**：A1-A8 必须全部为零。任何 A 类 Bug → 不通过 → 修复 → 重新 MSVP → 清零才放行。
+> **门禁**：A1-A9 必须全部为零。任何 A 类 Bug → 不通过 → 修复 → 重新 MSVP → 清零才放行。
 
 #### MSVP验证流程
 
 ```
 Step 1: 冷启动
   ├── 全新 clone 或 git clean -fd
+  ├── 删除 SQLite db 文件（模拟全新部署，v2.13）
   ├── npm install / pnpm install（从零安装依赖）
   ├── npm run db:push（初始化数据库）
   ├── npm run db:seed（种子数据）
-  └── npm run dev（启动开发服务器）
+  ├── 确认种子日志输出的账号数量与 seeds/ 定义一致（v2.13）
+  └── npm run dev（启动开发服务器，确认端口与 .env 一致无漂移）
 
 Step 2: 打开浏览器
   ├── 使用 Playwright（有头模式）
@@ -1839,6 +1844,8 @@ Step 2: 打开浏览器
 
 Step 3: 执行冒烟路径
   ├── 导航到首页 → 截图
+  ├── 用登录页快捷按钮逐角色真实登录（admin/sales/channel 类角色，v2.13）
+  ├── 确认 disabled 账号登录被拒、forceChangePwd 账号弹出改密页（v2.13）
   ├── 遍历所有菜单项（逐一检查是否可访问、是否 404）
   ├── 执行核心用户旅程
   └── 每个关键步骤 → 截图
@@ -2318,6 +2325,10 @@ const E2E_COVERAGE_CHECKER = {
 - **权限交叉矩阵必测（v2.12）**：多角色项目必须生成角色×端点组矩阵，每个交叉格 = 1 条必写用例（含预期 403 格）。禁止 partner-flow 只用一个 partner 账号测试。详见「E2E 测试编写最佳实践 §9」。
 - **状态双向断言（v2.12）**：每次状态转换必须同时验证"target 出现"和"source 消失"。单向断言是"已审核商机仍在待审核列表"类 Bug 的第一漏测原因。详见「E2E 测试编写最佳实践 §10」。
 - **断言质量门禁（v2.12）**：禁止 `expect([200,403]).toContain(status)` 宽松断言、禁止只判状态码不判内容、禁止缺失反向断言。Test Review Agent（③c）已新增第 5 项审查维度。详见 `agents/test-review.md`。
+- **E2E 双模验收（v2.13）**：Stage4 验收前 E2E MUST 跑两轮：① **Mock 模式**全量（开发阶段快速反馈/CI 预检）；② **Real 模式**核心链路（`E2E_MODE=real`，启动真实后端，让请求走真实 SQLite + bcrypt + JWT 全链路）。Real 模式最低覆盖：每角色登录成功、禁用账号登录被拒、核心 CRUD 主链路。两轮全部通过才能标记 Stage4 完成。**典型血案**：E2E 92/92 全绿但全部跑在 Mock 后端上，人工启动真实后端后快捷登录立即报密码错误——测试环境与验收环境不是同一套后端。
+- **种子数据单一真源（v2.13）**：测试账号/基础数据 MUST 存放在独立 `seeds/` 目录（如 `seeds/accounts.ts`），Mock 数据与真实 DB 种子函数 MUST import 同一份定义，严禁各自维护两份账号列表。真实 DB 种子账号数量/凭证 MUST 与前端快捷登录按钮（TEST_ACCOUNTS）完全一致；修改种子后 MUST 同步用户手册测试账号表。典型血案：Mock 有 7 个账号、真实 SQLite 只种了 1 个，两套数据完全独立导致前端快捷按钮全部失效。
+- **端口配置化（v2.13）**：框架标准端口 API=3333、WEB=5555、预留=2222。Stage2 架构设计时 MUST 生成 `.env`（`API_PORT=3333`、`WEB_PORT=5555`），后续所有配置文件（后端 env.ts、vite.config proxy target、playwright config baseURL/webServer、mock launcher）MUST 从 `.env` 读取，**禁止硬编码端口字面量**。违反后果：端口漂移（5173→5177）、多实例冲突、E2E 与人工验收连的不是同一个前端。
+- **API 路径唯一真源（v2.13）**：`api-contract.yaml` 是前端 service 层、真实后端路由、Mock 服务器三方的唯一路径真源。前端 service 层（services/*.ts）的请求路径 MUST 从 api-contract.yaml 提取，**严禁按 Mock 服务器的路径约定编写**；Mock 服务器的路由 MUST 与 api-contract.yaml 逐条一致（路径、方法、参数位置）。Stage 4.2 联调时 MUST 用自动化脚本逐端点校验：前端实际请求路径 × 真实后端已注册路由 × contract 定义三方对齐，任一不匹配即门禁失败。典型血案：前端 services/roles.ts 按 Mock 约定写路径，切到真实后端后全部 404——Mock 与真实后端路由完全不同但 E2E 只跑 Mock 故全绿。
 
 ### E2E 测试编写最佳实践（v2.6）
 

@@ -1335,3 +1335,35 @@ await expect(page.locator('[data-testid="recent-list"]')).toBeVisible(); // 其�
 - [ ] 每个CRUD模块至少 7 个用例
 - [ ] 工作流测试至少 21 个用例（管理员8+销售7+渠道6）
 - [ ] 总用例数 ≥ 70（全量模式）
+- [ ] **Real 模式核心链路通过（v2.13）**：见下方「双模式运行」章节
+
+---
+
+# 双模式运行（v2.13 强制 — Mock + Real）
+
+> **背景血案**：E2E 92/92 全绿，但全部跑在内存 Mock 服务器上；人工启动真实 SQLite 后端后，快捷登录立即报密码错误。测试环境与验收环境不是同一套后端，是测试全绿但一跑就挂的万恶之源。
+
+## 两种模式定义
+
+| 模式 | 后端 | 用途 | 命令 |
+|------|------|------|------|
+| **Mock 模式** | 内存 Mock 服务器 | 开发阶段快速反馈、CI 预检 | `bunx playwright test` |
+| **Real 模式** | 真实后端（SQLite + bcrypt + JWT） | Stage4 人工验收前的最终验证（强制门禁） | `E2E_MODE=real bunx playwright test --config tests/e2e/playwright.real.config.ts` |
+
+## Real 模式实现要点
+
+1. **独立配置文件**：新增 `tests/e2e/playwright.real.config.ts`，webServer 启动真实后端（如 `bun run dev`）而非 mock-launcher
+2. **global-setup 改造**：Real 模式下调用 seed API 或 `db:seed` 脚本初始化数据，**严禁直写 Mock 内存**
+3. **用例可精简**：Real 模式不追求全量，最低覆盖：每角色登录成功（使用与登录页快捷按钮同款凭证）、禁用账号登录被拒、核心 CRUD 主链路（如：管理员审核+销售跟进+渠道报备）
+4. **种子一致性前提**：Real 模式依赖「种子数据单一真源」铁律（seeds/ 目录被 Mock 和真实 DB 同时引用），否则两模式凭证不同必然失败
+5. **端口从 .env 读取**：两套配置的 baseURL/webServer 端口均从 `.env` 读取，禁止硬编码
+
+## API 路径唯一真源约束（v2.13）
+
+- 前端 service 层（services/*.ts）请求路径 MUST 从 `api-contract.yaml` 提取，**严禁按 Mock 服务器路径约定编写**
+- Mock 服务器路由 MUST 与 api-contract.yaml 逐条一致（路径、方法、参数位置）
+- Real 模式 E2E 天然能暴露路径不一致：Mock 全绿但 Real 模式全部 404 → 立即检查 services/ 是否按 Mock 约定写死路径
+
+## 门禁规则
+
+Mock 模式全量通过 + Real 模式核心链路通过 → Stage4 可以标记完成；任一模式失败 → 门禁不通过，修复后两模式均重跑。

@@ -27,3 +27,4 @@
 - 不改动其他 Agent 负责的页面
 - 不修改后端代码
 - UI 框架遵循用户指定或默认（Element Plus / Ant Design Vue / 自建）
+- **API 路径唯一真源（v2.13）**：service 层（services/*.ts）请求路径 MUST 从 `api-contract.yaml` 逐条提取，**严禁按 Mock 服务器的路径约定编写**——Mock 只是契约的一种实现，不是路径真源。典型血案：services/roles.ts 按 Mock 约定写路径，切到真实后端后全部 404

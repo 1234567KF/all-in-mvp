@@ -25,13 +25,13 @@
 **触发时机**：Stage4 后端合并后 + 前后端联调后
 **耗时**：15-30 分钟
 **验证内容**：核心用户旅程端到端走通（登录→主流程→登出）
-**通过条件**：A1-A8 全部零
+**通过条件**：A1-A9 全部零
 
 ### MSVP-Full（全功能冒烟）
 **触发时机**：Stage4 全部完成，交付前
 **耗时**：30-60 分钟
 **验证内容**：全功能冒烟 + 菜单完整性 + 所有页面可访问
-**通过条件**：全菜单+全页面+核心旅程，A1-A8 全部零
+**通过条件**：全菜单+全页面+核心旅程，A1-A9 全部零
 
 ---
 
@@ -40,10 +40,12 @@
 ```
 Step 1: 冷启动
   ├── 全新 clone 或 git clean -fd
+  ├── 删除 SQLite db 文件（模拟全新部署，v2.13）
   ├── bun install（从零安装依赖）
   ├── bun run db:push（初始化数据库）
   ├── bun run db:seed（种子数据）
-  └── bun run dev（启动开发服务器）
+  ├── 确认种子日志输出的账号数量与 seeds/ 定义一致（v2.13）
+  └── bun run dev（启动开发服务器，确认端口与 .env 一致无漂移）
 
 Step 2: 打开浏览器
   ├── 使用 Playwright（有头模式）
@@ -52,6 +54,8 @@ Step 2: 打开浏览器
 
 Step 3: 执行冒烟路径
   ├── 导航到首页 → 截图
+  ├── 用登录页快捷按钮逐角色真实登录（admin/sales/channel 类角色，v2.13）
+  ├── 确认 disabled 账号登录被拒、forceChangePwd 账号弹出改密页（v2.13）
   ├── 遍历所有菜单项（逐一检查是否可访问、是否 404）
   ├── 执行核心用户旅程
   └── 每个关键步骤 → 截图
@@ -80,8 +84,9 @@ Step 5: 输出验证报告
 | A6 | Console 红色 Error | DevTools Console 中出现 `error` 级别日志 | 未捕获的异常、网络请求失败 |
 | A7 | 页面布局错乱 | 按钮重叠、文字溢出、组件未对齐 | CSS 未加载、样式冲突 |
 | A8 | 环境变量/配置缺失 | 应用启动但功能异常 | `.env` 文件缺失或值错误 |
+| A9 | 快捷登录凭证与种子不匹配（v2.13） | 登录页快捷按钮逐角色点击登录 | Mock 与真实 DB 种子数据不同步，真实后端缺少快捷按钮对应账号 |
 
-> **门禁**：A1-A8 必须全部为零。任何 A 类 Bug → 不通过 → 修复 → 重新 MSVP → 清零才放行。
+> **门禁**：A1-A9 必须全部为零。任何 A 类 Bug → 不通过 → 修复 → 重新 MSVP → 清零才放行。
 
 ---
 
@@ -170,10 +175,19 @@ tests/visual-regression/
 - **环境**：Node vXX, Bun vXX, Chrome vXX
 
 ## 冷启动结果
+- 删除 SQLite db 文件: ✅ 已删除（模拟全新部署）
 - bun install: ✅ 成功 / ❌ 失败
 - bun run db:push: ✅ 成功 / ❌ 失败
-- bun run db:seed: ✅ 成功 / ❌ 失败
-- bun run dev: ✅ 成功（端口 XXXX）/ ❌ 失败
+- bun run db:seed: ✅ 成功（账号数量 N，与 seeds/ 一致）/ ❌ 失败
+- bun run dev: ✅ 成功（端口 XXXX，与 .env 一致）/ ❌ 失败
+
+## 快捷登录逐角色验证（v2.13）
+| 角色 | 快捷按钮 | 登录结果 | 跳转页面 | 截图 |
+|------|---------|---------|---------|------|
+| admin | ✅ 存在 | ✅ 成功 | /dashboard | [screenshot] |
+| sales | ✅ 存在 | ✅ 成功 | /workbench | [screenshot] |
+| channel | ✅ 存在 | ✅ 成功 | /partner | [screenshot] |
+| disabled 账号 | — | ✅ 被拒绝 | 停留登录页 | [screenshot] |
 
 ## 菜单完整性检查
 | 序号 | 菜单项 | 目标路由 | 点击结果 | 截图 |
@@ -229,11 +243,12 @@ tests/visual-regression/
 - `delivery/reports/smoke-report-msvp<等级>.md` — 验证报告
 
 ## Constraints
-- **MUST** 从零冷启动（bun install + db:push + dev）
+- **MUST** 从零冷启动（删除 db 文件 + bun install + db:push + db:seed + dev）
 - **MUST** 使用真实浏览器（Playwright 有头模式）
 - **MUST** 每个检查步骤截图
+- **MUST** 用登录页快捷按钮逐角色真实登录验证（v2.13）
 - **MUST** Console error 全部报告为 P0
-- **MUST** A1-A8 全部清零才放行
+- **MUST** A1-A9 全部清零才放行
 - **MUST NOT** 读源代码
 - **MUST NOT** 分析 Bug 根因（只报告现象）
 - **MUST NOT** 自行跳过任何检查步骤
