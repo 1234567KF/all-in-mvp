@@ -42,6 +42,7 @@ skills:
   └── Drizzle Migration 执行（drizzle-kit generate + migrate）
     ↓
 4.2 前后端联调
+  ├── **API 端点一致性扫描（v2.14）**：提取 services/*.ts + components/**/*.tsx → api.get/post/put/delete/patch(url) 路径 → 与 api-contract.yaml + Mock routes + 真实后端 routes.ts 交叉比对 → 任一孤端点即阻断、禁止继续联调
   ├── 前端切换 Mock → 真实后端 API（按模块逐个切换）
   ├── 记录接口不匹配问题到 `integration-issues.md`
   ├── 切换策略：api.config.ts 按模块映射 baseURL

@@ -1763,6 +1763,7 @@ Step 5: 升级条件
   - L4 与 L5 结果一致，无 HIGH 级别差异
   - 类型1（无头独败）/ 类型2（有头独败）/ 类型3（双方失败）全部清零
 - [ ] **账号自修复验证**：ensureAccountReady 函数正常工作
+- [ ] **API 端点一致性扫描通过（v2.14）**：前端所有 api.xxx() 调用路径与后端所有注册路由完全匹配，无孤端点/缺失路由（扫描 services/*.ts + components/**/*.tsx 中 api.get/post/put/delete(url) 调用 → 与 api-contract.yaml + Mock routes + 真实后端 routes.ts 交叉比对）
 - [ ] **E2E Real 模式通过（v2.13）**：`E2E_MODE=real` 在真实后端（SQLite + bcrypt + JWT）上跑通核心链路，严禁只跑 Mock 后端交付
 - [ ] **冷启动验收清单通过（v2.13）**：删库重建→种子账号数量正确→快捷登录按钮逐角色真实登录通过（见 MSVP 协议 Step 1/Step 3）
 - [ ] **全流程深度测试**：每个角色核心业务闭环通过
@@ -2329,6 +2330,10 @@ const E2E_COVERAGE_CHECKER = {
 - **种子数据单一真源（v2.13）**：测试账号/基础数据 MUST 存放在独立 `seeds/` 目录（如 `seeds/accounts.ts`），Mock 数据与真实 DB 种子函数 MUST import 同一份定义，严禁各自维护两份账号列表。真实 DB 种子账号数量/凭证 MUST 与前端快捷登录按钮（TEST_ACCOUNTS）完全一致；修改种子后 MUST 同步用户手册测试账号表。典型血案：Mock 有 7 个账号、真实 SQLite 只种了 1 个，两套数据完全独立导致前端快捷按钮全部失效。
 - **端口配置化（v2.13）**：框架标准端口 API=3333、WEB=5555、预留=2222。Stage2 架构设计时 MUST 生成 `.env`（`API_PORT=3333`、`WEB_PORT=5555`），后续所有配置文件（后端 env.ts、vite.config proxy target、playwright config baseURL/webServer、mock launcher）MUST 从 `.env` 读取，**禁止硬编码端口字面量**。违反后果：端口漂移（5173→5177）、多实例冲突、E2E 与人工验收连的不是同一个前端。
 - **API 路径唯一真源（v2.13）**：`api-contract.yaml` 是前端 service 层、真实后端路由、Mock 服务器三方的唯一路径真源。前端 service 层（services/*.ts）的请求路径 MUST 从 api-contract.yaml 提取，**严禁按 Mock 服务器的路径约定编写**；Mock 服务器的路由 MUST 与 api-contract.yaml 逐条一致（路径、方法、参数位置）。Stage 4.2 联调时 MUST 用自动化脚本逐端点校验：前端实际请求路径 × 真实后端已注册路由 × contract 定义三方对齐，任一不匹配即门禁失败。典型血案：前端 services/roles.ts 按 Mock 约定写路径，切到真实后端后全部 404——Mock 与真实后端路由完全不同但 E2E 只跑 Mock 故全绿。
+- **UI 数据加载路径必测（v2.14）**：E2E @headed 测试 MUST 包含至少 1 条「打开创建/编辑弹窗 + 验证下拉/选择器出现选项」用例。API 层测试通过 ≠ UI 数据加载通过——下拉无数据、选择器空白、表格无行只能在浏览器交互中暴露。典型血案：fetchChannelOptions() 调用不存在的 `/channels/options`，API 测试无法发现该问题（因为没有对应的 contract 条目），只有 @headed UI 测试点击弹窗才能看到渠道下拉为空。
+- **API 端点存在性必须交叉校验（v2.14）**：Stage 4.2 联调前 MUST 提取前端所有 `api.get/post/put/delete(url)` 调用路径，与后端所有注册路由（Mock + 真实）交叉比对，任何路径在 contract/Mock/真实后端三处均无对应 → 门禁失败。原因：前端和后端平行开发时，前端 Agent 自行发明的路径（如 `services/x.ts` 中写的 `/channels/options`）不会被 Stage 3.5 契约漂移扫描发现——因为没有对应的 contract 条目，contract-drift-log 只看已有条目是否变更。
+- **禁止静默吞错误（v2.14）**：`.catch(() => {})` 空回调是反模式，MUST 至少 `console.warn(err)` 或显示友好提示（toast/alert）。所有前端 fetch/axios 调用链必须有 error 处理策略：401→跳转登录页、403→权限不足提示、网络错误→重试按钮、未知错误→友好提示。典型血案：fetchChannelOptions().catch(() => {})，调用不存在的端点后静默失败，渠道下拉永远为空且无任何提示，排查数小时才发现路径不存在。
+- **CI 门禁端点一致性扫描（v2.14）**：Stage4 验收前 MUST 执行自动化端点一致性扫描：提取 `services/*.ts` + `components/**/*.tsx` 中所有 `api.get/post/put/delete/patch(url)` 调用路径 → 与 api-contract.yaml + Mock routes + 真实后端 routes.ts 交叉比对 → 任一路径三处均无 → 门禁失败、阻断 Stage4 交付。
 
 ### E2E 测试编写最佳实践（v2.6）
 

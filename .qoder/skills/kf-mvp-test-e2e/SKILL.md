@@ -1367,3 +1367,47 @@ await expect(page.locator('[data-testid="recent-list"]')).toBeVisible(); // 其�
 ## 门禁规则
 
 Mock 模式全量通过 + Real 模式核心链路通过 → Stage4 可以标记完成；任一模式失败 → 门禁不通过，修复后两模式均重跑。
+
+---
+
+# UI 数据加载验证（v2.14 强制 — @headed 必测）
+
+> **背景血案**：fetchChannelOptions() 调用不存在的 `/channels/options` 端点，所有后端路由表（Mock + 真实）均无此路径。API 层测试全部通过（因为没有对应的 contract 条目，contract-drift-log 只看已有条目是否变更），人工启动浏览器点击"创建客户"弹窗才看到渠道下拉为空。**API 测试通过 ≠ UI 数据加载通过。**
+
+## @headed 用例清单新增项
+
+在现有 @headed tag 用例清单中新增：
+
+- [ ] **弹窗下拉/选择器选项渲染验证**：打开每个创建/编辑弹窗 → 逐一展开所有下拉框（Select/Dropdown/Combobox）→ 截图验证每个下拉至少出现 1 个选项（非空）。至少覆盖 1 个核心业务模块的完整弹窗。
+
+## UI 数据加载验证模板
+
+```typescript
+// tests/e2e/ui-data-loading.spec.ts
+import { test, expect } from '@playwright/test';
+
+// 标记：此文件所有用例均为 @headed（必须真实浏览器渲染）
+test.describe('UI 数据加载验证（v2.14）', () => {
+
+  test('打开创建弹窗 → 验证下拉/选择器出现选项', async ({ page }) => {
+    // Step 1: 登录 + 导航到目标页面
+    // Step 2: 点击"新建/创建"按钮打开弹窗
+    // Step 3: 展开每个下拉框，验证选项数量 ≥ 1
+    const dropdown = page.locator('[data-testid="channel-select"]');
+    await dropdown.click();
+    const options = dropdown.locator('option, [role="option"]');
+    await expect(options.first()).toBeVisible({ timeout: 5000 });
+    const count = await options.count();
+    expect(count).toBeGreaterThanOrEqual(1);
+    // Step 4: 截图留证
+    await page.screenshot({ path: 'e2e-screenshots/ui-data-loading-channel-options.png' });
+  });
+
+});
+```
+
+## 检测清单（Stage3 前端开发完成后、Stage4 联调前）
+
+- [ ] 每个核心业务模块的创建/编辑弹窗至少 1 条 @headed 下拉选项验证用例
+- [ ] 验证范围覆盖：下拉选择器（Select）、级联选择器（Cascader）、自动补全（Autocomplete）、表格行数据渲染
+- [ ] 所有 @headed 数据加载用例在 Real 模式下通过（Mock 全绿但 Real 空白 = 端点不存在）
