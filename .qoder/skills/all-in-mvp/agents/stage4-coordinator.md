@@ -31,7 +31,7 @@
   └── Drizzle Migration 执行
     ↓
 4.2 前后端联调
-  ├── **API 端点一致性扫描（v2.14）**：提取 services/*.ts + components/**/*.tsx → api.get/post/put/delete(url) 路径 → 与 api-contract.yaml + Mock routes + 真实后端 routes.ts 交叉比对 → 任一孤端点即阻断、禁止继续联调
+  ├── **API 端点一致性扫描（v2.14）**：`powershell -File .qoder/scripts/check-api-endpoints.ps1`，孤端点即阻断→禁止继续联调
   ├── 前端切换 Mock → 真实后端 API
   ├── 按模块逐个联调
   ├── 记录接口不匹配问题到 `integration-issues.md`

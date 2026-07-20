@@ -1,0 +1,209 @@
+# ============================================================
+# Gate Rules Registry — AI 行为规约单一真源
+# ============================================================
+# 用途：
+#   1. 门禁脚本从此文件读取规则定义，无需重复
+#   2. Agent 文件通过 rule ID 引用，不再内嵌规则全文
+#   3. SKILL.md 通过此表生成精简引用
+#
+# 新增规则流程：
+#   1. 在此文件新增一条 rule 记录
+#   2. 编写对应的 check_script（如可自动化）
+#   3. 在适用的 agent Constraints 中加一行引用：`@rule:Rxxx`
+#   4. 血案写入 PLAYBOOK.md
+# ============================================================
+
+version: "1.0"
+generated_by: "all-in-mvp v2.15+"
+
+rules:
+  # ---- v2.8 规则 ----
+  - id: R001
+    version: v2.8
+    name: 响应格式标准化
+    severity: BLOCKER
+    stage: [stage4]
+    check_script: scripts/check-response-format.ps1
+    applies_to: [backend-tdd, stage4-coordinator]
+    description: |
+      所有列表类端点 MUST 返回 { data: { list: [...], total: N } }。
+      前端 axios 响应拦截器 MUST 自动解包后端的 { data: ... } 包裹层。
+
+  - id: R002
+    version: v2.8
+    name: 枚举值唯一真源
+    severity: BLOCKER
+    stage: [stage3, stage4]
+    check_script: null  # 需语义分析，暂不可脚本化
+    applies_to: [frontend-dev, backend-tdd]
+    description: |
+      后端 zod schema 中的 z.enum([...]) 是唯一真源。
+      前端 MUST 从 api-contract.yaml 或后端 schema 提取枚举值，严禁自行发明。
+
+  - id: R003
+    version: v2.8
+    name: E2E 必须穿透代理层
+    severity: BLOCKER
+    stage: [stage4]
+    check_script: scripts/check-e2e-proxy.ps1
+    applies_to: [kf-mvp-test-e2e]
+    description: |
+      E2E 测试 MUST 通过前端开发服务器的代理层访问后端，严禁直连后端端口。
+
+  - id: R004
+    version: v2.8
+    name: axios请求实例是胶水代码
+    severity: HIGH
+    stage: [stage3, stage4]
+    check_script: null
+    applies_to: [frontend-dev, kf-mvp-test-e2e]
+    description: |
+      所有测试 MUST 使用与前端统一请求实例相同的配置，不得用裸 fetch/axios 绕过拦截器。
+
+  # ---- v2.12 规则 ----
+  - id: R005
+    version: v2.12
+    name: E2E 浏览器交互配额
+    severity: BLOCKER
+    stage: [stage3.5, stage4]
+    check_script: scripts/check-e2e-browser-quota.ps1
+    applies_to: [kf-mvp-test-e2e]
+    quantifier:
+      metric: "page.fill/click/goto 占比"
+      threshold: "≥ 30%"
+
+  - id: R006
+    version: v2.12
+    name: 权限交叉矩阵必测
+    severity: BLOCKER
+    stage: [stage3.5, stage4]
+    check_script: scripts/check-e2e-permission-matrix.ps1
+    applies_to: [kf-mvp-test-e2e]
+    description: |
+      多角色项目必须生成角色×端点组矩阵，每个交叉格 = 1 条必写用例（含预期 403 格）。
+
+  - id: R007
+    version: v2.12
+    name: 状态双向断言
+    severity: HIGH
+    stage: [stage3.5, stage4]
+    check_script: null  # 语义分析
+    applies_to: [kf-mvp-test-e2e]
+    description: |
+      每次状态转换必须同时验证"target 出现"和"source 消失"。
+
+  - id: R008
+    version: v2.12
+    name: 断言质量门禁
+    severity: HIGH
+    stage: [stage3.5, stage4]
+    check_script: null  # 语义分析
+    applies_to: [kf-mvp-test-e2e, test-review]
+    description: |
+      禁止 expect([200,403]).toContain(status) 宽松断言、禁止只判状态码不判内容。
+
+  # ---- v2.13 规则 ----
+  - id: R009
+    version: v2.13
+    name: E2E 双模验收
+    severity: BLOCKER
+    stage: [stage4]
+    check_script: scripts/check-e2e-dual-mode.ps1
+    applies_to: [stage4-coordinator, kf-mvp-test-e2e, msvp-verifier]
+    description: |
+      Stage4 验收前 E2E MUST 跑两轮：Mock 模式全量 + Real 模式核心链路。
+      两轮全部通过才能标记 Stage4 完成。
+
+  - id: R010
+    version: v2.13
+    name: 种子数据单一真源
+    severity: BLOCKER
+    stage: [stage2, stage4]
+    check_script: scripts/check-seed-single-source.ps1
+    applies_to: [architect, mock-service, msvp-verifier]
+    description: |
+      测试账号/基础数据 MUST 存放在独立 seeds/ 目录。
+      Mock 与真实 DB MUST import 同一份定义，严禁各自维护两份账号列表。
+
+  - id: R011
+    version: v2.13
+    name: 端口配置化
+    severity: BLOCKER
+    stage: [stage2]
+    check_script: scripts/check-port-config.ps1
+    applies_to: [architect]
+    description: |
+      标准端口 API=3333、WEB=5555。所有配置文件 MUST 从 .env 读取，禁止硬编码。
+
+  - id: R012
+    version: v2.13
+    name: API 路径唯一真源
+    severity: BLOCKER
+    stage: [stage3, stage4]
+    check_script: scripts/check-api-path-source.ps1
+    applies_to: [frontend-dev, mock-service]
+    description: |
+      api-contract.yaml 是前端 service 层、真实后端路由、Mock 服务器的唯一路径真源。
+      前端 services/*.ts 请求路径 MUST 从 contract 提取，严禁按 Mock 约定编写。
+
+  # ---- v2.14 规则 ----
+  - id: R013
+    version: v2.14
+    name: UI 数据加载路径必测
+    severity: BLOCKER
+    stage: [stage3.5, stage4]
+    check_script: scripts/check-e2e-headed-ui.ps1
+    applies_to: [kf-mvp-test-e2e]
+    description: |
+      E2E @headed 测试 MUST 包含至少 1 条"打开创建/编辑弹窗 + 验证下拉/选择器出现选项"用例。
+
+  - id: R014
+    version: v2.14
+    name: API 端点存在性交叉校验
+    severity: BLOCKER
+    stage: [stage4]
+    check_script: scripts/check-api-endpoints.ps1
+    applies_to: [stage4-coordinator]
+    description: |
+      Stage 4.2 联调前 MUST 提取前端所有 api.get/post/put/delete(url) 调用路径，
+      与 contract + Mock routes + 真实后端 routes 三方交叉比对。
+
+  - id: R015
+    version: v2.14
+    name: 禁止静默吞错误
+    severity: BLOCKER
+    stage: [stage3, stage4]
+    check_script: scripts/check-silent-catch.ps1
+    applies_to: [frontend-dev]
+    description: |
+      .catch(() => {}) 空回调是反模式，MUST 至少 console.warn(err) 或显示友好提示。
+      所有 fetch/axios 调用链必须有 error 处理策略。
+
+  - id: R016
+    version: v2.14
+    name: CI 门禁端点一致性扫描
+    severity: BLOCKER
+    stage: [stage4]
+    check_script: scripts/check-api-endpoints.ps1  # 与 R014 共用
+    applies_to: [stage4-coordinator]
+    description: |
+      Stage4 验收前 MUST 执行自动化端点一致性扫描，任一路径三处均无 → 门禁失败。
+
+# ============================================================
+# Stage 门禁映射（供聚合脚本使用）
+# ============================================================
+gates:
+  stage3:
+    description: "Stage 3 入口门禁 — 开发前必须通过的规则"
+    rules: [R002, R004, R012, R015]
+    aggregate_script: scripts/check-stage3-gate.ps1
+
+  stage3.5:
+    description: "Stage 3.5 入口门禁 — E2E 适配前必须通过的规则"
+    rules: [R005, R006, R007, R008, R013]
+    aggregate_script: null  # 由 kf-mvp-test-e2e skill 驱动
+
+  stage4:
+    description: "Stage 4 入口门禁 — 集成验收前必须通过的规则"
+    rules: [R001, R003, R005, R006, R007, R008, R009, R010, R012, R013, R014, R015, R016]
+    aggregate_script: scripts/check-stage4-gate.ps1

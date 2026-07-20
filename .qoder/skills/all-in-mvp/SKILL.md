@@ -5,8 +5,13 @@ metadata:
   pattern: pipeline+inversion+reviewer+generator
   stage-gates: true
   max-parallel-agents: 3
-  based_on: MVP白皮书 v2.11.0
+  based_on: MVP白皮书 v2.15.0
   gate_probe: enforced  # v2.11: 每个 Stage 入口有 GATE_PROBE 文件检查，不可跳过
+  gate_scripts:  # v2.15: 三层保障架构 — 自动化门禁脚本
+    stage3: ".qoder/scripts/check-stage3-gate.ps1"
+    stage4: ".qoder/scripts/check-stage4-gate.ps1"
+  rule_registry: ".qoder/gate-rules.yaml"  # v2.15: 规则单一真源
+  playbook: ".qoder/PLAYBOOK.md"  # v2.15: 血案库
   platforms: [claude-code, qoder]
   workflow-ready: true
   workflow-scripts:
@@ -18,7 +23,7 @@ metadata:
 
 # Parallel MVP Pipeline — Multi-Platform 版
 
-> 基于《MVP 白皮书 v2.11》的多 Agent 并行工程方法论。3 种运行模式、强制模式判定、Stage 入口门禁探针、最大并行度。增量变更强制走完整流水线（§0.2决策树）。
+> 基于《MVP 白皮书 v2.15》的多 Agent 并行工程方法论。3 种运行模式、强制模式判定、Stage 入口门禁探针、最大并行度。v2.15 新增三层保障架构：gate-rules.yaml（规则注册表）+ 自动化 .ps1 门禁脚本 + PLAYBOOK.md（血案库）。增量变更强制走完整流水线（§0.2决策树）。
 > 支持 Claude Code（Dynamic Workflows）与 Qoder（Custom Subagents）双平台运行。
 
 ---
@@ -1463,6 +1468,8 @@ human_action: "请打开 review_url 查看视觉效果，确认无误后删除�
 
 ### Stage 3 门禁 (MUST — v2.5 视觉强化 + v2.10 E2E增量)
 
+> **自动化门禁**：`powershell -File .qoder/scripts/check-stage3-gate.ps1` — 开发前运行，检测 R012/R015 等可脚本化规则。规则索引见上方「强制规则索引」表。
+
 每个模块必须通过完整的5层测试 + 3道视觉防线才能标记DONE：
 
 - [ ] 后端全部模块 DONE（模块目录下存在 DONE 标记，**DONE 文件建议附带 `E2E_SCENARIOS` 字段**列出覆盖本模块的 E2E 场景文件）
@@ -1744,6 +1751,8 @@ Step 5: 升级条件
 | 契约漂移 | 前后端字段名/枚举值/响应格式不一致 | 同步修正双方 | `ARCHITECT` → 修正契约后分派双端 |
 
 ### Stage 4 门禁（终检）(MUST — v2.5 视觉强化 + v2.6 E2E强化 + v2.10 E2E前置)
+
+> **自动化门禁**：`powershell -File .qoder/scripts/check-stage4-gate.ps1` — 所有可脚本化规则在此一次检查完毕，PASS 才继续。规则索引见上方「强制规则索引」表。
 
 - [ ] 后端合并完成，路由一致性验证通过
 - [ ] 前后端联调全部模块通过
@@ -2318,22 +2327,32 @@ const E2E_COVERAGE_CHECKER = {
 
 > 实际用例数按模块复杂度等比放大。如商机管理含状态机+审批流，应 20+。
 
-- **响应格式标准化（v2.8）**：所有列表类端点 MUST 返回 `{ data: { list: [...], total: N } }`。前端 axios 响应拦截器 MUST 自动解包后端的 `{ data: ... }` 包裹层。多Agent各自独立生成代码时，这是最高频的格式不一致来源——后端Agent返回 `{ data: [...] }`，前端Agent期望 `{ data: { list, total } }`，axios又加一层 `response.data`，实际读取路径变为 `res.data.data.list` 而非 `res.data.list`。**防御方案**：在 Stage 4.2 联调时，用自动化脚本逐端点校验响应 shape。
-- **枚举值唯一真源（v2.8）**：后端 zod schema 中的 `z.enum([...])` 是唯一真源（Single Source of Truth）。前端 Agent MUST 从 `api-contract.yaml` 或后端 schema 定义中提取枚举值，**严禁自行发明**。典型血案：前端写 `type: 'company'`，后端只接受 `z.enum(['enterprise', 'individual'])`。此类bug在纯API测试中不可见（测试直接拼正确值），唯有真实浏览器操作才会触发 400 校验失败。
-- **E2E 必须穿透代理层（v2.8）**：E2E 测试 MUST 通过前端开发服务器的代理层（如 Vite proxy: `5173 → 3000`）访问后端，**严禁直连后端端口**。直连会漏掉三类关键 bug：(1) 代理路由配置错误或遗漏（如 partner 路由只挂载 externalApp）；(2) axios 响应拦截器逻辑（双重包裹/解包失败）；(3) CORS 头缺失。
-- **axios/前端请求实例是胶水代码（v2.8）**：前端统一请求实例（含响应拦截器）是前后端集成的关键胶水层，必须视为一等公民纳入测试范围。所有测试（包括L2/L5）MUST 使用与该实例相同的请求配置，不得用裸 `fetch`/`axios` 绕过拦截器。
-- **E2E 浏览器交互配额（v2.12）**：每个 E2E spec 文件中浏览器交互用例（page.fill/click/goto）占比必须 ≥ 30%。纯 API 测试无法发现前端表单下拉框无反应、搜索框无效、编辑表单未预填等 UI 层 Bug。详见「E2E 测试编写最佳实践 §8」。
-- **权限交叉矩阵必测（v2.12）**：多角色项目必须生成角色×端点组矩阵，每个交叉格 = 1 条必写用例（含预期 403 格）。禁止 partner-flow 只用一个 partner 账号测试。详见「E2E 测试编写最佳实践 §9」。
-- **状态双向断言（v2.12）**：每次状态转换必须同时验证"target 出现"和"source 消失"。单向断言是"已审核商机仍在待审核列表"类 Bug 的第一漏测原因。详见「E2E 测试编写最佳实践 §10」。
-- **断言质量门禁（v2.12）**：禁止 `expect([200,403]).toContain(status)` 宽松断言、禁止只判状态码不判内容、禁止缺失反向断言。Test Review Agent（③c）已新增第 5 项审查维度。详见 `agents/test-review.md`。
-- **E2E 双模验收（v2.13）**：Stage4 验收前 E2E MUST 跑两轮：① **Mock 模式**全量（开发阶段快速反馈/CI 预检）；② **Real 模式**核心链路（`E2E_MODE=real`，启动真实后端，让请求走真实 SQLite + bcrypt + JWT 全链路）。Real 模式最低覆盖：每角色登录成功、禁用账号登录被拒、核心 CRUD 主链路。两轮全部通过才能标记 Stage4 完成。**典型血案**：E2E 92/92 全绿但全部跑在 Mock 后端上，人工启动真实后端后快捷登录立即报密码错误——测试环境与验收环境不是同一套后端。
-- **种子数据单一真源（v2.13）**：测试账号/基础数据 MUST 存放在独立 `seeds/` 目录（如 `seeds/accounts.ts`），Mock 数据与真实 DB 种子函数 MUST import 同一份定义，严禁各自维护两份账号列表。真实 DB 种子账号数量/凭证 MUST 与前端快捷登录按钮（TEST_ACCOUNTS）完全一致；修改种子后 MUST 同步用户手册测试账号表。典型血案：Mock 有 7 个账号、真实 SQLite 只种了 1 个，两套数据完全独立导致前端快捷按钮全部失效。
-- **端口配置化（v2.13）**：框架标准端口 API=3333、WEB=5555、预留=2222。Stage2 架构设计时 MUST 生成 `.env`（`API_PORT=3333`、`WEB_PORT=5555`），后续所有配置文件（后端 env.ts、vite.config proxy target、playwright config baseURL/webServer、mock launcher）MUST 从 `.env` 读取，**禁止硬编码端口字面量**。违反后果：端口漂移（5173→5177）、多实例冲突、E2E 与人工验收连的不是同一个前端。
-- **API 路径唯一真源（v2.13）**：`api-contract.yaml` 是前端 service 层、真实后端路由、Mock 服务器三方的唯一路径真源。前端 service 层（services/*.ts）的请求路径 MUST 从 api-contract.yaml 提取，**严禁按 Mock 服务器的路径约定编写**；Mock 服务器的路由 MUST 与 api-contract.yaml 逐条一致（路径、方法、参数位置）。Stage 4.2 联调时 MUST 用自动化脚本逐端点校验：前端实际请求路径 × 真实后端已注册路由 × contract 定义三方对齐，任一不匹配即门禁失败。典型血案：前端 services/roles.ts 按 Mock 约定写路径，切到真实后端后全部 404——Mock 与真实后端路由完全不同但 E2E 只跑 Mock 故全绿。
-- **UI 数据加载路径必测（v2.14）**：E2E @headed 测试 MUST 包含至少 1 条「打开创建/编辑弹窗 + 验证下拉/选择器出现选项」用例。API 层测试通过 ≠ UI 数据加载通过——下拉无数据、选择器空白、表格无行只能在浏览器交互中暴露。典型血案：fetchChannelOptions() 调用不存在的 `/channels/options`，API 测试无法发现该问题（因为没有对应的 contract 条目），只有 @headed UI 测试点击弹窗才能看到渠道下拉为空。
-- **API 端点存在性必须交叉校验（v2.14）**：Stage 4.2 联调前 MUST 提取前端所有 `api.get/post/put/delete(url)` 调用路径，与后端所有注册路由（Mock + 真实）交叉比对，任何路径在 contract/Mock/真实后端三处均无对应 → 门禁失败。原因：前端和后端平行开发时，前端 Agent 自行发明的路径（如 `services/x.ts` 中写的 `/channels/options`）不会被 Stage 3.5 契约漂移扫描发现——因为没有对应的 contract 条目，contract-drift-log 只看已有条目是否变更。
-- **禁止静默吞错误（v2.14）**：`.catch(() => {})` 空回调是反模式，MUST 至少 `console.warn(err)` 或显示友好提示（toast/alert）。所有前端 fetch/axios 调用链必须有 error 处理策略：401→跳转登录页、403→权限不足提示、网络错误→重试按钮、未知错误→友好提示。典型血案：fetchChannelOptions().catch(() => {})，调用不存在的端点后静默失败，渠道下拉永远为空且无任何提示，排查数小时才发现路径不存在。
-- **CI 门禁端点一致性扫描（v2.14）**：Stage4 验收前 MUST 执行自动化端点一致性扫描：提取 `services/*.ts` + `components/**/*.tsx` 中所有 `api.get/post/put/delete/patch(url)` 调用路径 → 与 api-contract.yaml + Mock routes + 真实后端 routes.ts 交叉比对 → 任一路径三处均无 → 门禁失败、阻断 Stage4 交付。
+## 强制规则索引（v2.15+ — 三层保障架构）
+
+> **规则定义**：[gate-rules.yaml](../gate-rules.yaml) — 单一真源 | **血案详情**：[PLAYBOOK.md](../PLAYBOOK.md) — 按需查阅
+> **门禁命令**：`powershell -File .qoder/scripts/check-stage3-gate.ps1` / `check-stage4-gate.ps1` — 自动化 PASS/FAIL
+
+| ID | 版本 | 规则 | 严重度 | Stage | 门禁脚本 |
+|----|------|------|:-----:|:-----:|---------|
+| R001 | v2.8 | 响应格式标准化 `{ data: { list, total } }` | BLOCKER | 4 | — |
+| R002 | v2.8 | 枚举值唯一真源 — 从 contract/schema 提取 | BLOCKER | 3,4 | — |
+| R003 | v2.8 | E2E 穿透 Vite 代理层，禁直连 | BLOCKER | 4 | — |
+| R004 | v2.8 | axios 请求实例是胶水代码 | HIGH | 3,4 | — |
+| R005 | v2.12 | E2E 浏览器交互配额 ≥ 30% | BLOCKER | 3.5,4 | `check-e2e-browser-quota.ps1` |
+| R006 | v2.12 | 权限交叉矩阵角色×端点必测 | BLOCKER | 3.5,4 | — |
+| R007 | v2.12 | 状态双向断言 target↑+source↓ | HIGH | 3.5,4 | — |
+| R008 | v2.12 | 断言质量门禁，禁宽松匹配 | HIGH | 3.5,4 | — |
+| R009 | v2.13 | E2E 双模验收 Mock+Real | BLOCKER | 4 | — |
+| R010 | v2.13 | 种子数据单一真源 seeds/ | BLOCKER | 2,4 | `check-seed-single-source.ps1` |
+| R011 | v2.13 | 端口配置化 .env 读取 | BLOCKER | 2 | `check-port-config.ps1` |
+| R012 | v2.13 | API 路径唯一真源 contract | BLOCKER | 3,4 | `check-api-path-source.ps1` |
+| R013 | v2.14 | UI 数据加载 @headed 下拉必测 | BLOCKER | 3.5,4 | — |
+| R014 | v2.14 | API 端点交叉校验 contract+routes | BLOCKER | 4 | `check-api-endpoints.ps1` |
+| R015 | v2.14 | 禁止静默吞错误 .catch(()=>{}) | BLOCKER | 3,4 | `check-silent-catch.ps1` |
+| R016 | v2.14 | CI 门禁端点一致性扫描 | BLOCKER | 4 | `check-api-endpoints.ps1` |
+
+> `—` = 需语义分析，暂不可脚本化。Agent 自行遵守，违规血案见 PLAYBOOK.md。
+> **Agent 使用方式**：不再需要记住每条规则全文。开发/联调前运行对应 Stage 聚合门禁脚本 → PASS 才继续。
 
 ### E2E 测试编写最佳实践（v2.6）
 

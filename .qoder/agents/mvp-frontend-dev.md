@@ -116,5 +116,4 @@ src/api/<module>.ts         # API 调用封装
 - API 调用封装必须与 `api-contract.yaml` 严格一致
 - **HTML 属性值禁止使用中文引号** (U+201C/U+201D)，统一用 ASCII 双引号 `"` 包裹 placeholder/label 等
 - **Write 后强制自检**：每个 .tsx 文件 Write 完成后立即 grep `\ufffd`，发现损坏字符必须修复
-- **API 路径唯一真源（v2.13）**：service 层（services/*.ts）请求路径 MUST 从 `api-contract.yaml` 逐条提取，**严禁按 Mock 服务器的路径约定编写**——Mock 只是契约的一种实现，不是路径真源。典型血案：services/roles.ts 按 Mock 约定写路径，切到真实后端后全部 404
-- **禁止静默吞错误（v2.14）**：`.catch(() => {})` 空回调是反模式，MUST 至少 `console.warn(err)` 或显示友好提示（toast/alert）。所有 fetch/axios 调用链必须有 error 处理策略：401→跳转登录页、403→权限不足提示、网络错误→重试按钮、未知错误→友好提示。典型血案：fetchChannelOptions().catch(() => {})，调用不存在的端点后静默失败，渠道下拉永远为空且无任何提示，排查数小时才发现路径不存在
+- **规则遵从**：遵守 `gate-rules.yaml` 中适用于 frontend-dev 的规则（R002,R004,R012,R015）。开发完成后运行 `check-stage3-gate.ps1` 自检。血案见 PLAYBOOK.md
