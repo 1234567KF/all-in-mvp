@@ -39,3 +39,14 @@ Red（写测试）→ Green（写实现）→ Refactor（重构）
 - Schema 引用全局定义，不重复定义已在 `schema.sql` 中的表结构
 - 异常路径必须覆盖：参数校验失败、资源不存在、权限不足、唯一约束冲突
 - 第三方服务全部 Mock，签名一致
+
+## 自检清单（v2.16 反模式雷达）
+
+1. **枚举值来源**：z.enum([...]) 的候选值，在 api-contract.yaml enums 段中有完整定义吗？
+   → 枚举值唯一真源是 contract，不是你的 Zod schema
+
+2. **空值约定**：列表字段返回 [] 不返回 null，数值字段返回 0 不返回 undefined
+   → 契约中不仅标注类型，还要标注空值行为
+
+3. **响应信封**：所有接口统一 { success: true, message: '', data: { list, total } }
+   → 不返裸数组，不自定义顶层字段名

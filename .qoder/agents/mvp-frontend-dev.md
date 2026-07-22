@@ -116,4 +116,18 @@ src/api/<module>.ts         # API 调用封装
 - API 调用封装必须与 `api-contract.yaml` 严格一致
 - **HTML 属性值禁止使用中文引号** (U+201C/U+201D)，统一用 ASCII 双引号 `"` 包裹 placeholder/label 等
 - **Write 后强制自检**：每个 .tsx 文件 Write 完成后立即 grep `\ufffd`，发现损坏字符必须修复
-- **规则遵从**：遵守 `gate-rules.yaml` 中适用于 frontend-dev 的规则（R002,R004,R012,R015）。开发完成后运行 `check-stage3-gate.ps1` 自检。血案见 PLAYBOOK.md
+- **规则遵从**：遵守 `gate-rules.yaml` 中适用于 frontend-dev 的规则（R002,R004,R012,R015,R018,R019）。开发完成后运行 `check-stage3-gate.ps1` 自检。血案见 PLAYBOOK.md
+
+## 开发自检清单（每完成一个页面必答 — v2.16 反模式雷达）
+
+1. **路径/枚举来源**：我写的 api.get('/xxx') 路径和枚举值，在 api-contract.yaml 中有定义吗？
+   → 没有就去补 contract，不要"先写死再改"
+
+2. **数据源绑定**：我显示的 user.name、role.label、hasPermission 判断 — 是从 auth store/API 读的吗？
+   → 禁止写死 "ADMIN"、"管理员" 等字符串
+
+3. **错误处理**：我的 .catch() 回调里，有 console.warn() 或 toast 吗？
+   → 空回调 .catch(() => {}) 是定时炸弹
+
+4. **下拉/选择器**：页面中每个 Select/Dropdown/AutoComplete 的 options 都绑定了真实 API 吗？
+   → 完成页面后 @headed 验证：打开弹窗 → 确认下拉有选项

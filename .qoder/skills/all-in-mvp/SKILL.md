@@ -1355,6 +1355,44 @@ Workflow({
 
 ---
 
+### 反模式雷达 — Coordinator 调度前必扫（v2.16）
+
+> **核心理念**：规则是"事后执法"，味道是"事前自检"。Coordinator 在分配模块前，必须对每个模块用 4 个问题做气味扫描。
+
+```
+味道 1："我发明了自己的吗？" — 枚举/路径/格式是否从 contract 提取？
+  ├── 触发信号：模块涉及枚举值、API 路径、响应格式定义
+  ├── 检查：api-contract.yaml 中已有对应定义？未定义 → 先补 contract
+  ├── 血案：B003 枚举不匹配 / B008 路径全部 404 / B004 响应格式错位
+  └── 适用规则：R002, R012, R001
+
+味道 2："连接断了吗？" — 跨 Agent 的数据流每一段都接上了？
+  ├── 触发信号：功能跨越 ≥2 个 Agent（如 后端 BuildPermissions → Store hasMenu → Sidebar 渲染）
+  ├── 检查：输出完整的 数据层→判断层→渲染层 集成点清单，每层标注 owner
+  ├── 血案：B015 侧边栏无权限过滤 / B017 refreshToken 用旧数据
+  └── 适用规则：R017
+
+味道 3："我用的是假数据吗？" — UI 显示的值是活的还是写死的？
+  ├── 触发信号：页面/组件显示了用户名、角色标签、权限判断
+  ├── 检查：数据源绑定到 auth store/API，不是硬编码字符串
+  ├── 血案：B016 UserMenu 硬编码 "ADMIN"
+  └── 适用规则：R018
+
+味道 4："测试走了捷径吗？" — E2E 真的是用户在浏览器里的操作？
+  ├── 触发信号：E2E 用例大量 api.post() 直调、URL 直连后端端口、未 @headed 覆盖
+  ├── 检查：E2E 经过 Vite proxy？@headed 覆盖了下拉/选择器数据加载？
+  ├── 血案：B002 proxy 遗漏 / B012 渠道下拉无选项 / B011 Mock 全绿但真实失败
+  └── 适用规则：R003, R005, R013, R009
+```
+
+**Coordinator 动作**：
+1. 读取 `task.md` 依赖图
+2. 对每个待分配模块，运行 4 味道扫描
+3. 输出：模块分配方案（轮次表 + 依赖关系 + **风险标注**）
+4. 风险模块在 prompt 中注入对应味道的警告
+
+---
+
 ## Stage 3: 执行阶段 — Workflow(`.claude/workflows/stage3-execution.js`)
 
 **前置条件**：Stage 2 门禁全部通过。
@@ -2350,6 +2388,9 @@ const E2E_COVERAGE_CHECKER = {
 | R014 | v2.14 | API 端点交叉校验 contract+routes | BLOCKER | 4 | `check-api-endpoints.ps1` |
 | R015 | v2.14 | 禁止静默吞错误 .catch(()=>{}) | BLOCKER | 3,4 | `check-silent-catch.ps1` |
 | R016 | v2.14 | CI 门禁端点一致性扫描 | BLOCKER | 4 | `check-api-endpoints.ps1` |
+| R017 | v2.16 | 集成点全链路检查 数据层→判断层→渲染层 | BLOCKER | 4 | — |
+| R018 | v2.16 | UI 数据源绑定 — 禁硬编码用户/角色/权限 | BLOCKER | 3,4 | — |
+| R019 | v2.16 | 服务器响应权威 — 优先用服务端返回最新数据 | HIGH | 3,4 | — |
 
 > `—` = 需语义分析，暂不可脚本化。Agent 自行遵守，违规血案见 PLAYBOOK.md。
 > **Agent 使用方式**：不再需要记住每条规则全文。开发/联调前运行对应 Stage 聚合门禁脚本 → PASS 才继续。

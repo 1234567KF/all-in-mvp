@@ -189,13 +189,51 @@ rules:
     description: |
       Stage4 验收前 MUST 执行自动化端点一致性扫描，任一路径三处均无 → 门禁失败。
 
+  # ---- v2.16 规则（反模式雷达 — 技能内化）----
+  - id: R017
+    version: v2.16
+    name: 集成点全链路检查
+    severity: BLOCKER
+    stage: [stage4]
+    check_script: null  # 需语义分析，暂不可脚本化
+    applies_to: [stage4-coordinator, architect]
+    description: |
+      跨模块功能必须显式列出集成点链路：数据层(后端service) → 判断层(store/composable) → 渲染层(组件)。
+      每层分配唯一 owner。Stage 4 联调时验证三层全部存在且正确连接。
+      任一缺失 → 标记 INTEGRATION_GAP，回退对应 Agent 修复。
+      血案见 PLAYBOOK.md B015（侧边栏权限过滤未实现）。
+
+  - id: R018
+    version: v2.16
+    name: UI 数据源绑定
+    severity: BLOCKER
+    stage: [stage3, stage4]
+    check_script: null  # 需语义分析，暂不可脚本化
+    applies_to: [frontend-dev]
+    description: |
+      所有显示用户姓名、角色标签、权限判断的 UI 组件 MUST 从 auth store（如 useAuthStore）读取动态数据。
+      严禁硬编码 "ADMIN"、"管理员"、"超级管理员" 等字符串。
+      血案见 PLAYBOOK.md B016（UserMenu 硬编码 "ADMIN"）。
+
+  - id: R019
+    version: v2.16
+    name: 服务器响应权威数据源
+    severity: HIGH
+    stage: [stage3, stage4]
+    check_script: null  # 需语义分析，暂不可脚本化
+    applies_to: [frontend-dev, backend-tdd]
+    description: |
+      认证状态变更函数（如 refreshAccessToken、login、getCurrentUser）MUST 优先使用服务器返回的最新数据。
+      客户端缓存不是权威数据源，服务器响应才是。
+      血案见 PLAYBOOK.md B017（refreshToken 使用过期缓存）。
+
 # ============================================================
 # Stage 门禁映射（供聚合脚本使用）
 # ============================================================
 gates:
   stage3:
     description: "Stage 3 入口门禁 — 开发前必须通过的规则"
-    rules: [R002, R004, R012, R015]
+    rules: [R002, R004, R012, R015, R018, R019]
     aggregate_script: scripts/check-stage3-gate.ps1
 
   stage3.5:
@@ -205,5 +243,5 @@ gates:
 
   stage4:
     description: "Stage 4 入口门禁 — 集成验收前必须通过的规则"
-    rules: [R001, R003, R005, R006, R007, R008, R009, R010, R012, R013, R014, R015, R016]
+    rules: [R001, R003, R005, R006, R007, R008, R009, R010, R012, R013, R014, R015, R016, R017, R018, R019]
     aggregate_script: scripts/check-stage4-gate.ps1

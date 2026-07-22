@@ -13,6 +13,34 @@
 - **排查**：数小时才发现路径根本不存在——代码中静默吞掉了 404 错误
 - **教训**：`.catch(() => {})` 空回调 = 定时炸弹。至少 `console.warn(err)`
 
+---
+
+## v2.16 血案（多Agent并行开发反模式 — 复盘总结）
+
+### B015 — 侧边栏权限过滤未实现
+- **规则**：R017 集成点全链路检查
+- **现象**：后端 `buildPermissions()` 正确返回有限权限（6 项），auth store 的 `hasMenu()` 判断函数正确，但侧边栏渲染全部菜单项——第三层从未被实现
+- **诊断链路**：`buildPermissions() → user.menus ✅ → hasMenu("system:account") 返回 false ✅ → SidebarMenuContent 没调用 hasMenu() ❌`
+- **教训**：跨 Agent 的集成点必须在设计阶段显式列出 数据层→判断层→渲染层 链路，每层分配 owner
+
+### B016 — UserMenu 硬编码 "ADMIN"
+- **规则**：R018 UI 数据源绑定
+- **现象**：所有用户（无论角色）在右上角下拉菜单都显示 "ADMIN" 和头像 "A"
+- **根因**：UserMenu 组件用硬编码字符串代替从 auth store 读取动态数据
+- **教训**：所有显示用户姓名/角色/权限的 UI 组件必须从 useAuthStore 读取，禁止硬编码
+
+### B017 — refreshToken 使用过期缓存
+- **规则**：R019 服务器响应权威数据源
+- **现象**：页面刷新后 token 自动刷新，但用户数据使用的是登录时的旧缓存，而非 `/auth/refresh` 返回的最新数据
+- **根因**：`refreshAccessToken()` 中 `setAuth({ user: oldUser })`，忽略了服务器返回的 `user` 字段
+- **教训**：认证状态变更函数必须优先使用服务器返回的最新数据。客户端不是权威数据源，服务器响应才是
+
+### B018 — Dashboard 统计返回对象而非数组
+- **规则**：R001 响应格式标准化（扩展：空值约定）
+- **现象**：`GET /dashboard/stats` 返回 `statusDistribution: {"未跟进": 0, ...}`（对象），前端期望 `[{name: "未跟进", value: 0}]`（数组）
+- **根因**：后端 service 直接返回字面量对象，未与前端约定具体数据结构
+- **教训**：列表类数据永远返回 `[]`，永不返回 `null` 或 `{}`。空值约定：数组→[], 数值→0, 对象→{}
+
 ### B013 — /channels/options 端点不存在
 - **规则**：R014 API 端点存在性交叉校验
 - **现象**：前端 services/x.ts 中写了 `/channels/options`，但所有后端路由表（Mock + 真实）都没有这个路径

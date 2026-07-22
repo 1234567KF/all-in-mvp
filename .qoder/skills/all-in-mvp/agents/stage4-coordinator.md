@@ -32,6 +32,7 @@
     ↓
 4.2 前后端联调
   ├── **API 端点一致性扫描（v2.14）**：`powershell -File .qoder/scripts/check-api-endpoints.ps1`，孤端点即阻断→禁止继续联调
+  ├── **集成点全链路检查（v2.16）**：对每个跨模块功能，验证完整链路：数据层(后端service) → 判断层(store/composable) → 渲染层(组件)。三层全部存在且正确连接 → 通过。任一缺失 → 标记 INTEGRATION_GAP，分配给对应 Agent 修复
   ├── 前端切换 Mock → 真实后端 API
   ├── 按模块逐个联调
   ├── 记录接口不匹配问题到 `integration-issues.md`
