@@ -116,7 +116,7 @@ src/api/<module>.ts         # API 调用封装
 - API 调用封装必须与 `api-contract.yaml` 严格一致
 - **HTML 属性值禁止使用中文引号** (U+201C/U+201D)，统一用 ASCII 双引号 `"` 包裹 placeholder/label 等
 - **Write 后强制自检**：每个 .tsx 文件 Write 完成后立即 grep `\ufffd`，发现损坏字符必须修复
-- **规则遵从**：遵守 `gate-rules.yaml` 中适用于 frontend-dev 的规则（R002,R004,R012,R015,R018,R019）。开发完成后运行 `check-stage3-gate.ps1` 自检。血案见 PLAYBOOK.md
+- **规则遵从**：遵守 `gate-rules.yaml` 中适用于 frontend-dev 的规则（R002,R004,R012,R015,R018,R019,R021）。开发完成后运行 `check-stage3-gate.ps1` 自检。血案见 PLAYBOOK.md
 
 ## 开发自检清单（每完成一个页面必答 — v2.16 反模式雷达）
 
@@ -131,3 +131,7 @@ src/api/<module>.ts         # API 调用封装
 
 4. **下拉/选择器**：页面中每个 Select/Dropdown/AutoComplete 的 options 都绑定了真实 API 吗？
    → 完成页面后 @headed 验证：打开弹窗 → 确认下拉有选项
+
+5. **CSS 副作用（v2.17）**：修改了共享 UI 组件（Field/Button/Modal/Dialog 等）吗？
+   → 必须验证其 CSS 变体（*:w-full、flex-col 等）不破坏 Checkbox/Radio/Switch/Toggle 等非标准控件
+   → Preview 亲眼检查弹窗/表单全貌，而非仅看修改的那一行

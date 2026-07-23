@@ -41,3 +41,7 @@
 
 4. **下拉/选择器**：页面中每个 Select/Dropdown/AutoComplete 的 options 都绑定了真实 API 吗？
    → 完成页面后 @headed 验证：打开弹窗 → 确认下拉有选项
+
+5. **CSS 副作用（v2.17）**：修改了共享 UI 组件（Field/Button/Modal/Dialog 等）吗？
+   → 必须验证其 CSS 变体（*:w-full、flex-col 等）不破坏 Checkbox/Radio/Switch/Toggle 等非标准控件
+   → Preview 亲眼检查弹窗/表单全貌，而非仅看修改的那一行

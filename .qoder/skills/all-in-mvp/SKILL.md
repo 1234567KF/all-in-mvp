@@ -5,7 +5,7 @@ metadata:
   pattern: pipeline+inversion+reviewer+generator
   stage-gates: true
   max-parallel-agents: 3
-  based_on: MVP白皮书 v2.15.0
+  based_on: MVP白皮书 v2.17.0
   gate_probe: enforced  # v2.11: 每个 Stage 入口有 GATE_PROBE 文件检查，不可跳过
   gate_scripts:  # v2.15: 三层保障架构 — 自动化门禁脚本
     stage3: ".qoder/scripts/check-stage3-gate.ps1"
@@ -23,7 +23,7 @@ metadata:
 
 # Parallel MVP Pipeline — Multi-Platform 版
 
-> 基于《MVP 白皮书 v2.15》的多 Agent 并行工程方法论。3 种运行模式、强制模式判定、Stage 入口门禁探针、最大并行度。v2.15 新增三层保障架构：gate-rules.yaml（规则注册表）+ 自动化 .ps1 门禁脚本 + PLAYBOOK.md（血案库）。增量变更强制走完整流水线（§0.2决策树）。
+> 基于《MVP 白皮书 v2.17》的多 Agent 并行工程方法论。3 种运行模式、强制模式判定、Stage 入口门禁探针、最大并行度。v2.15 新增三层保障架构：gate-rules.yaml（规则注册表）+ 自动化 .ps1 门禁脚本 + PLAYBOOK.md（血案库）。v2.17 新增修复模式最小门禁：Bug 修复不走 Stage 流程也必过自检+冒烟。增量变更强制走完整流水线（§0.2决策树）。
 > 支持 Claude Code（Dynamic Workflows）与 Qoder（Custom Subagents）双平台运行。
 
 ---
@@ -1393,6 +1393,40 @@ Workflow({
 
 ---
 
+### 修复模式最小门禁 — 非 Stage 流程的 Bug 修复必过（v2.17）
+
+> **核心问题**：Bug 修复不走 Stage 流程 → Coordinator 不调度 → Code Review/冒烟验证全跳过 → R001-R021 全部失效。
+> **原则**：修复粒度再小，也必须过最小门禁。单行修改也需要第二双眼睛。
+
+```
+Bug 修复进入
+    ↓
+┌─────────────────────────────────────────────┐
+│ 🔴 门禁 1：自检清单（修复 Agent 必答）         │
+│  1. 我修改的代码影响了哪些相邻组件？            │
+│  2. 前后端契约一致吗？（字段名/枚举值/响应格式）  │
+│  3. 修改了共享 UI 组件吗？CSS 变体有无副作用？   │
+└─────────────────────────────────────────────┘
+    ↓
+┌─────────────────────────────────────────────┐
+│ 🔴 门禁 2：受影响区域冒烟验证                  │
+│  弹窗类修改 → Preview 亲眼检查所有控件+提交    │
+│  列表类修改 → 验证排序/分页/筛选联动           │
+│  共享组件修改 → 验证所有使用该组件的页面        │
+└─────────────────────────────────────────────┘
+    ↓
+┌─────────────────────────────────────────────┐
+│ 🔴 门禁 3：审查确认                           │
+│  → 触发 kf-mvp-code-review subagent（即使单行）│
+│  → 或：用户亲眼确认修复效果                    │
+│  → 不准以"改动太小"跳过                       │
+└─────────────────────────────────────────────┘
+```
+
+**血案**：B020 修复模式绕过门禁 → 漏修 Checkbox 异常。B019 CSS `*:w-full` 副作用。
+
+---
+
 ## Stage 3: 执行阶段 — Workflow(`.claude/workflows/stage3-execution.js`)
 
 **前置条件**：Stage 2 门禁全部通过。
@@ -2391,6 +2425,8 @@ const E2E_COVERAGE_CHECKER = {
 | R017 | v2.16 | 集成点全链路检查 数据层→判断层→渲染层 | BLOCKER | 4 | — |
 | R018 | v2.16 | UI 数据源绑定 — 禁硬编码用户/角色/权限 | BLOCKER | 3,4 | — |
 | R019 | v2.16 | 服务器响应权威 — 优先用服务端返回最新数据 | HIGH | 3,4 | — |
+| R020 | v2.17 | 修复模式最小审查 — 单行修改也必须自检+冒烟 | BLOCKER | fix | — |
+| R021 | v2.17 | 共享组件 CSS 副作用 — *:w-full 破坏非标准控件 | BLOCKER | 3,4,fix | — |
 
 > `—` = 需语义分析，暂不可脚本化。Agent 自行遵守，违规血案见 PLAYBOOK.md。
 > **Agent 使用方式**：不再需要记住每条规则全文。开发/联调前运行对应 Stage 聚合门禁脚本 → PASS 才继续。

@@ -227,13 +227,41 @@ rules:
       客户端缓存不是权威数据源，服务器响应才是。
       血案见 PLAYBOOK.md B017（refreshToken 使用过期缓存）。
 
+  # ---- v2.17 规则（修复模式门禁 — 回顾复盘 2026-07-16）----
+  - id: R020
+    version: v2.17
+    name: 修复模式最小审查门禁
+    severity: BLOCKER
+    stage: [fix]  # 修复模式独立于 Stage 流程
+    check_script: null
+    applies_to: [all]
+    description: |
+      任何 Bug 修复（单行修改亦然）必须通过最小审查门禁：
+      1. 自检清单：我修改的代码影响了哪些相邻组件？组件间契约是否一致？CSS 变体是否有副作用？
+      2. 受影响区域冒烟：弹窗类修改→验证所有控件可见+提交成功；列表类修改→验证排序/分页/筛选联动
+      不准以“改动太小”为由跳过审查。Fix-one-and-done = 定时炸弹。
+      血案见 PLAYBOOK.md B020（修复模式绕过门禁）。
+
+  - id: R021
+    version: v2.17
+    name: 共享组件 CSS 副作用检查
+    severity: BLOCKER
+    stage: [stage3, stage4, fix]
+    check_script: null  # 需用户视觉验证，暂不可脚本化
+    applies_to: [frontend-dev]
+    description: |
+      修改共享 UI 组件（Field/Button/Modal/Dialog 等）时，必须验证其 CSS 变体不破坏非标准表单控件。
+      重点检查：`*:w-full` 、`flex-col` 等对 Checkbox/Radio/Switch/Toggle 的副作用。
+      修改后 Preview 亲眼检查弹窗/表单全貌，而非仅看修改的那一行。
+      血案见 PLAYBOOK.md B019（Checkbox 被 Field *:w-full 拉伸异常）。
+
 # ============================================================
 # Stage 门禁映射（供聚合脚本使用）
 # ============================================================
 gates:
   stage3:
     description: "Stage 3 入口门禁 — 开发前必须通过的规则"
-    rules: [R002, R004, R012, R015, R018, R019]
+    rules: [R002, R004, R012, R015, R018, R019, R021]
     aggregate_script: scripts/check-stage3-gate.ps1
 
   stage3.5:
@@ -243,5 +271,10 @@ gates:
 
   stage4:
     description: "Stage 4 入口门禁 — 集成验收前必须通过的规则"
-    rules: [R001, R003, R005, R006, R007, R008, R009, R010, R012, R013, R014, R015, R016, R017, R018, R019]
+    rules: [R001, R003, R005, R006, R007, R008, R009, R010, R012, R013, R014, R015, R016, R017, R018, R019, R021]
     aggregate_script: scripts/check-stage4-gate.ps1
+
+  fix:
+    description: "修复模式门禁 — 任何 Bug 修复必须通过的最小审查（v2.17）"
+    rules: [R020, R021]
+    aggregate_script: null  # 修复模式不能脚本化，由 Agent 自觉执行 + 用户确认
