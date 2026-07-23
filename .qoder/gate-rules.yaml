@@ -11,6 +11,10 @@
 #   2. 编写对应的 check_script（如可自动化）
 #   3. 在适用的 agent Constraints 中加一行引用：`@rule:Rxxx`
 #   4. 血案写入 PLAYBOOK.md
+#
+# 辅助资源：
+#   - .qoder/rules/quality-gate.md — 非 Stage 流程的强制行为约束 + 审查清单
+#   - .qoder/settings.json qualityGates — 文件路径 → 技能自动触发映射
 # ============================================================
 
 version: "1.0"
@@ -277,4 +281,4 @@ gates:
   fix:
     description: "修复模式门禁 — 任何 Bug 修复必须通过的最小审查（v2.17）"
     rules: [R020, R021]
-    aggregate_script: null  # 修复模式不能脚本化，由 Agent 自觉执行 + 用户确认
+    aggregate_script: null  # 修复模式不能脚本化，由 quality-gate.md + settings.json qualityGates 联合驱动

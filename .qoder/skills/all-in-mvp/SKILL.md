@@ -5,13 +5,16 @@ metadata:
   pattern: pipeline+inversion+reviewer+generator
   stage-gates: true
   max-parallel-agents: 3
-  based_on: MVP白皮书 v2.17.0
+  based_on: MVP白皮书 v2.18.0
   gate_probe: enforced  # v2.11: 每个 Stage 入口有 GATE_PROBE 文件检查，不可跳过
   gate_scripts:  # v2.15: 三层保障架构 — 自动化门禁脚本
     stage3: ".qoder/scripts/check-stage3-gate.ps1"
     stage4: ".qoder/scripts/check-stage4-gate.ps1"
   rule_registry: ".qoder/gate-rules.yaml"  # v2.15: 规则单一真源
   playbook: ".qoder/PLAYBOOK.md"  # v2.15: 血案库
+  quality_gates:  # v2.18: 技能强制门禁 — 文件路径 → 自动触发审查/冒烟/E2E
+    config: ".qoder/settings.json#qualityGates"
+    rules: ".qoder/rules/quality-gate.md"
   platforms: [claude-code, qoder]
   workflow-ready: true
   workflow-scripts:
@@ -23,7 +26,7 @@ metadata:
 
 # Parallel MVP Pipeline — Multi-Platform 版
 
-> 基于《MVP 白皮书 v2.17》的多 Agent 并行工程方法论。3 种运行模式、强制模式判定、Stage 入口门禁探针、最大并行度。v2.15 新增三层保障架构：gate-rules.yaml（规则注册表）+ 自动化 .ps1 门禁脚本 + PLAYBOOK.md（血案库）。v2.17 新增修复模式最小门禁：Bug 修复不走 Stage 流程也必过自检+冒烟。增量变更强制走完整流水线（§0.2决策树）。
+> 基于《MVP 白皮书 v2.18》的多 Agent 并行工程方法论。3 种运行模式、强制模式判定、Stage 入口门禁探针、最大并行度。v2.15 新增三层保障架构：gate-rules.yaml（规则注册表）+ 自动化 .ps1 门禁脚本 + PLAYBOOK.md（血案库）。v2.17 新增修复模式最小门禁。v2.18 新增技能强制门禁：settings.json qualityGates 文件路径自动触发审查/冒烟/E2E。增量变更强制走完整流水线（§0.2决策树）。
 > 支持 Claude Code（Dynamic Workflows）与 Qoder（Custom Subagents）双平台运行。
 
 ---
@@ -1424,6 +1427,7 @@ Bug 修复进入
 ```
 
 **血案**：B020 修复模式绕过门禁 → 漏修 Checkbox 异常。B019 CSS `*:w-full` 副作用。
+**强制规则**：[quality-gate.md](../rules/quality-gate.md) — 审查清单 + [settings.json](../settings.json) qualityGates — 文件路径自动触发。
 
 ---
 

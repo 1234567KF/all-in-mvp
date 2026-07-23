@@ -25,7 +25,8 @@
     "d:\\all-in-mvp\\ultra-cost-effective\\rules\\shared-prefix.md",
     "d:\\all-in-mvp\\ultra-cost-effective\\rules\\cache-optimization.md",
     "d:\\all-in-mvp\\ultra-cost-effective\\rules\\lean-ctx.md",
-    "d:\\all-in-mvp\\ultra-cost-effective\\rules\\compression-default.md"
+    "d:\\all-in-mvp\\ultra-cost-effective\\rules\\compression-default.md",
+    "d:\\all-in-mvp\\.qoder\\rules\\quality-gate.md"
   ],
 
   "permissions": {
@@ -40,6 +41,62 @@
     "lean-ctx": {
       "command": "lean-ctx",
       "args": ["mcp"]
+    }
+  },
+
+  "qualityGates": {
+    "_comment": "v2.18 — 技能强制门禁：根据文件路径自动触发审查/冒烟/E2E",
+    "_doc": ".qoder/rules/quality-gate.md — 详细规则",
+
+    "codeReview": {
+      "enabled": true,
+      "trigger": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "src/**/*.vue",
+        "apps/web/src/**",
+        "apps/api/src/**",
+        "packages/shared/src/**"
+      ],
+      "skill": "kf-mvp-code-review",
+      "mode": "auto",
+      "description": "修改源码后自动派发 code-review subagent 审查"
+    },
+
+    "contractCheck": {
+      "enabled": true,
+      "trigger": [
+        "src/services/**",
+        "src/api/**",
+        "apps/api/src/routes/**",
+        "packages/shared/src/**"
+      ],
+      "skill": "kf-mvp-test-review",
+      "mode": "auto",
+      "description": "API 路由/服务层修改自动校验前后端字段一致性"
+    },
+
+    "smokeVerify": {
+      "enabled": true,
+      "trigger": [
+        "src/components/ui/**",
+        "src/components/common/**",
+        "src/pages/**",
+        "src/views/**",
+        "apps/web/src/components/ui/**",
+        "apps/web/src/pages/**"
+      ],
+      "skill": "kf-mvp-msvp-verifier",
+      "mode": "on-demand",
+      "description": "弹窗/表单/共享 UI 组件修改后建议冒烟验证"
+    },
+
+    "e2eRegression": {
+      "enabled": false,
+      "trigger": ["src/**", "apps/**"],
+      "skill": "kf-mvp-test-e2e",
+      "mode": "manual",
+      "note": "待 Playwright 版本冲突修复后启用为 auto"
     }
   }
 }
