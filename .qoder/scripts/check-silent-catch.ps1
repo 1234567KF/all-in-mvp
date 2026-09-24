@@ -1,9 +1,11 @@
-# Gate: R015 — 禁止静默吞错误 (v2.14)
+﻿# Gate: R015 — 禁止静默吞错误 (v2.14)
 # 扫描 .ts/.tsx 文件，检测 .catch(() => {}) 空回调反模式
 param(
     [string]$TargetDir = ".",
     [switch]$Json
 )
+
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }  # 保证 UTF-8 输出：否则 PowerShell 5.1 按 GBK 码页输出中文，Agent 读到乱码
 
 $ErrorActionPreference = "Stop"
 $violations = @()
@@ -47,7 +49,7 @@ if ($violations.Count -eq 0) {
 } else {
     if ($Json) {
         $json = $violations | ConvertTo-Json -Compress
-        Write-Output "{\"status\":\"FAIL\",\"rule\":\"R015\",\"violations\":$($violations.Count),\"details\":$json}"
+        Write-Output "{`"status`":`"FAIL`",`"rule`":`"R015`",`"violations`":$($violations.Count),`"details`":$json}"
     } else {
         Write-Host "[FAIL] R015 禁止静默吞错误 — 发现 $($violations.Count) 处违规：" -ForegroundColor Red
         $violations | ForEach-Object {

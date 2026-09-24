@@ -1,4 +1,4 @@
-#!/usr/bin/env pwsh
+﻿#!/usr/bin/env pwsh
 # UltraCostEffective 极致节能 — Windows PowerShell 安装脚本
 # 一条命令完成安装和预检
 

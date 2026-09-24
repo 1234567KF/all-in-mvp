@@ -1,9 +1,11 @@
-# Gate: R011 — 端口配置化 (v2.13)
+﻿# Gate: R011 — 端口配置化 (v2.13)
 # 检测 .env / vite.config / playwright.config 中是否硬编码端口
 param(
     [string]$TargetDir = ".",
     [switch]$Json
 )
+
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }  # 保证 UTF-8 输出：否则 PowerShell 5.1 按 GBK 码页输出中文，Agent 读到乱码
 
 $ErrorActionPreference = "Stop"
 $violations = @()
@@ -72,8 +74,8 @@ if ($violations.Count -eq 0) {
     exit 0
 } else {
     if ($Json) {
-        $json = $violations | ConvertTo-Json -Compress
-        Write-Output "{\"status\":\"FAIL\",\"rule\":\"R011\",\"violations\":$($violations.Count),\"details\":$json}"
+        $detailsJson = $violations | ConvertTo-Json -Compress   # 不能叫 $json：与 param [switch]$Json 同名（PS 变量名不区分大小写），赋值会触发 SwitchParameter 转换异常
+        Write-Output "{`"status`":`"FAIL`",`"rule`":`"R011`",`"violations`":$($violations.Count),`"details`":$detailsJson}"
     } else {
         Write-Host "[FAIL] R011 端口配置化 — $($violations.Count) 处违规：" -ForegroundColor Red
         $violations | ForEach-Object {

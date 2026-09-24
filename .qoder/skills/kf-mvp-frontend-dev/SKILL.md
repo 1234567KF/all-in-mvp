@@ -1,4 +1,4 @@
-﻿---
+---
 name: kf-mvp-frontend-dev
 description: >-
   Load when user asks to develop frontend, create React components, or build pages

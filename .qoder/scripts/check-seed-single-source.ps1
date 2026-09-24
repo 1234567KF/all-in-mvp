@@ -1,9 +1,11 @@
-# Gate: R010 — 种子数据单一真源 (v2.13)
+﻿# Gate: R010 — 种子数据单一真源 (v2.13)
 # 检查 seeds/ 目录是否存在，Mock 和 DB seed 是否引用同一数据源
 param(
     [string]$TargetDir = ".",
     [switch]$Json
 )
+
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }  # 保证 UTF-8 输出：否则 PowerShell 5.1 按 GBK 码页输出中文，Agent 读到乱码
 
 $ErrorActionPreference = "Stop"
 $violations = @()
@@ -70,8 +72,8 @@ if ($violations.Count -eq 0) {
     exit 0
 } else {
     if ($Json) {
-        $json = $violations | ConvertTo-Json -Compress
-        Write-Output "{\"status\":\"FAIL\",\"rule\":\"R010\",\"violations\":$($violations.Count),\"details\":$json}"
+        $detailsJson = $violations | ConvertTo-Json -Compress   # 不能叫 $json：与 param [switch]$Json 同名（PS 变量名不区分大小写），赋值会触发 SwitchParameter 转换异常
+        Write-Output "{`"status`":`"FAIL`",`"rule`":`"R010`",`"violations`":$($violations.Count),`"details`":$detailsJson}"
     } else {
         Write-Host "[FAIL] R010 种子数据单一真源 — $($violations.Count) 处违规：" -ForegroundColor Red
         $violations | ForEach-Object {

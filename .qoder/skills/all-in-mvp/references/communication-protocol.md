@@ -321,4 +321,4 @@ project/
 - `references/decision-log-template.md` — 决策日志模板
 - `references/msvp-protocol.md` — MSVP 强制冒烟验证协议
 - `references/execution-playbook.md` — 执行编排手册
-- `agents/msvp-verifier.md` — MSVP 独立验证 Agent
+- `agents/mvp-verifier.md` — MSVP 独立验证 Agent

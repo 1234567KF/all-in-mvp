@@ -14,7 +14,7 @@
 #
 # 辅助资源：
 #   - .qoder/rules/quality-gate.md — 非 Stage 流程的强制行为约束 + 审查清单
-#   - .qoder/settings.json qualityGates — 文件路径 → 技能自动触发映射
+#   - .qoder/settings.json hooks.PostToolUse — 文件路径 → 门禁技能/子 Agent 自动派发（scripts/quality-gate-hook.ps1）
 # ============================================================
 
 version: "1.0"
@@ -113,7 +113,7 @@ rules:
     severity: BLOCKER
     stage: [stage4]
     check_script: scripts/check-e2e-dual-mode.ps1
-    applies_to: [stage4-coordinator, kf-mvp-test-e2e, msvp-verifier]
+    applies_to: [stage4-coordinator, kf-mvp-test-e2e, verifier]
     description: |
       Stage4 验收前 E2E MUST 跑两轮：Mock 模式全量 + Real 模式核心链路。
       两轮全部通过才能标记 Stage4 完成。
@@ -124,7 +124,7 @@ rules:
     severity: BLOCKER
     stage: [stage2, stage4]
     check_script: scripts/check-seed-single-source.ps1
-    applies_to: [architect, mock-service, msvp-verifier]
+    applies_to: [architect, mock-service, verifier]
     description: |
       测试账号/基础数据 MUST 存放在独立 seeds/ 目录。
       Mock 与真实 DB MUST import 同一份定义，严禁各自维护两份账号列表。
@@ -281,4 +281,4 @@ gates:
   fix:
     description: "修复模式门禁 — 任何 Bug 修复必须通过的最小审查（v2.17）"
     rules: [R020, R021]
-    aggregate_script: null  # 修复模式不能脚本化，由 quality-gate.md + settings.json qualityGates 联合驱动
+    aggregate_script: null  # 修复模式不能脚本化；由 quality-gate.md（行为真源）+ settings.json hooks.PostToolUse → scripts/quality-gate-hook.ps1（路径命中即派发审查/冒烟）联合驱动

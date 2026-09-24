@@ -1,4 +1,4 @@
-#!/usr/bin/env pwsh
+﻿#!/usr/bin/env pwsh
 # ============================================================
 #  UltraCostEffective · 极致节能 — 一键接入脚本 (Windows)
 #

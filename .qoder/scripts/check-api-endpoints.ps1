@@ -1,10 +1,12 @@
-# Gate: R014/R016 — API 端点存在性交叉校验 (v2.14)
+﻿# Gate: R014/R016 — API 端点存在性交叉校验 (v2.14)
 # 提取前端 api.get/post/put/delete/patch(url) → 与 contract + routes 交叉比对
 param(
     [string]$TargetDir = ".",
     [string]$ContractFile = "api-contract.yaml",
     [switch]$Json
 )
+
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }  # 保证 UTF-8 输出：否则 PowerShell 5.1 按 GBK 码页输出中文，Agent 读到乱码
 
 $ErrorActionPreference = "Stop"
 $violations = @()
@@ -67,15 +69,15 @@ foreach ($path in $apiCalls.Keys) {
 
 if ($violations.Count -eq 0) {
     if ($Json) {
-        Write-Output "{\"status\":\"PASS\",\"rule\":\"R014\",\"endpoints_checked\":$($apiCalls.Count)}"
+        Write-Output "{`"status`":`"PASS`",`"rule`":`"R014`",`"endpoints_checked`":$($apiCalls.Count)}"
     } else {
         Write-Host "[PASS] R014 API 端点一致性 — $($apiCalls.Count) 个端点全部在 contract 中存在" -ForegroundColor Green
     }
     exit 0
 } else {
     if ($Json) {
-        $json = $violations | ConvertTo-Json -Compress
-        Write-Output "{\"status\":\"FAIL\",\"rule\":\"R014\",\"violations\":$($violations.Count),\"details\":$json}"
+        $detailsJson = $violations | ConvertTo-Json -Compress   # 不能叫 $json：与 param [switch]$Json 同名（PS 变量名不区分大小写），赋值会触发 SwitchParameter 转换异常
+        Write-Output "{`"status`":`"FAIL`",`"rule`":`"R014`",`"violations`":$($violations.Count),`"details`":$detailsJson}"
     } else {
         Write-Host "[FAIL] R014 API 端点一致性 — $($violations.Count) 个孤端点：" -ForegroundColor Red
         $violations | ForEach-Object {

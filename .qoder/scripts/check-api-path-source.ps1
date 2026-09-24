@@ -1,10 +1,12 @@
-# Gate: R012 — API 路径唯一真源 (v2.13)
+﻿# Gate: R012 — API 路径唯一真源 (v2.13)
 # 验证前端 services/*.ts 的请求路径是否从 api-contract.yaml 提取
 param(
     [string]$TargetDir = ".",
     [string]$ContractFile = "api-contract.yaml",
     [switch]$Json
 )
+
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }  # 保证 UTF-8 输出：否则 PowerShell 5.1 按 GBK 码页输出中文，Agent 读到乱码
 
 $ErrorActionPreference = "Stop"
 $violations = @()
@@ -64,8 +66,8 @@ if ($violations.Count -eq 0) {
     exit 0
 } else {
     if ($Json) {
-        $json = $violations | ConvertTo-Json -Compress
-        Write-Output "{\"status\":\"FAIL\",\"rule\":\"R012\",\"violations\":$($violations.Count),\"details\":$json}"
+        $detailsJson = $violations | ConvertTo-Json -Compress   # 不能叫 $json：与 param [switch]$Json 同名（PS 变量名不区分大小写），赋值会触发 SwitchParameter 转换异常
+        Write-Output "{`"status`":`"FAIL`",`"rule`":`"R012`",`"violations`":$($violations.Count),`"details`":$detailsJson}"
     } else {
         Write-Host "[FAIL] R012 API 路径唯一真源 — $($violations.Count) 处违规：" -ForegroundColor Red
         $violations | ForEach-Object {

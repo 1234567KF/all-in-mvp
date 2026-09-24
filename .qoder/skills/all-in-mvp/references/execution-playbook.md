@@ -262,7 +262,7 @@ Stage2-① 开始：
   "version": "1.0.0",
   "project_name": "<项目名>",
   "mode": "full | incremental | lightweight",
-  "platform": "qoder | claude-code | degraded",
+  "platform": "qoder | degraded",
   "created_at": "<ISO 8601>",
   "updated_at": "<ISO 8601>",
   "current_stage": 1,
@@ -402,17 +402,17 @@ Stage2-① 开始：
 │  │    后端: 加载 agents/backend-dev.md → CEP → TDD → 加载 agents/code-reviewer.md → CR → 确认   │     │
 │  │    前端: 加载 agents/frontend-dev.md → CEP → 开发 → 确认      │     │
 │  │    MSVP-1 验证（前端页面全部完成后）                            │     │
-│  │    → 加载 agents/msvp-verifier.md 执行 Lite 级别验证             │     │
+│  │    → 加载 agents/mvp-verifier.md 执行 Lite 级别验证             │     │
 │  │  门禁检查 → CP-6/7 用户确认                                    │     │
 │  └──────────────────────────────────────────────────────────────┘     │
 │     ↓ 门禁通过                                                        │
 │                                                                      │
 │  ┌─ Stage4: 逐项验收 ──────────────────────────────────────────┐     │
 │  │  加载 agents/stage4-coordinator.md                            │     │
-│  │  后端合并 → 加载 agents/msvp-verifier.md → MSVP-2                   │     │
+│  │  后端合并 → 加载 agents/mvp-verifier.md → MSVP-2                   │     │
 │  │  联调 → MSVP-3 → 集成测试 → Bug修复                          │     │
 │  │  交付验收清单 → 用户确认 → MSVP-4 → 复现性检查                 │     │
-│  │  （MSVP-2/3/4 均由加载 agents/msvp-verifier.md 独立执行）          │     │
+│  │  （MSVP-2/3/4 均由加载 agents/mvp-verifier.md 独立执行）          │     │
 │  │  门禁检查 → CP-8 用户确认                                     │     │
 │  └──────────────────────────────────────────────────────────────┘     │
 │     ↓ 门禁通过                                                        │

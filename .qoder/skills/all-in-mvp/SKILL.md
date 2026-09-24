@@ -1,4 +1,4 @@
-﻿---
+---
 name: all-in-mvp
 description: Load when user wants to build a full-stack MVP prototype using multi-agent parallel development pipeline. Triggers: MVP, 原型开发, 多Agent并行开发, 全栈快速原型, multi-agent pipeline, 从需求到交付, 多Agent流水线, 并行开发, 快速验证产品, 原型系统, 并行工程. NOT for: single API endpoint, bug fixing, code refactoring, deployment, code review alone.
 metadata:
@@ -12,22 +12,17 @@ metadata:
     stage4: ".qoder/scripts/check-stage4-gate.ps1"
   rule_registry: ".qoder/gate-rules.yaml"  # v2.15: 规则单一真源
   playbook: ".qoder/PLAYBOOK.md"  # v2.15: 血案库
-  quality_gates:  # v2.18: 技能强制门禁 — 文件路径 → 自动触发审查/冒烟/E2E
-    config: ".qoder/settings.json#qualityGates"
+  quality_gates:  # v2.18: 技能强制门禁 — 文件路径 → 自动派发审查/冒烟/E2E
+    config: ".qoder/settings.json#hooks.PostToolUse"
+    script: ".qoder/scripts/quality-gate-hook.ps1"
     rules: ".qoder/rules/quality-gate.md"
-  platforms: [claude-code, qoder]
-  workflow-ready: true
-  workflow-scripts:
-    - ".claude/workflows/stage1-prd.js"
-    - ".claude/workflows/stage2-planning.js"
-    - ".claude/workflows/stage3-execution.js"
-    - ".claude/workflows/stage4-integration.js"
+  platforms: [qoder]
 ---
 
-# Parallel MVP Pipeline — Multi-Platform 版
+# Parallel MVP Pipeline — Qoder 版
 
-> 基于《MVP 白皮书 v2.18》的多 Agent 并行工程方法论。3 种运行模式、强制模式判定、Stage 入口门禁探针、最大并行度。v2.15 新增三层保障架构：gate-rules.yaml（规则注册表）+ 自动化 .ps1 门禁脚本 + PLAYBOOK.md（血案库）。v2.17 新增修复模式最小门禁。v2.18 新增技能强制门禁：settings.json qualityGates 文件路径自动触发审查/冒烟/E2E。增量变更强制走完整流水线（§0.2决策树）。
-> 支持 Claude Code（Dynamic Workflows）与 Qoder（Custom Subagents）双平台运行。
+> 基于《MVP 白皮书 v2.18》的多 Agent 并行工程方法论。3 种运行模式、强制模式判定、Stage 入口门禁探针、最大并行度。v2.15 新增三层保障架构：gate-rules.yaml（规则注册表）+ 自动化 .ps1 门禁脚本 + PLAYBOOK.md（血案库）。v2.17 新增修复模式最小门禁。v2.18 新增技能强制门禁：settings.json hooks.PostToolUse 按文件路径自动派发审查/冒烟/E2E。增量变更强制走完整流水线（§0.2决策树）。
+> 运行于 **Qoder（Custom Subagents 编排）**，单平台。
 
 ---
 
@@ -109,81 +104,76 @@ confirmed_by_user: false   # 用户确认后改为 true
 ### 🚫 违规检测
 
 如果 Agent 在 `mode: full` 的情况下：
-- 试图直接用 Write/SearchReplace 写全部代码（绕过 Workflow）→ **立即停止，标记 VIOLATION**
+- 试图直接用 Write/SearchReplace 写全部代码（绕过子 Agent 编排）→ **立即停止，标记 VIOLATION**
 - 跳过 Stage 2 ③b-2（E2E 用例设计）→ **立即停止**
 - 跳过 Stage 3.5（E2E 适配）→ **立即停止**
 - 在 Stage 4 不做浏览器 MSVP 冒烟 → **立即停止**
 
 ---
 
-## Dynamic Workflow 执行模式（Claude Code 专有）
+## Subagent 编排执行模式（Qoder）
 
-> **核心变化**：每个 Stage 对应一个独立的 Workflow 脚本（`.claude/workflows/*.js`），脚本自包含，prompt 内嵌，主 Agent 只需触发脚本并审查产出卡片。
+> **核心变化**：每个 Stage 由主 Agent 通过 **`Agent` 工具派发 `.qoder/agents/` 下的子 Agent** 来执行。主 Agent = 指挥官，只负责判定模式、派发子 Agent、审查产出卡片、核对门禁探针；不承担具体开发工作。
 
 ### 主 Agent 角色转变
 
-| 旧模式（手动 spawn） | 新模式（脚本驱动） |
-|-------------------|---------------------|
-| 主 Agent 逐个角色扮演，切换 context | 主 Agent = 指挥官，触发 Workflow + 审查产出卡片 |
-| 子 Agent prompt 靠主 Agent 对话切换 | 子 Agent 在 Workflow 脚本内独立运行 |
-| 所有中间状态在主会话上下文累积 | 中间状态在 Workflow 内隔离，主会话始终干净 |
-| 中断后只能重来 | Workflow 支持 `resumeFromRunId` 断点续跑 |
-| 最大并行度靠主 Agent 手动管理 | Workflow 自动按依赖图 fan-out |
+| 旧模式（主 Agent 亲自逐角色实现） | 新模式（子 Agent 编排） |
+|--------------------------------|----------------------|
+| 主 Agent 逐个角色扮演，切换 context | 主 Agent 派发 `Agent(subagent_type='mvp-*')`，只审查产出卡片 |
+| 子 Agent prompt 靠主 Agent 对话切换 | 每个子 Agent 在独立上下文运行，只读【锁定】产物 |
+| 所有中间状态在主会话上下文累积 | 中间状态在子 Agent 内隔离，主会话始终干净 |
+| 中断后只能重来 | 主 Agent 依据文件系统 DONE/BLOCKED/E2E_READY 标记断点续跑 |
+| 最大并行度靠主 Agent 手动管理 | 按 `task.md` 依赖图，在单条消息内并行派发无依赖子 Agent |
 
-### Workflow 触发时机
+### Stage → 子 Agent 映射（用 `Agent` 工具派发）
+
+| Stage | 派发的子 Agent（`.qoder/agents/`） | 产出 |
+|-------|-----------------------------------|------|
+| Stage1 需求 | `mvp-pm-agent` | PRD.md |
+| Stage2 规划 | `mvp-architect` → `mvp-domain-expert` → `mvp-grill-review`；并行段 `mvp-mock-service` + `mvp-single-module-test`/`mvp-scenario-test` → `mvp-test-review` | spec/schema/contract + task/modules + mocks + 测试用例 |
+| Stage3 开发 | `mvp-pipeline-coordinator` + `mvp-backend-tdd` + `mvp-frontend-dev` + `mvp-code-reviewer` | 各模块 DONE 标记 |
+| Stage3.5 E2E | 主 Agent 直接调用 `kf-mvp-test-e2e` 技能（E2E-Adapt） | E2E_READY |
+| Stage4 集成 | `mvp-stage4-coordinator` + `mvp-debug-fixer` + `mvp-verifier` | 交付归档 |
+| Stage5 复盘 | `mvp-retrospective-agent` | retrospective.md |
+
+### 触发时机
 
 ```
 用户需求进入 → 主 Agent 判定模式（轻量/全量/增量）
-    │
-    ├── 轻量模式 → 主 Agent 直接执行 QuickStep1-3（不触发 Workflow）
-    │
-    └── 全量/增量模式 → 主 Agent 依次触发 Workflow：
-          Workflow({ scriptPath: '.claude/workflows/stage1-prd.js', args: {...} })
-          → Workflow({ scriptPath: '.claude/workflows/stage2-planning.js', args: {...} })
-          → Workflow({ scriptPath: '.claude/workflows/stage3-execution.js', args: {...} })
-          → Stage 3.5 E2E-Adapt（主 Agent 直接执行，非 Workflow）
-          → Workflow({ scriptPath: '.claude/workflows/stage4-integration.js', args: {...} })
-          每个 Workflow 完成后，主 Agent 审查产出卡片，确认门禁通过，再触发下一个
+    ├── 轻量模式 → 主 Agent 直接执行 QuickStep1-3（不派发子 Agent 流水线）
+    └── 全量/增量模式 → 主 Agent 依次派发子 Agent：
+          Stage1 → Stage2 → Stage3 → Stage3.5 → Stage4
+          派发任一子 Agent 前，先确认其输入产物已【锁定】；
+          每个 Stage 完成后，主 Agent 审查产出卡片 + 核对门禁探针，通过才进入下一个 Stage。
 ```
 
-### Workflow 脚本架构
+### 派发方式
 
-4 个 Workflow 脚本 + Stage 3.5 主 Agent 直接执行（非 Workflow）：
-
-```
-.claude/workflows/
-├── stage1-prd.js          ← PM Agent (pro) → PRD.md
-├── stage2-planning.js     ← Architect(pro) + Domain Expert(flash) + Grill(pro) + Mock/Test(flash) + E2E(pro)
-├── stage3-execution.js    ← Coordinator(flash) + Backend/Frontend(flash) + Code Reviewer(pro)
-├── (Stage 3.5)            ← 主 Agent → kf-mvp-test-e2e E2E-Adapt (pro) → E2E_READY
-└── stage4-integration.js  ← Stage4 Coord(pro) + Merge/Integration/Test(flash) + Debug(flash)
-```
-
-### 如何触发 Workflow
-
-**方式一（推荐）**：直接调用脚本
+**方式一（推荐）**：显式指定子 Agent 类型
 ```javascript
 // Stage1: 需求对齐
-Workflow({ scriptPath: '.claude/workflows/stage1-prd.js', args: { userRequirement: '用户需求', context: '业务背景' } })
+Agent({ subagent_type: 'mvp-pm-agent', description: '生成 PRD',
+        prompt: '用户原始需求：<需求>；业务背景：<背景>。按 PRD_SCHEMA 产出 PRD.md 草案并列出理解确认清单(MQAP)。' })
 
-// Stage2: 规划校验
-Workflow({ scriptPath: '.claude/workflows/stage2-planning.js', args: { prdPath: 'PRD.md' } })
+// Stage2: 规划校验（串行段，架构先→业务后→grill 交叉审查）
+Agent({ subagent_type: 'mvp-architect', description: '架构设计',
+        prompt: '输入 PRD.md，产出 spec.md + schema.sql + api-contract.yaml 初版。' })
 
-// Stage3: 并行开发
-Workflow({ scriptPath: '.claude/workflows/stage3-execution.js', args: { taskPath: 'task.md', modulesDir: 'modules/' } })
-
-// Stage4: 集成验收
-Workflow({ scriptPath: '.claude/workflows/stage4-integration.js', args: { srcDir: 'src/', mockDir: 'mocks/' } })
+// Stage3: 并行开发（Coordinator 先行，再按依赖图 fan-out）
+Agent({ subagent_type: 'mvp-pipeline-coordinator', description: '模块调度',
+        prompt: '读 task.md 依赖图，输出模块分配轮次表 + 反模式雷达风险标注。' })
 ```
 
-**方式二**：开启 ultracode 模式后直接描述任务
-> "Build a [项目描述] using the all-in-mvp pipeline"
+**方式二**：用 `/all-in-mvp` 触发，主 Agent 自动按上述映射编排子 Agent。
+
+> **平台迁移说明**：Qoder 无 `Workflow()` 工具，也不使用 `.claude/workflows/*.js`。历史版本 Workflow 脚本提供的能力（fan-out、上下文隔离、断点续跑、失败重试/降级）改由主 Agent 用 `Agent` 工具 + 文件系统状态标记等价承接。**各 Stage 的业务逻辑、门禁、规则一律不变。**
 
 ---
 
-### Workflow自愈机制（v2.6 新增）
+### 自愈机制（v2.6 新增 · 设计示意）
 
-> **目标**：提升one-shot能力，减少人工干预。Workflow失败时自动重试、降级或断点续跑。
+> **目标**：提升 one-shot 能力，减少人工干预。失败时自动重试、降级或断点续跑。
+> **Qoder 说明**：以下 JavaScript 为设计示意。Qoder 无 `Workflow()` 工具；等价能力由主 Agent 用 `Agent` 工具派发子 Agent + 扫描文件系统状态标记（DONE/BLOCKED/E2E_READY）实现。
 
 #### 1. Workflow失败自动重试
 
@@ -643,7 +633,7 @@ Agent A 产出 → Agent B 接收：
 ## 快速通道：简单任务判定（进入流水线前执行）
 
 > **⚠️ v2.11 变更：此判定已被 `强制模式声明` 取代。执行前必须先完成上方的判定矩阵 + MODE_DECISION 文件。此节保留作为轻量模式的具体执行步骤参考。**
-> **在执行完整流水线之前，先判定任务复杂度。简单任务走轻量通道，避免不必要的 Workflow 开销。**
+> **在执行完整流水线之前，先判定任务复杂度。简单任务走轻量通道，避免不必要的子 Agent 流水线开销。**
 
 ### 判定流程
 
@@ -659,8 +649,8 @@ Agent A 产出 → Agent B 接收：
   6. 无外部服务调用？
   7. 仅 1 个全栈模块？
     ↓
-满足 ≥3 项 → 轻量模式（3 步直通车，主 Agent 直接执行，不触发 Workflow）
-不满足     → 全量/增量模式（触发完整 Workflow 流水线）
+满足 ≥3 项 → 轻量模式（3 步直通车，主 Agent 直接执行，不派发子 Agent 流水线）
+不满足     → 全量/增量模式（派发完整子 Agent 流水线）
 ```
 
 ### 轻量模式 QuickStep 1-3
@@ -705,7 +695,7 @@ QuickStep3: 轻量验收
 - 用户追加需求导致模块 ≥2
 - 需要多角色权限
 
-> 升级时保留已产出代码，补充执行全量 Stage1→Stage2 Workflow。
+> 升级时保留已产出代码，补充执行全量 Stage1→Stage2 子 Agent 流水线。
 
 ### 轻量模式自动升级机制（v2.7 新增）
 
@@ -877,8 +867,8 @@ async function executeAutoUpgrade(reason, currentProgress) {
     currentProgress,
     preservedArtifacts,
     nextSteps: [
-      '执行 Stage1 Workflow（PRD 生成）',
-      '执行 Stage2 Workflow（架构规划）',
+      '执行 Stage1 子 Agent 流水线（PRD 生成）',
+      '执行 Stage2 子 Agent 流水线（架构规划）',
       '基于已有代码继续 Stage3 开发'
     ]
   };
@@ -926,8 +916,8 @@ async function executeFullModeAfterUpgrade(upgradeReport) {
   console.log('[全量模式] 开始从轻量模式升级后的执行流程');
   
   // Stage1: 使用已有需求理解生成 PRD
-  const prdWorkflow = await Workflow({
-    scriptPath: '.claude/workflows/stage1-prd.js',
+  const prdResult = await Agent({
+    subagentType: 'mvp-pm-agent',
     args: {
       userRequirement: upgradeReport.currentProgress.userRequirement,
       context: upgradeReport.currentProgress.requirementSummary,
@@ -937,8 +927,8 @@ async function executeFullModeAfterUpgrade(upgradeReport) {
   });
   
   // Stage2: 使用已有技术决策进行架构规划
-  const planningWorkflow = await Workflow({
-    scriptPath: '.claude/workflows/stage2-planning.js',
+  const planningResult = await Agent({
+    subagentType: 'mvp-architect',
     args: {
       prdPath: 'PRD.md',
       existingDecisions: upgradeReport.currentProgress.techDecisions,
@@ -948,8 +938,8 @@ async function executeFullModeAfterUpgrade(upgradeReport) {
   });
   
   // Stage3: 基于已有代码继续开发
-  const executionWorkflow = await Workflow({
-    scriptPath: '.claude/workflows/stage3-execution.js',
+  const executionResult = await Agent({
+    subagentType: 'mvp-pipeline-coordinator',
     args: {
       taskPath: 'task.md',
       modulesDir: 'modules/',
@@ -959,9 +949,9 @@ async function executeFullModeAfterUpgrade(upgradeReport) {
   });
   
   return {
-    prdWorkflow,
-    planningWorkflow,
-    executionWorkflow,
+    prdResult,
+    planningResult,
+    executionResult,
     message: '升级完成，已基于轻量模式产出继续全量开发'
   };
 }
@@ -1119,8 +1109,8 @@ const LIGHTWEIGHT_AUTO_UPGRADE_CONFIG = {
 - **技术决策**：<有/无>
 
 ## 升级后计划
-1. 执行 Stage1 Workflow（PRD 生成）
-2. 执行 Stage2 Workflow（架构规划）
+1. 执行 Stage1 子 Agent 流水线（PRD 生成）
+2. 执行 Stage2 子 Agent 流水线（架构规划）
 3. 基于已有代码继续 Stage3 开发
 4. 执行 Stage4 集成验收
 
@@ -1163,22 +1153,20 @@ const LIGHTWEIGHT_AUTO_UPGRADE_CONFIG = {
 
 ---
 
-## Stage 1: 需求对齐 — Workflow(`.claude/workflows/stage1-prd.js`)
+## Stage 1: 需求对齐 — 子 Agent `mvp-pm-agent`
 
 **前置条件**：用户需求已收集（如果模糊则先执行 Inversion 采集）。
 **产出物**：`PRD.md` + `decisions/stage1-prd-decisions.md`
-**执行方式**：触发 Workflow 脚本（串行，单子任务）
+**执行方式**：派发子 Agent 编排（串行，单子任务）
 **模型**：`deepseek-v4-pro`
 
 ### 触发方式
 
 ```javascript
-Workflow({
-  scriptPath: '.claude/workflows/stage1-prd.js',
-  args: {
-    userRequirement: '用户原始需求描述',
-    context: '可选业务背景'
-  }
+Agent({
+  subagent_type: 'mvp-pm-agent',
+  description: '生成 PRD',
+  prompt: '用户原始需求：<用户原始需求描述>；业务背景：<可选业务背景>。按 PRD_SCHEMA 产出 PRD.md 草案并列出理解确认清单(MQAP)。'
 })
 ```
 
@@ -1215,8 +1203,8 @@ PRD 评审通过后锁定为 `PRD.md`。锁定的 PRD 是后续所有阶段的�
 
 ### 主 Agent 动作
 
-1. 触发 `Workflow({ scriptPath: '.claude/workflows/stage1-prd.js', args: { userRequirement, context } })`
-2. 等待 Workflow 完成
+1. 派发 `Agent({ subagent_type: 'mvp-pm-agent', prompt: '需求 + 背景，产出 PRD.md 草案' })`
+2. 等待子 Agent 完成
 3. 审查产出卡片，确认 9 个章节齐全
 4. 门禁通过 → 标记 PRD.md 为【锁定版】→ 进入 Stage2
 
@@ -1243,19 +1231,20 @@ PRD 评审通过后锁定为 `PRD.md`。锁定的 PRD 是后续所有阶段的�
 
 ---
 
-## Stage 2: 规划阶段 — Workflow(`.claude/workflows/stage2-planning.js`)
+## Stage 2: 规划阶段 — 子 Agent 编排（architect → domain → grill → mock/test）
 
 **前置条件**：`PRD.md` 已存在并锁定。
-**执行方式**：触发 Workflow 脚本（内部串行+并行混合）
+**执行方式**：派发子 Agent 编排（内部串行+并行混合）
 **模型分配**：Architect/Grill → pro，其余 flash
 
 ### 触发方式
 
 ```javascript
-Workflow({
-  scriptPath: '.claude/workflows/stage2-planning.js',
-  args: { prdPath: 'PRD.md' }
-})
+// 串行段：架构 → 业务 → 交叉审查；锁定后并行段：mock + 测试设计 → 测试审查
+Agent({ subagent_type: 'mvp-architect',      description: '架构设计', prompt: '输入 PRD.md，产出 spec.md + schema.sql + api-contract.yaml 初版。' })
+Agent({ subagent_type: 'mvp-domain-expert',  description: '模块拆分', prompt: '输入 PRD + 架构初版，产出 task.md + modules/*.md。' })
+Agent({ subagent_type: 'mvp-grill-review',   description: '交叉审查', prompt: '双向校验 PRD↔spec↔modules，连续2轮零发现或6轮上限后升级为锁定版。' })
+// 锁定后并行派发 mvp-mock-service / mvp-single-module-test / mvp-scenario-test → mvp-test-review
 ```
 
 ### 脚本内部流程
@@ -1310,13 +1299,13 @@ Workflow({
 - [ ] `integration-tests/modules/` 已产出
 - [ ] `integration-tests/scenarios/` 已产出
 - [ ] ③c 测试用例静态审查通过（无 ERROR）
-- [x] **E2E Quality Gate 脚本通过（v2.12）**：运行 `powershell -File .qoder/skills/all-in-mvp/scripts/e2e-quality-gate.ps1 --all` 必须返回 PASS（退出码 0）。脚本检测 5 项硬指标（浏览器交互比/权限矩阵/双向断言/CRUD生命周期/断言质量），不依赖 LLM 记忆，直接扫描文件系统。
+- [x] **E2E Quality Gate 脚本通过（v2.12）**：运行 `powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/skills/all-in-mvp/scripts/e2e-quality-gate.ps1 --all` 必须返回 PASS（退出码 0）。脚本检测 5 项硬指标（浏览器交互比/权限矩阵/双向断言/CRUD生命周期/断言质量），不依赖 LLM 记忆，直接扫描文件系统。
 
 ### 主 Agent 动作
 
-1. 触发 `Workflow({ scriptPath: '.claude/workflows/stage2-planning.js', args: { prdPath: 'PRD.md' } })`
-2. Workflow 脚本内部自动处理串行/并行编排
-3. 等待 Workflow 完成
+1. 派发 `mvp-architect → mvp-domain-expert → mvp-grill-review`（串行），锁定后并行派发 `mvp-mock-service` + 测试设计 → `mvp-test-review`
+2. 主 Agent 依据依赖图处理串行/并行编排
+3. 等待子 Agent 完成
 4. 审查产出卡片，逐项核对门禁清单
 5. **🔴 强制运行 E2E Quality Gate 脚本**（不可跳过）：
    ```powershell
@@ -1339,7 +1328,7 @@ Workflow({
 | 4 | `task.md` | Glob("task.md") | 模块任务清单 |
 | 5 | `modules/` 目录 | Glob("modules/*.md") | 模块文档 |
 | 6 | `integration-tests/scenarios/` | Glob("integration-tests/scenarios/*.spec.ts") | **Stage 2 ③b-2 E2E 用例** |
-| **7** | **E2E Quality Gate 脚本 PASS** | **Bash: `powershell -File .qoder/skills/all-in-mvp/scripts/e2e-quality-gate.ps1 --all`** | **v2.12 质量门禁探针** |
+| **7** | **E2E Quality Gate 脚本 PASS** | **Bash: `powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/skills/all-in-mvp/scripts/e2e-quality-gate.ps1 --all`** | **v2.12 质量门禁探针** |
 
 ```
 执行检查（Agent 用 Glob + Bash 工具）：
@@ -1427,23 +1416,24 @@ Bug 修复进入
 ```
 
 **血案**：B020 修复模式绕过门禁 → 漏修 Checkbox 异常。B019 CSS `*:w-full` 副作用。
-**强制规则**：[quality-gate.md](../rules/quality-gate.md) — 审查清单 + [settings.json](../settings.json) qualityGates — 文件路径自动触发。
+**强制规则**：[quality-gate.md](../rules/quality-gate.md) — 审查清单 + [settings.json](../settings.json) `hooks.PostToolUse` — 文件路径命中即派发审查/契约校验/冒烟。
 
 ---
 
-## Stage 3: 执行阶段 — Workflow(`.claude/workflows/stage3-execution.js`)
+## Stage 3: 执行阶段 — 子 Agent 并行开发（coordinator + backend + frontend + review）
 
 **前置条件**：Stage 2 门禁全部通过。
-**执行方式**：触发 Workflow 脚本（大规模并行 fan-out）
+**执行方式**：派发子 Agent 编排（大规模并行 fan-out）
 **模型分配**：Code Reviewer → pro，其余 flash
 
 ### 触发方式
 
 ```javascript
-Workflow({
-  scriptPath: '.claude/workflows/stage3-execution.js',
-  args: { taskPath: 'task.md', modulesDir: 'modules/' }
-})
+// Coordinator 先行输出分配方案，再按依赖图 fan-out
+Agent({ subagent_type: 'mvp-pipeline-coordinator', description: '模块调度', prompt: '读 task.md 依赖图，输出模块分配轮次表 + 反模式雷达风险标注。' })
+Agent({ subagent_type: 'mvp-backend-tdd',          description: '后端模块', prompt: '按 <module>.md 验收标准 + api-contract，TDD 实现该模块（红→绿→重构）。' })
+Agent({ subagent_type: 'mvp-frontend-dev',         description: '前端页面', prompt: '基于 Mock 实现页面/组件；涉及 CSS 标 VISUAL_PENDING。' })
+Agent({ subagent_type: 'mvp-code-reviewer',        description: '代码审查', prompt: '独立审查模块实现，验证契约与异常覆盖。' })
 ```
 
 ### 脚本内部流程
@@ -1470,7 +1460,7 @@ parallel(页面模块 → agent(FRONTEND_DEV_PROMPT, flash))
 
 ### 文件状态标记（Agent 间通信协议）
 
-Agent 通过模块目录下的状态文件通信。Workflow 脚本扫描文件系统判断进度。
+Agent 通过模块目录下的状态文件通信。主 Agent 扫描文件系统判断进度。
 
 #### DONE 标记
 
@@ -1531,7 +1521,7 @@ human_action: "请打开 review_url 查看视觉效果，确认无误后删除�
 
 #### 状态扫描规则
 
-| 模块目录状态 | 含义 | Workflow 动作 |
+| 模块目录状态 | 含义 | 主 Agent 动作 |
 |------------|------|-------------|
 | 目录不存在 | 未分配 | 下一轮扫描时分配 |
 | 目录存在，无状态文件 | 已分配，开发中 | 等待 |
@@ -1544,7 +1534,7 @@ human_action: "请打开 review_url 查看视觉效果，确认无误后删除�
 
 ### Stage 3 门禁 (MUST — v2.5 视觉强化 + v2.10 E2E增量)
 
-> **自动化门禁**：`powershell -File .qoder/scripts/check-stage3-gate.ps1` — 开发前运行，检测 R012/R015 等可脚本化规则。规则索引见上方「强制规则索引」表。
+> **自动化门禁**：`powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/check-stage3-gate.ps1` — 开发前运行，检测 R012/R015 等可脚本化规则。规则索引见上方「强制规则索引」表。
 
 每个模块必须通过完整的5层测试 + 3道视觉防线才能标记DONE：
 
@@ -1589,13 +1579,13 @@ for i in {1..3}; do npx vitest run; done
 
 ### 主 Agent 动作
 
-1. 触发 `Workflow({ scriptPath: '.claude/workflows/stage3-execution.js', args: { taskPath, modulesDir } })`
-2. Workflow 脚本内部：
+1. 派发 `mvp-pipeline-coordinator` 得分配方案，再按依赖图并行派发 `mvp-backend-tdd`/`mvp-frontend-dev`/`mvp-code-reviewer`
+2. 主 Agent 编排内部：
    - Coordinator 运行 → 输出分配方案
-   - 按依赖图并行 fan-out 后端+前端子任务
+   - 按依赖图并行派发后端+前端子 Agent
    - 扫描 DONE/BLOCKED/VISUAL_PENDING 标记
-   - 按需触发 Code Review
-3. Workflow 完成后，主 Agent 审查门禁清单
+   - 按需派发 Code Review
+3. 子 Agent 编排完成后，主 Agent 审查门禁清单
 4. 特别检查：无未解决的 VISUAL_PENDING（人类确认所有前端页面）
 5. 门禁全部通过 → 进入 Stage 3.5（E2E 适配）
 
@@ -1692,7 +1682,7 @@ for i in {1..3}; do npx vitest run; done
 | 1 | `E2E_READY` 标记存在 | Glob("integration-tests/scenarios/E2E_READY") | Stage 3.5 完成标记 |
 | 2 | `E2E_READY` 中 `status: "READY"` | Read 确认内容 | ≥70 用例已通过 |
 | 3 | `contract-drift-log.md` 存在 | Glob("contract-drift-log.md") | 契约漂移已扫描 |
-| **4** | **E2E Quality Gate 脚本 PASS** | **Bash: `powershell -File .qoder/skills/all-in-mvp/scripts/e2e-quality-gate.ps1 --all`** | **v2.12 质量门禁复查** |
+| **4** | **E2E Quality Gate 脚本 PASS** | **Bash: `powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/skills/all-in-mvp/scripts/e2e-quality-gate.ps1 --all`** | **v2.12 质量门禁复查** |
 
 ```
 执行检查（Agent 用 Glob + Read + Bash 工具）：
@@ -1708,19 +1698,18 @@ for i in {1..3}; do npx vitest run; done
 
 ---
 
-## Stage 4: 集成与验收 — Workflow(`.claude/workflows/stage4-integration.js`)
+## Stage 4: 集成与验收 — 子 Agent（stage4-coordinator + debug + verifier）
 
 **前置条件**：Stage 3.5 E2E_READY 通过（所有模块 DONE + E2E_READY 标记存在）。
-**执行方式**：触发 Workflow 脚本（串行收敛）
+**执行方式**：派发子 Agent 编排（串行收敛）
 **模型分配**：Stage4 Coordinator → pro，其余 flash
 
 ### 触发方式
 
 ```javascript
-Workflow({
-  scriptPath: '.claude/workflows/stage4-integration.js',
-  args: { srcDir: 'src/', mockDir: 'mocks/' }
-})
+Agent({ subagent_type: 'mvp-stage4-coordinator', description: '集成协调', prompt: '后端合并→前后端联调→集成测试→Bug 分派修复（按路由矩阵回派原专业 Agent）。' })
+Agent({ subagent_type: 'mvp-debug-fixer',        description: '根因定位', prompt: '对无法归属模块的 Bug 做根因分析并路由回原开发 Agent。' })
+Agent({ subagent_type: 'mvp-verifier',           description: 'MSVP 冒烟', prompt: '从用户视角冷启动验证，输出 A 类阻塞 Bug 清单。' })
 ```
 
 ### 脚本内部流程
@@ -1828,7 +1817,7 @@ Step 5: 升级条件
 
 ### Stage 4 门禁（终检）(MUST — v2.5 视觉强化 + v2.6 E2E强化 + v2.10 E2E前置)
 
-> **自动化门禁**：`powershell -File .qoder/scripts/check-stage4-gate.ps1` — 所有可脚本化规则在此一次检查完毕，PASS 才继续。规则索引见上方「强制规则索引」表。
+> **自动化门禁**：`powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/check-stage4-gate.ps1` — 所有可脚本化规则在此一次检查完毕，PASS 才继续。规则索引见上方「强制规则索引」表。
 
 - [ ] 后端合并完成，路由一致性验证通过
 - [ ] 前后端联调全部模块通过
@@ -1882,8 +1871,8 @@ Step 5: 升级条件
 
 ### 主 Agent 动作
 
-1. 触发 `Workflow({ scriptPath: '.claude/workflows/stage4-integration.js', args: { srcDir, mockDir } })`
-2. Workflow 脚本内部按 4.1→4.2→4.3→4.4 顺序执行
+1. 派发 `mvp-stage4-coordinator`（内部按 4.1→4.2→4.3→4.4 顺序，按需回派专业子 Agent）
+2. 主 Agent 审查其编排结果
 3. 主 Agent 审查最终测试报告 + 质量审计清单
 4. 确认无 P0/P1 Bug
 5. **MSVP冒烟验证**：独立验证Agent从用户视角验证应用可用性
@@ -2293,7 +2282,7 @@ const E2E_COVERAGE_CHECKER = {
 ## Stage 5: 流程复盘与经验沉淀
 
 **前置条件**：Stage 4 门禁全部通过，项目已交付。
-**执行方式**：触发 Workflow 或主 Agent 直接执行（轻量）
+**执行方式**：派发子 Agent 或主 Agent 直接执行（轻量）
 
 ### 执行步骤
 
@@ -2334,7 +2323,7 @@ const E2E_COVERAGE_CHECKER = {
         ├── 改善实现：需求不变但改进技术方案/重构/性能优化
         └── 需求调整：文案变更、字段重命名、业务规则微调
               ↓
-        必须执行：PRD修订 → Stage2架构重审Workflow → ↺审查 → Mock同步 → 测试更新 → Stage3开发Workflow → Stage4集成Workflow
+        必须执行：PRD修订 → Stage2架构重审流水线 → ↺审查 → Mock同步 → 测试更新 → Stage3开发流水线 → Stage4集成流水线
 ```
 
 > **判定红线**：如果变更需要修改 PRD 文档中的**任何一个字**（除错别字修正外），即归为非Bug变更，触发完整流水线。
@@ -2343,15 +2332,15 @@ const E2E_COVERAGE_CHECKER = {
 
 | 迭代场景 | Stage1 | Stage2 | Stage3 | Stage4 |
 |---------|--------|--------|--------|--------|
-| 新增独立模块 | 更新PRD | 仅新模块走Workflow | 仅新模块 | 集成新模块 |
-| 非Bug变更 | 更新PRD | 重走Workflow（受影响模块+接口+Mock+测试） | 重新开发变更模块 | 重新集成 |
-| 纯Bug修复 | 跳过 | 跳过 | 跳过 | 仅Stage4 Workflow |
+| 新增独立模块 | 更新PRD | 仅新模块走流水线 | 仅新模块 | 集成新模块 |
+| 非Bug变更 | 更新PRD | 重走流水线（受影响模块+接口+Mock+测试） | 重新开发变更模块 | 重新集成 |
+| 纯Bug修复 | 跳过 | 跳过 | 跳过 | 仅Stage4 流水线 |
 
 ---
 
 ## 并发模型速查
 
-| 阶段 | 并行度 | Workflow 内部策略 |
+| 阶段 | 并行度 | 子 Agent 编排策略 |
 |------|--------|-----------------|
 | Stage1 | 串行 | 1 个子任务（PM） |
 | Stage2 ①→② | 串行 | 架构先 → 业务后 |
@@ -2359,7 +2348,7 @@ const E2E_COVERAGE_CHECKER = {
 | Stage2 ③a/③b-1/③b-2 | 并行 | Mock + 两类测试 同时 fan-out |
 | Stage2 ③b-1 内部 | 最多 2 | 按模块平分 |
 | Stage2 ③c | 串行 | ③a/③b全部完成后方可启动 |
-| Stage3 后端 | Dynamic | Workflow 按依赖图 fan-out，无硬上限 |
+| Stage3 后端 | Dynamic | 主 Agent 按依赖图 fan-out，无硬上限 |
 | Stage3 前端 | Dynamic | 基于 Mock，与后端并行 fan-out |
 | Stage4 | 串行 | 合并 → 联调 → 测试 → 修复 |
 | Stage5 | 串行 | 1 个复盘子任务 |
@@ -2368,7 +2357,7 @@ const E2E_COVERAGE_CHECKER = {
 
 ## Gotchas
 
-- **先判定再执行**：进入流水线前先走「快速通道：简单任务判定」。简单任务用轻量模式（10-30min），不要对简单任务触发 Workflow 脚本。
+- **先判定再执行**：进入流水线前先走「快速通道：简单任务判定」。简单任务用轻量模式（10-30min），不要对简单任务派发子 Agent 编排。
 - **轻量模式无门禁**：简单任务用户确认即通过，不要求 L1-L5 全层测试。
 - **Stage 不可跳过（全量/增量）**：门禁是硬约束。不要在 Stage2 还没锁定时就开始 Stage3 的开发，Schema 变更会导致所有模块返工。
 - **Schema 锁定后严禁修改**：如果必须变更，先通知所有依赖该表的 Agent，走变更评审后再修改。
@@ -2376,15 +2365,15 @@ const E2E_COVERAGE_CHECKER = {
 - **Mock 与真实 API 必须一致**：两者基于同一 `api-contract.yaml` 生成。联调发现问题时更新契约文件，然后同步修改 Mock 和真实实现。
 - **TDD 是强制流程**：先写测试（RED）→ 再写实现（GREEN）→ 最后重构（REFACTOR）。不允许先写实现再补测试。
 - **文件驱动通信**：Agent 之间不直接发消息。Coordinator 通过扫描文件系统中的 DONE/BLOCKED 标记了解进度。产出物文件即状态信号。
-- **Workflow 脚本自动伸缩并行度**：stage3-execution.js 按依赖图动态 fan-out，无硬上限。无依赖的模块可全部并行。
+- **并行度自动伸缩**：主 Agent 按 `task.md` 依赖图动态 fan-out 子 Agent，无硬上限。无依赖的模块可全部并行。
 - **确定性分配**：同输入必须产生相同的模块拆分和分配结果。`task.md` 中模块的枚举顺序作为稳定排序依据。
 - **DEFER vs BLOCKED**：DEFER 是主动推迟，BLOCKED 是被动等待。两者互斥。DEFER 会级联标记下游依赖模块。
 - **增量模式判定规则**：纯Bug修复（不改需求文档）→ 跳过 Stage1-3，直接 Stage4。非Bug变更 → 必须走完整增量流水线。
 - **LLM 无视觉能力 — 不能自标 DONE**：修改了 CSS/布局/动画的前端 Agent 必须标记 VISUAL_PENDING，等待人类视觉确认。
-- **VISUAL_PENDING 不可跳过**：Workflow 脚本将 VISUAL_PENDING 视为非完成状态，不释放下游依赖。
+- **VISUAL_PENDING 不可跳过**：主 Agent 将 VISUAL_PENDING 视为非完成状态，不释放下游依赖。
 - **视觉回归基线必须进 Git**：`tests/visual/*-snapshots/` 目录提交到版本控制。
-- **Workflow 脚本消耗更多 token**：动态 Workflow 脚本比手动模式消耗更多 token。轻量任务不要触发脚本。
-- **脚本自包含原则**：4 个 `.claude/workflows/*.js` 脚本内嵌了压缩版 prompt，不依赖运行时读取 `agents/*.md`。修改 prompt 时需同步更新脚本和 agents/ 目录。
+- **子 Agent 编排消耗更多 token**：多子 Agent 并行编排比主 Agent 直通消耗更多 token。轻量任务不要派发流水线。
+- **子 Agent prompt 真源**：Stage 执行逻辑的 prompt 真源在 `.qoder/agents/mvp-*.md`。主 Agent 只负责派发与门禁核对，不内联复刻子 Agent 职责；修改某角色行为时改对应的 `agents/mvp-*.md`。
 - **模型分配显式指定**：每个 agent() 调用通过 `model` 参数显式指定（pro/flash），不依赖 settings.json 全局默认。未指定时 fallback 到 `deepseek-v4-flash`。
 - **Grill 循环保护**：stage2-planning.js 的 Grill 循环有 6 轮硬上限 + 重复问题检测，防止无限循环。连续2轮零发现即提前退出。
 - **E2E 最低用例数（v2.6 强制）**：全量模式下 L5 E2E 用例数不得低于以下标准。低于此数视为测试不充分，Stage 4 门禁不通过。
@@ -2406,7 +2395,7 @@ const E2E_COVERAGE_CHECKER = {
 ## 强制规则索引（v2.15+ — 三层保障架构）
 
 > **规则定义**：[gate-rules.yaml](../gate-rules.yaml) — 单一真源 | **血案详情**：[PLAYBOOK.md](../PLAYBOOK.md) — 按需查阅
-> **门禁命令**：`powershell -File .qoder/scripts/check-stage3-gate.ps1` / `check-stage4-gate.ps1` — 自动化 PASS/FAIL
+> **门禁命令**：`powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/check-stage3-gate.ps1` / `check-stage4-gate.ps1` — 自动化 PASS/FAIL
 
 | ID | 版本 | 规则 | 严重度 | Stage | 门禁脚本 |
 |----|------|------|:-----:|:-----:|---------|

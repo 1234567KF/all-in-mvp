@@ -1,102 +1,23 @@
 {
-  "_comment": "UltraCostEffective 极致节能 — Qoder 项目级 settings.json",
-  "_description": "Qoder 专用配置。Hook 脚本位于 ~/.qoder/hooks/ 下。",
-  "_version": "2.0.0",
+  "_comment": "all-in-mvp — Qoder CLI 项目级配置（单平台）。有效键参考 docs.qoder.com/zh/cli/settings 与 /zh/cli/hooks-reference；未识别的键会被 Qoder 静默忽略。",
+  "_migration": "v2.18 的 qualityGates / rules / env(CLAUDE_*) / modelPreferences 均非 Qoder 有效键，历史上完全未生效。现由 ① hooks.PostToolUse（路径→门禁派发）+ ② .qoder/rules/*.md（自动加载）承接，行为意图不变。",
 
-  "env": {
-    "CLAUDE_FLOW_HOOKS_ENABLED": "true",
-    "CLAUDE_CODE_ALWAYS_THINKING": "0",
-    "ULTRA_COST_EFFECTIVE_PLATFORM": "qoder",
-    "ULTRA_COST_EFFECTIVE_LEVEL": "medium",
-    "ULTRA_COST_EFFECTIVE_PRESET": "standard",
-    "ULTRA_COST_EFFECTIVE_PROJECT_ROOT": "d:\\all-in-mvp"
+  "model": {
+    "name": "deepseek-v4-flash"
   },
 
-  "model": "deepseek-v4-flash",
-
-  "modelPreferences": {
-    "preferred": "deepseek-v4-flash",
-    "fallbacks": ["deepseek-v4-pro"],
-    "automaticallySwitch": true
-  },
-
-  "rules": [
-    "d:\\all-in-mvp\\ultra-cost-effective\\rules\\main.md",
-    "d:\\all-in-mvp\\ultra-cost-effective\\rules\\shared-prefix.md",
-    "d:\\all-in-mvp\\ultra-cost-effective\\rules\\cache-optimization.md",
-    "d:\\all-in-mvp\\ultra-cost-effective\\rules\\lean-ctx.md",
-    "d:\\all-in-mvp\\ultra-cost-effective\\rules\\compression-default.md",
-    "d:\\all-in-mvp\\.qoder\\rules\\quality-gate.md"
-  ],
-
-  "permissions": {
-    "allow": [
-      "Bash(node d:\\all-in-mvp\\ultra-cost-effective\\helpers\\*.cjs:*)",
-      "Bash(node d:\\all-in-mvp\\ultra-cost-effective\\helpers\\perf\\*.cjs:*)",
-      "Bash(node d:\\all-in-mvp\\scripts\\*.js:*)"
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/quality-gate-hook.ps1",
+            "timeout": 20
+          }
+        ]
+      }
     ]
-  },
-
-  "mcpServers": {
-    "lean-ctx": {
-      "command": "lean-ctx",
-      "args": ["mcp"]
-    }
-  },
-
-  "qualityGates": {
-    "_comment": "v2.18 — 技能强制门禁：根据文件路径自动触发审查/冒烟/E2E",
-    "_doc": ".qoder/rules/quality-gate.md — 详细规则",
-
-    "codeReview": {
-      "enabled": true,
-      "trigger": [
-        "src/**/*.ts",
-        "src/**/*.tsx",
-        "src/**/*.vue",
-        "apps/web/src/**",
-        "apps/api/src/**",
-        "packages/shared/src/**"
-      ],
-      "skill": "kf-mvp-code-review",
-      "mode": "auto",
-      "description": "修改源码后自动派发 code-review subagent 审查"
-    },
-
-    "contractCheck": {
-      "enabled": true,
-      "trigger": [
-        "src/services/**",
-        "src/api/**",
-        "apps/api/src/routes/**",
-        "packages/shared/src/**"
-      ],
-      "skill": "kf-mvp-test-review",
-      "mode": "auto",
-      "description": "API 路由/服务层修改自动校验前后端字段一致性"
-    },
-
-    "smokeVerify": {
-      "enabled": true,
-      "trigger": [
-        "src/components/ui/**",
-        "src/components/common/**",
-        "src/pages/**",
-        "src/views/**",
-        "apps/web/src/components/ui/**",
-        "apps/web/src/pages/**"
-      ],
-      "skill": "kf-mvp-msvp-verifier",
-      "mode": "on-demand",
-      "description": "弹窗/表单/共享 UI 组件修改后建议冒烟验证"
-    },
-
-    "e2eRegression": {
-      "enabled": false,
-      "trigger": ["src/**", "apps/**"],
-      "skill": "kf-mvp-test-e2e",
-      "mode": "manual",
-      "note": "待 Playwright 版本冲突修复后启用为 auto"
-    }
   }
 }
