@@ -159,7 +159,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/check-stage3-
 
 ### Q: 质量门禁 hook 什么时候开始生效？
 
-A: `settings.json` 的 `hooks` 在会话启动时读取，**改完需重启 Qoder**。生效后可故意编辑 `src/` 下任一 `.ts` 文件验证：应看到 `[QUALITY-GATE]` 提示要求派发审查子 Agent。
+A: `settings.json` 的 `hooks` 在会话启动时读取，**改完需重启 Qoder**。生效后可故意编辑 `src/` 下任一 `.ts` 文件验证：应看到 `[QUALITY-GATE]` 提示要求派发审查子 Agent（本仓库已在 Qoder CLI 1.31.2 实测通过：命中 `src/**.ts` 即返回 exit 2 并注入 `[QUALITY-GATE]`；未命中路径静默通过）。
 
 ### Q: `model.name` 填什么？
 

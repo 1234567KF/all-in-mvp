@@ -1,7 +1,8 @@
 # all-in-mvp → Qoder 迁移计划 (Migration Plan)
 
 > 生成日期：2026-09-24 ｜ 目标平台：**Qoder (CLI / 桌面 Agent)，单平台**
-> 范围：**全量平移** — 保留全部 27 技能 + 18 子 Agent + 规则 + 门禁 + 血案库 + 脚本，仅修兼容性
+> 范围：**全量平移** — 保留全部 26 技能 + 18 子 Agent + 规则 + 门禁 + 血案库 + 脚本，仅修兼容性
+> （技能目录实测：`.qoder/skills/` 下 27 个目录，其中 `references/` 是共享资产目录而非技能 → 26 个 `SKILL.md`）
 > 原则：**只动平台管线，不动业务内容**（不重写技能逻辑、不裁剪功能、不做主动 code review）
 
 ---
@@ -106,14 +107,21 @@
 - 不主动做全量 code review。
 
 ## 6. 可选后续（需你另行 opt-in）
+
+> 边界说明：§7「未决项」的 4 条（门禁脚本 2 个 bug、TOTAL 口径、R010 预期失败、技能计数）**已全部落地并推送**。
+> 本节 A/B 与 §0 锁定的"不动业务内容"原则直接冲突，属**内容重构而非兼容性修复**，故未擅自执行 —— 需要你显式改范围才动。
+
 - **A. 瘦身**：把 2,897 行的 `all-in-mvp/SKILL.md` 等拆成"精简核心 + `references/`"渐进式披露 —— 对"大型项目"是最大的 token 节省，但属内容重构。
-- **B. 收敛 Vue→React 漂移**：统一 28 个仍引用 Vue 的文件与 README，或明确保留双栈。
+- **B. 收敛 Vue→React 漂移**：README 与 `kf-mvp-frontend-dev` 的技术栈声明本次已按现状（React 19 + Vite）订正；但各技能正文里仍有以 Vue 为例的示例代码，统一改写属内容重构。
 
 ---
 
 ## 7. 执行结果回填（2026-09-24，分支 `qoder-migration`）
 
-> 变更均**未提交**（本机未配置 git 身份，按约定不改 `git config`）。用 `git diff` 审阅后自行提交。
+> **已提交并推送**：`081ef151` v2.19（25 files changed, 623+/1114−）。
+> 远端 `origin/qoder-migration` 与发布分支 `origin/all-in-mvp`（默认分支，`giget …#all-in-mvp` 的安装来源）均已快进到 `081ef151`。
+> 提交身份按约定**未写入 `git config`**，只在提交命令上临时指定（`git -c user.name=… -c user.email=… commit`）。
+> 与迁移无关的未跟踪文件（pptx / `ppt-preview/` / `qoder-*.png` / 根 `scripts/`）**未纳入提交**。
 
 | Phase | 状态 | 做了什么 | 验证证据 |
 |-------|------|---------|---------|
@@ -146,9 +154,21 @@
 
 保留为**预期行为**（不改）：Stage4 门禁在本框架仓库会因 `seeds/` 不存在而 R010 FAIL、因 `demo-frontend`/`starters`/`templates` 无 `api-contract.yaml` 而 R014/R011 FAIL —— 这些脚本的检查对象是 MVP 应用工程，不是框架仓库本身。
 
-### 需要重启才能确认的一项
+### 需要重启才能确认的一项 → **已实测关闭**
 
-`hooks` 在会话启动时读取。**下一次 Qoder 会话**里编辑 `src/` 下任一 `.ts/.tsx`，若看到 `[QUALITY-GATE]` 提示，则 P0-3 正式关闭；若没有，说明该 Qoder 版本的项目级 hooks 未启用，回退方案是 `.qoder/rules/quality-gate.md` 的行为约束（已生效）。
+原判断：`hooks` 在会话启动时读取，需下一次会话才生效。
+
+**实测结论（2026-09-24，本会话内）**：写入 `demo-frontend/src/qoder-hook-probe.ts`（临时探针，已删除）后，Qoder 立即回报：
+
+```
+PostToolUse:Write hook blocking error from command:
+  "powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/quality-gate-hook.ps1"
+[QUALITY-GATE] Auto gate triggered by: D:\all-in-mvp\demo-frontend\src\qoder-hook-probe.ts
+CODE REVIEW: dispatch subagent "mvp-code-reviewer" (skill kf-mvp-code-review) for this change.
+```
+
+⇒ P0-3 正式关闭：`hooks.PostToolUse` 在 Qoder CLI 1.31.2 下**确实按配置触发**，路径命中判定与 exit 2 注入均生效，无需回退到 `.qoder/rules/quality-gate.md` 的行为约束（后者仍保留作手工兜底）。
+探针仅为验证门禁，非源码改动，故未派发 code-review；文件已 `rm` 删除。
 
 ---
 
