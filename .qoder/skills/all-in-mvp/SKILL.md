@@ -26,6 +26,26 @@ metadata:
 
 ---
 
+## 🔴 Global Bootstrap（其他工作区首次使用 — 自动执行）
+
+> 本技能族已注册到全局（`~/.qoder/skills/`、`~/.qoder/agents/`）。在任何新工作区首次触发时，**先检查** `.qoder/gate-rules.yaml` 与 `starters/liquid-glass-frontend/` 是否存在；缺失则运行全局 bootstrap 一次补齐，再进入下方的模式判定。
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\.qoder\scripts\bootstrap-all-in-mvp.ps1"
+```
+
+**补齐清单**：
+
+- `.qoder/gate-rules.yaml`、`.qoder/PLAYBOOK.md`、`.qoder/rules/quality-gate.md`
+- `.qoder/scripts/check-*.ps1`（全部门禁脚本）
+- `.qoder/agents/mvp-*.md`（Qoder 子 Agent）
+- `starters/liquid-glass-frontend/`（React 19 + shadcn/ui + Liquid Glass 权威脚手架）
+
+> 已存在默认跳过；需要覆盖加 `-Force`；只想补门禁资产加 `-SkipScaffold`。
+> Bootstrap 完成后，按「强制模式声明」继续判定轻量/全量/增量模式。
+
+---
+
 ## 执行概览
 
 ```
