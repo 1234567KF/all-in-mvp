@@ -6,7 +6,7 @@
 | 后端框架 | Hono | |
 | 数据库 ORM | Drizzle | |
 | 数据库 | SQLite | |
-| 前端框架 | Vue 3 + Vite | |
+| 前端框架 | React 19 + Vite 8 | |
 | 测试框架 | Vitest | |
 
 ## 2. 模块架构

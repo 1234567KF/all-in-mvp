@@ -5,7 +5,7 @@ metadata:
   pattern: pipeline+inversion+reviewer+generator
   stage-gates: true
   max-parallel-agents: 3
-  based_on: MVP白皮书 v2.18.0
+  based_on: MVP白皮书 v2.20.0
   gate_probe: enforced  # v2.11: 每个 Stage 入口有 GATE_PROBE 文件检查，不可跳过
   gate_scripts:  # v2.15: 三层保障架构 — 自动化门禁脚本
     stage3: ".qoder/scripts/check-stage3-gate.ps1"
@@ -21,7 +21,7 @@ metadata:
 
 # Parallel MVP Pipeline — Qoder 版
 
-> 基于《MVP 白皮书 v2.18》的多 Agent 并行工程方法论。3 种运行模式、强制模式判定、Stage 入口门禁探针、最大并行度。v2.15 新增三层保障架构：gate-rules.yaml（规则注册表）+ 自动化 .ps1 门禁脚本 + PLAYBOOK.md（血案库）。v2.17 新增修复模式最小门禁。v2.18 新增技能强制门禁：settings.json hooks.PostToolUse 按文件路径自动派发审查/冒烟/E2E。增量变更强制走完整流水线（§0.2决策树）。
+> 基于《MVP 白皮书 v2.20》的多 Agent 并行工程方法论。3 种运行模式、强制模式判定、Stage 入口门禁探针、最大并行度。v2.15 新增三层保障架构：gate-rules.yaml（规则注册表）+ 自动化 .ps1 门禁脚本 + PLAYBOOK.md（血案库）。v2.17 新增修复模式最小门禁。v2.18 新增技能强制门禁（hooks.PostToolUse）。**v2.20 对齐 React 权威脚手架**：技术栈统一为 React 19 + Vite 8 + shadcn/ui + Liquid Glass，设计 token 脚本同步防漂移，架构约束（services 分层/React.lazy/toast 封装/禁硬编码色）进入门禁（R022-R028）。增量变更强制走完整流水线（§0.2决策树）。
 > 运行于 **Qoder（Custom Subagents 编排）**，单平台。
 
 ---
@@ -1375,6 +1375,12 @@ Agent({ subagent_type: 'mvp-grill-review',   description: '交叉审查', prompt
   ├── 检查：E2E 经过 Vite proxy？@headed 覆盖了下拉/选择器数据加载？
   ├── 血案：B002 proxy 遗漏 / B012 渠道下拉无选项 / B011 Mock 全绿但真实失败
   └── 适用规则：R003, R005, R013, R009
+
+味道 5："我的样式是设计体系的还是拍脑袋的？" — 颜色/字体/圆角/玻璃拟态是否来自 token？
+  ├── 触发信号：页面涉及颜色、卡片、弹窗、按钮、数据展示
+  ├── 检查：用 --lg-* 变量？卡片 12px 圆角？弹窗 backdrop-blur(12px)？标题 font-heading？数据 font-mono？
+  ├── 血案：B021 Vue/React 混写 + token 镜像漂移
+  └── 适用规则：R026, R027, R021, R028
 ```
 
 **Coordinator 动作**：
@@ -2420,6 +2426,13 @@ const E2E_COVERAGE_CHECKER = {
 | R019 | v2.16 | 服务器响应权威 — 优先用服务端返回最新数据 | HIGH | 3,4 | — |
 | R020 | v2.17 | 修复模式最小审查 — 单行修改也必须自检+冒烟 | BLOCKER | fix | — |
 | R021 | v2.17 | 共享组件 CSS 副作用 — *:w-full 破坏非标准控件 | BLOCKER | 3,4,fix | — |
+| R022 | v2.20 | UI 层禁直连 @/lib/api（走 services/） | BLOCKER | 3,4,fix | `check-liquid-glass-style.ps1` |
+| R023 | v2.20 | UI 层禁直连 axios/fetch | BLOCKER | 3,4,fix | `check-liquid-glass-style.ps1` |
+| R024 | v2.20 | 禁直连 sonner（走 @/lib/toast） | BLOCKER | 3,4,fix | `check-liquid-glass-style.ps1` |
+| R025 | v2.20 | 页面必须 React.lazy（LoginPage 除外） | BLOCKER | 3,4,fix | `check-liquid-glass-style.ps1` |
+| R026 | v2.20 | 禁硬编码 hex/rgba 与 Tailwind 原始色类 | BLOCKER | 3,4,fix | `check-liquid-glass-style.ps1` |
+| R027 | v2.20 | Liquid Glass 圆角 12px / backdrop-blur 12px | HIGH | 3,4,fix | — |
+| R028 | v2.20 | 设计 token 镜像防漂移 | BLOCKER | 3,4 | `check-token-sync.ps1` |
 
 > `—` = 需语义分析，暂不可脚本化。Agent 自行遵守，违规血案见 PLAYBOOK.md。
 > **Agent 使用方式**：不再需要记住每条规则全文。开发/联调前运行对应 Stage 聚合门禁脚本 → PASS 才继续。
@@ -2856,12 +2869,13 @@ const CONTRACT_CHECKS = [
 
 | 工具 | 用途 | 说明 |
 |------|------|------|
+| **Bun** | 运行时 | Bun workspaces，原生 HTTP |
 | **Hono** | 后端框架 | 轻量、快速、TypeScript 原生 |
 | **Drizzle ORM** | 数据库 ORM | 类型安全、Schema 即代码 |
-| **SQLite** | 数据库 | 零配置、原型阶段首选 |
-| **Vue 3 + Vite** | 前端框架 | 组合式 API、快速 HMR |
-| **shadcn/ui** | UI 组件库 | 默认选择，与 Liquid Glass 深度集成 |
-| **Liquid Glass** | ★ 默认设计体系 | 毛玻璃拟态，CSS 变量驱动，详见 `shadcn/DESIGN.md` |
+| **SQLite (bun:sqlite)** | 数据库 | 零配置、原型阶段首选 |
+| **React 19 + Vite 8** | 前端框架 | Hooks、快速 HMR |
+| **shadcn/ui (radix-nova)** | UI 组件库 | 默认选择，与 Liquid Glass 深度集成 |
+| **Liquid Glass** | ★ 默认设计体系 | 毛玻璃拟态，CSS 变量驱动，详见 `starters/liquid-glass-frontend/DESIGN.md` |
 | **Vitest** | 测试框架 | 与 Vite 共享配置、高性能 |
 | **OpenAPI 3.0** | 接口契约 | 标准化的 API 描述格式 |
 
@@ -2869,18 +2883,20 @@ const CONTRACT_CHECKS = [
 
 ### 默认设计体系：Liquid Glass
 
-> **所有 all-in-mvp 生成的前端页面默认采用 Liquid Glass 设计体系。** 前端 Agent 在生成 Vue 组件时 MUST 遵循 `shadcn/DESIGN.md` 中的规范。
+> **所有 all-in-mvp 生成的前端页面默认采用 Liquid Glass 设计体系。** 前端 Agent 在生成 React 组件时 MUST 遵循 `DESIGN.md` 中的规范。
 
-- 📐 **规范文档**: `shadcn/DESIGN.md` — 完整 Token 速查 + 组件规范 + DO/DON'T
-- 🏗️ **前端脚手架**: `starters/liquid-glass-frontend/` — ★ 项目起点。前端 Agent 应按此目录结构初始化项目（含 vite.config、Tailwind v4、useTheme、完整 CSS 三件套、防闪烁脚本）
-- 📁 **CSS 源文件**: `.qoder/skills/references/liquid-glass/` — 脚手架已内嵌，无需额外复制
+- 📐 **规范文档**: `starters/liquid-glass-frontend/DESIGN.md`（技能侧镜像：`.qoder/skills/references/liquid-glass/DESIGN.md`）
+- 🏗️ **前端脚手架**: `starters/liquid-glass-frontend/` — ★ 权威源，React 19 + Vite 8 + shadcn/ui
+- 📁 **CSS 源文件**: `apps/web/src/theme-tokens.css` + `apps/web/src/design-utils.css`（镜像：`.qoder/skills/references/liquid-glass/`）
 - 🎨 **核心特征**: 毛玻璃拟态 | 三字体系统 (Manrope/Inter/JetBrains Mono) | Dark/Light 双主题 | CSS 变量驱动
 - ❌ **严禁硬编码颜色**: 所有颜色值 MUST 通过 CSS 变量引用，不得在组件中写 hex/rgba
+- ❌ **严禁直连网络层**: UI 层禁止 `@/lib/api`/axios/fetch/sonner，必须经 `services/` + `@/lib/toast`
 
 ### 前端项目初始化流程（Agent MUST）
 
-1. 复制 `starters/liquid-glass-frontend/` 到目标项目的 `frontend/` 目录
-2. `cd frontend && npm install`
-3. 删除 `src/views/HomePage.tsx`（脚手架示例页）
-4. 在 `src/main.ts` 的 routes 数组中添加业务路由
-5. 在 `src/views/` 下创建业务页面，遵循 Liquid Glass 设计体系
+1. 复制 `starters/liquid-glass-frontend/` 到目标项目根目录（monorepo：`apps/web` + `apps/api` + `packages/shared`）
+2. `bun install`
+3. 删除脚手架示例页（`apps/web/src/pages/` 中的 showcase 页）
+4. 在 `apps/web/src/App.tsx` 的 `<Routes>` 中注册业务路由（`React.lazy`）
+5. 在 `apps/web/src/lib/menu-config.ts` 的 `menuGroups` 增加侧边栏条目
+6. 在 `apps/web/src/pages/` 下创建业务页面，遵循 Liquid Glass 设计体系

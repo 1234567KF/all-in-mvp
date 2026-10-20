@@ -259,13 +259,95 @@ rules:
       修改后 Preview 亲眼检查弹窗/表单全貌，而非仅看修改的那一行。
       血案见 PLAYBOOK.md B019（Checkbox 被 Field *:w-full 拉伸异常）。
 
+  # ---- v2.20 规则（对齐 React 权威脚手架 liquid-glass-starter）----
+  - id: R022
+    version: v2.20
+    name: UI 层禁止直连 @/lib/api
+    severity: BLOCKER
+    stage: [stage3, stage4, fix]
+    check_script: scripts/check-liquid-glass-style.ps1
+    applies_to: [frontend-dev]
+    description: |
+      UI 层（components/、pages/）禁止 import { api } from "@/lib/api"。
+      所有网络逻辑封装在 src/services/，UI 只调用 service 函数。
+
+  - id: R023
+    version: v2.20
+    name: UI 层禁止直连 axios / fetch
+    severity: BLOCKER
+    stage: [stage3, stage4, fix]
+    check_script: scripts/check-liquid-glass-style.ps1
+    applies_to: [frontend-dev]
+    description: |
+      UI 层禁止 import axios，也禁止裸 fetch 调后端。
+      唯一 axios 实例在 src/lib/api.ts。
+
+  - id: R024
+    version: v2.20
+    name: 禁止直连 sonner
+    severity: BLOCKER
+    stage: [stage3, stage4, fix]
+    check_script: scripts/check-liquid-glass-style.ps1
+    applies_to: [frontend-dev]
+    description: |
+      除 src/lib/toast.ts 与 App.tsx（Toaster）外，禁止 import "sonner"。
+      业务代码统一用 showSuccess / showError / showWarning / showInfo。
+
+  - id: R025
+    version: v2.20
+    name: 页面必须 React.lazy
+    severity: BLOCKER
+    stage: [stage3, stage4, fix]
+    check_script: scripts/check-liquid-glass-style.ps1
+    applies_to: [frontend-dev]
+    description: |
+      所有页面（LoginPage 除外）MUST 在 App.tsx 中通过 React.lazy() 引入，
+      并置于 <Suspense fallback={<PageSkeleton />}> 内。
+
+  - id: R026
+    version: v2.20
+    name: 禁止硬编码颜色
+    severity: BLOCKER
+    stage: [stage3, stage4, fix]
+    check_script: scripts/check-liquid-glass-style.ps1
+    applies_to: [frontend-dev]
+    description: |
+      禁止在业务代码中写 hex/rgba 字面量或 Tailwind 原始色类（text-red-500 等）。
+      MUST 使用 --lg-* CSS 变量、语义主题类或 variant="destructive"。
+      脚手架自带的展示/错误演示页豁免。
+
+  - id: R027
+    version: v2.20
+    name: Liquid Glass 圆角与玻璃拟态
+    severity: HIGH
+    stage: [stage3, stage4, fix]
+    check_script: null  # 视觉语义，需 Preview/截图验证
+    applies_to: [frontend-dev]
+    description: |
+      卡片圆角 MUST 为 12px（rounded-[12px] 或 var(--lg-radius-lg)），禁止 rounded-lg。
+      弹窗/下拉/玻璃卡片 MUST 有 backdrop-filter: blur(12px)。
+      标题 font-heading、正文 font-body、数据 font-mono。
+      完整规范见 starters/liquid-glass-frontend/DESIGN.md。
+
+  - id: R028
+    version: v2.20
+    name: 设计 token 镜像防漂移
+    severity: BLOCKER
+    stage: [stage3, stage4]
+    check_script: scripts/check-token-sync.ps1
+    applies_to: [architect, frontend-dev, all]
+    description: |
+      .qoder/skills/references/liquid-glass/ 是 starters/liquid-glass-frontend/ 的镜像。
+      任何 theme-tokens.css / design-utils.css / index.css / DESIGN.md 漂移 → FAIL。
+      禁止手工维护双份 token，必须从脚手架重新复制。
+
 # ============================================================
 # Stage 门禁映射（供聚合脚本使用）
 # ============================================================
 gates:
   stage3:
     description: "Stage 3 入口门禁 — 开发前必须通过的规则"
-    rules: [R002, R004, R012, R015, R018, R019, R021]
+    rules: [R002, R004, R012, R015, R018, R019, R021, R022, R023, R024, R025, R026, R027, R028]
     aggregate_script: scripts/check-stage3-gate.ps1
 
   stage3.5:
@@ -275,10 +357,10 @@ gates:
 
   stage4:
     description: "Stage 4 入口门禁 — 集成验收前必须通过的规则"
-    rules: [R001, R003, R005, R006, R007, R008, R009, R010, R012, R013, R014, R015, R016, R017, R018, R019, R021]
+    rules: [R001, R003, R005, R006, R007, R008, R009, R010, R012, R013, R014, R015, R016, R017, R018, R019, R021, R022, R023, R024, R025, R026, R027, R028]
     aggregate_script: scripts/check-stage4-gate.ps1
 
   fix:
     description: "修复模式门禁 — 任何 Bug 修复必须通过的最小审查（v2.17）"
-    rules: [R020, R021]
+    rules: [R020, R021, R022, R023, R024, R025, R026, R027]
     aggregate_script: null  # 修复模式不能脚本化；由 quality-gate.md（行为真源）+ settings.json hooks.PostToolUse → scripts/quality-gate-hook.ps1（路径命中即派发审查/冒烟）联合驱动

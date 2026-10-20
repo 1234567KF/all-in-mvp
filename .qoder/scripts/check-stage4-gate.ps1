@@ -48,7 +48,9 @@ Invoke-Check -ScriptName "check-silent-catch.ps1" -RuleId "R015"
 Invoke-Check -ScriptName "check-port-config.ps1" -RuleId "R011"
 Invoke-Check -ScriptName "check-seed-single-source.ps1" -RuleId "R010"
 Invoke-Check -ScriptName "check-e2e-browser-quota.ps1" -RuleId "R005"
-# R001/R003/R006/R007/R008/R009/R013 暂不可脚本化，或需项目特定配置
+Invoke-Check -ScriptName "check-liquid-glass-style.ps1" -RuleId "R022-R026"
+Invoke-Check -ScriptName "check-token-sync.ps1" -RuleId "R028"
+# R001/R003/R006/R007/R008/R009/R013/R027 暂不可脚本化，或需项目特定配置
 
 Write-Host ""
 Write-Host "------------------------------------------------------------" -ForegroundColor Cyan

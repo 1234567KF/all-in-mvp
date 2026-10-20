@@ -230,7 +230,7 @@ Stage2-① 开始：
 - [ ] 用户确认：✅ 该模块实现符合预期
 
 **每个前端页面（CP-7）**：
-- [ ] `src/views/<page>.vue` + 组件存在
+- [ ] `src/pages/<Page>.tsx` + 组件存在
 - [ ] `DONE` 标记存在（非 VISUAL_PENDING）
 - [ ] MSVP-1 通过（无 A1/A2/A7）
 - [ ] `decisions/stage3-frontend-<page>-decisions.md` 存在

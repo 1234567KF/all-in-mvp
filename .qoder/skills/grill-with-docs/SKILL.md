@@ -16,7 +16,7 @@ graph:
 
 **Default Tech Stack Context**: 
 - Backend: Node.js + Hono + Drizzle ORM + SQLite
-- Frontend: Vue 3 + Vite + Pinia + Vue Router + Axios
+- Frontend: React 19 + Vite 8 + Zustand + React Router 7 + Axios
 - Testing: Vitest + Playwright
 - Third-party: ALL Mock
 
@@ -359,7 +359,7 @@ grill 输出「未决问题清单」+ 按「最简实现原则」推荐方案
 当审查 MVP 项目时，额外检查以下 8 项：
 
 ### 技术栈一致性
-- [ ] spec.md 中技术栈与 MVP 默认栈（Hono + Drizzle + SQLite + Vue 3）一致
+- [ ] spec.md 中技术栈与 MVP 默认栈（Bun + Hono + Drizzle + SQLite + React 19 + Vite 8）一致
 - [ ] 未引入 MVP 豁免组件（Redis、消息队列、限流等）
 - [ ] 第三方服务全部 Mock（支付/短信/存储/推送）
 

@@ -54,7 +54,7 @@ _回答"为什么做"，至少包含一个可量化的业务指标。_
 | 维度 | 约束 | 版本号 |
 |------|------|--------|
 | 后端框架 | Hono | 4.x |
-| 前端框架 | Vue 3 | 3.4+ |
+| 前端框架 | React 19 | 19.2+ |
 | UI 组件库 | [见 mvp-tech-stack-default] | - |
 | 数据库 | SQLite (better-sqlite3) | 11.x |
 | ORM | Drizzle ORM | 0.36+ |

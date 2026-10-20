@@ -5,6 +5,16 @@
 
 ---
 
+## v2.20 血案（技能框架与权威脚手架断裂）
+
+### B021 — 技能框架 Vue/React 双栈混写 + token 镜像漂移
+- **规则**：R022-R028（对齐 React 权威脚手架）
+- **现象**：4 份技能文件分别声明 Vue 3 / React 19：`mvp-tech-stack-default.md` 说 Vue 3 + Pinia + shadcn/vue，`kf-mvp-frontend-dev` 说 React 19 但模板是 `<script setup>` + `ref()` 混写 `useState`，`references/liquid-glass/theme-tokens.css` 与脚手架权威源 diff 不一致
+- **根因**：先把 Liquid Glass 风格"抄"成 Vue 适配版，但权威脚手架 `starters/liquid-glass-frontend/` 实际是 React 19 + shadcn/ui；镜像 token 手工维护导致漂移；架构规则（services 分层/React.lazy/toast 封装）从未进入门禁
+- **教训**：设计体系可跨框架，但技术栈必须单一真源；镜像文件必须脚本同步（`check-token-sync.ps1`），禁止手工双份维护；脚手架已有的 `arch-check.ts` 四条规则必须镜像进 gate（R022-R025）
+
+---
+
 ## v2.14 血案
 
 ### B014 — fetchChannelOptions() 静默失败

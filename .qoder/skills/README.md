@@ -12,7 +12,7 @@
 | **核心** | all-in-mvp, kf-pipeline-coordinator, grill-with-docs | 流水线编排 + 调度 + 交叉审查 |
 | **Stage1 需求** | kf-mvp-prd-generator, kf-mvp-arch-expert, kf-mvp-biz-expert | 需求 → 架构 → 模块划分 |
 | **Stage2 规划** | kf-mvp-api-contract, kf-mvp-schema-design, kf-mvp-mock-service, kf-mvp-test-single, kf-mvp-test-e2e, kf-mvp-test-review, kf-mvp-testing-strategy, kf-mvp-playwright-infra | 契约 + Mock + 测试设计 |
-| **Stage3 开发** | kf-mvp-backend-tdd, kf-mvp-frontend-dev, kf-mvp-code-review, kf-mvp-vue-components, kf-mvp-auth-implementation, kf-mvp-error-handling | TDD 开发 + 审查 |
+| **Stage3 开发** | kf-mvp-backend-tdd, kf-mvp-frontend-dev, kf-mvp-code-review, kf-mvp-react-components, kf-mvp-auth-implementation, kf-mvp-error-handling | TDD 开发 + 审查 |
 | **Stage4 集成** | kf-mvp-stage4-coordinator, kf-mvp-security, kf-mvp-performance | 联调 + 安全 + 性能 |
 | **辅助 / Stage5** | kf-mvp-retrospective, kf-skill-design-expert, kf-web-search | 复盘 + 技能设计 + 检索 |
 
@@ -56,7 +56,7 @@
 | [kf-mvp-backend-tdd](kf-mvp-backend-tdd/SKILL.md) | Pipeline | 后端 TDD，Red-Green-Refactor 循环 |
 | [kf-mvp-frontend-dev](kf-mvp-frontend-dev/SKILL.md) | Tool Wrapper | 前端开发，React + Vite + Mock API（默认栈） |
 | [kf-mvp-code-review](kf-mvp-code-review/SKILL.md) | Reviewer | 代码审查 + 契约合规 + 异常覆盖 |
-| [kf-mvp-vue-components](kf-mvp-vue-components/SKILL.md) | Tool Wrapper | Vue 3 组件模式（仅当项目显式选 Vue 时） |
+| [kf-mvp-react-components](kf-mvp-react-components/SKILL.md) | Tool Wrapper | React 19 组件模式 + shadcn/ui + Liquid Glass |
 | [kf-mvp-auth-implementation](kf-mvp-auth-implementation/SKILL.md) | Tool Wrapper | 认证与授权实现，JWT + RBAC |
 | [kf-mvp-error-handling](kf-mvp-error-handling/SKILL.md) | Tool Wrapper | 错误处理与响应模式 |
 

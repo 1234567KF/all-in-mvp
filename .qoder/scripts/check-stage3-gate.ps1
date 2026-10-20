@@ -44,7 +44,9 @@ Write-Host ""
 # Stage 3 规则清单 (对应 gate-rules.yaml gates.stage3.rules)
 Invoke-Check -ScriptName "check-api-path-source.ps1" -RuleId "R012"
 Invoke-Check -ScriptName "check-silent-catch.ps1" -RuleId "R015"
-# R002/R004 暂不可脚本化，由 Agent 自检
+Invoke-Check -ScriptName "check-liquid-glass-style.ps1" -RuleId "R022-R026"
+Invoke-Check -ScriptName "check-token-sync.ps1" -RuleId "R028"
+# R002/R004/R027 暂不可脚本化，由 Agent 自检
 
 Write-Host ""
 Write-Host "------------------------------------------------------------" -ForegroundColor Cyan

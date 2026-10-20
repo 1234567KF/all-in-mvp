@@ -8,6 +8,8 @@ description: >-
 metadata:
   pattern: tool-wrapper
   domain: mvp-stage3
+  based_on: starters/liquid-glass-frontend
+  design_system: Liquid Glass
 recommended_model: qwen-3.7-Max
 graph:
   dependencies:
@@ -21,19 +23,21 @@ graph:
       type: semantic
 ---
 
-# MVP Frontend Developer �?前端开发技�?
+# MVP Frontend Developer — 前端开发技能
 
 > **Core Belief**: Frontend should never wait for backend. Build against mock, swap for real API when ready. Component by component, page by page.
+> **权威源**: `starters/liquid-glass-frontend/` — React 19 + Vite 8 + Tailwind 4 + shadcn/ui (radix-nova) + Liquid Glass 设计体系。
 
-**Division of Labor**: This Skill focuses on **React component development** with mock API integration. It outputs pages, components, and hooks. Follows Tool Wrapper pattern for API integration.
+**Division of Labor**: This Skill focuses on **React component development** with mock API integration. It outputs pages, components, and hooks. Network access is isolated in `src/services/`.
 
 **Default Tech Stack** (enforced unless user explicitly overrides):
 - Framework: React 19 (Hooks)
-- Build: Vite 5.x
-- State: Zustand 4.x
-- Routing: React Router 6.x
-- HTTP: Axios 1.x
-- UI Framework: 6选1 (Ant Design / shadcn/ui / Arco Design / Vant / Tailwind CSS)
+- Build: Vite 8.x
+- State: Zustand 5.x
+- Routing: React Router 7.x
+- HTTP: Axios 1.x (encapsulated in `src/lib/api.ts`)
+- UI: shadcn/ui (radix-nova) + Tailwind CSS 4
+- Design System: **Liquid Glass** (see `DESIGN.md`)
 
 Load `references/mvp-tech-stack-default.md` for full specification.
 
@@ -41,11 +45,11 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-1. **Mock-first** �?Build against mock server, swap API later
-2. **Component-based** �?Reusable components, clean architecture
+1. **Mock-first** — Build against mock server, swap API later
+2. **Component-based** — Reusable components, clean architecture
 3. **Hooks** — React 19 Hooks throughout
-4. **TypeScript** �?Full type safety
-5. **UI Framework locked** �?Once selected in Phase 0, never mix frameworks
+4. **TypeScript** — Full type safety
+5. **UI locked** — shadcn/ui + Liquid Glass, never mix frameworks
 
 ---
 
@@ -53,63 +57,78 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 | Layer | Technology | Version | Notes |
 |-------|------------|---------|-------|
-| Framework | React | 19 | Hooks |
-| Build | Vite | 5.x | |
-| Language | TypeScript | 5.0+ | |
-| State | Zustand | 4.x | |
-| Routing | React Router | 6.x | |
-| HTTP | Axios | 1.6+ | |
-| UI | {{UI_FRAMEWORK}} | varies | Selected in Phase 0, locked |
-
-**UI Framework Selection** (from `references/mvp-tech-stack-default.md`):
-- Enterprise/B2B admin: Ant Design (default) / shadcn/ui
-- Modern branded web: Tailwind CSS / shadcn/ui
-- H5 mobile: Vant
+| Framework | React | 19.2+ | Hooks |
+| Build | Vite | 8.x | |
+| Language | TypeScript | 6.0+ | `noUnusedLocals` + `noUnusedParameters` |
+| State | Zustand | 5.x | `persist` middleware |
+| Routing | React Router | 7.x | `viewTransition` |
+| HTTP | Axios | 1.x | Only inside `src/lib/api.ts` |
+| UI | shadcn/ui | latest | `components.json` style `radix-nova` |
+| CSS | Tailwind CSS | 4.2+ | `@tailwindcss/vite` |
+| Icons | lucide-react | latest | |
+| Toast | `@/lib/toast` | — | Wraps sonner; never import sonner directly |
 
 **MUST NOT mix UI frameworks** within the same project.
+
+---
+
+# 架构分层（AGENTS.md 强制 — gate R022-R025）
+
+```
+pages/ + components/   UI 层 —— 只调用 services/，禁止直连 api/axios/fetch
+        ↓
+services/              网络层 —— 唯一可 import { api } from "@/lib/api" 的地方
+        ↓
+lib/api.ts             Axios 实例 + 401 刷新队列
+        ↓
+Hono API               统一 ok/fail 响应
+```
+
+**四条硬约束**：
+
+1. UI 层（`components/`、`pages/`）禁止 `import { api } from "@/lib/api"`
+2. UI 层禁止 `import axios` / 裸 `fetch`
+3. 除 `lib/toast.ts` 与 `App.tsx`（Toaster）外，禁止 `import "sonner"`
+4. 页面必须 `React.lazy()` 引入（LoginPage 除外）
+
+> 对应门禁脚本：`.qoder/scripts/check-liquid-glass-style.ps1`（R022-R025）
 
 ---
 
 # Project Structure
 
 ```
-src/
+apps/web/src/
+├── App.tsx                 # Routes + React.lazy + Toaster
+├── main.tsx
+├── router/
+│   └── ProtectedRoute.tsx
+├── stores/                 # Zustand
+│   ├── auth.ts
+│   └── [module].ts
+├── services/               # 网络层
+│   └── [module].ts
+├── pages/                  # 页面（必须 lazy）
+│   ├── [Module]ListPage.tsx
+│   ├── [Module]DetailPage.tsx
+│   └── LoginPage.tsx
 ├── components/
-�?  ├── common/           # Shared components
-�?  �?  ├── .tsx
-�?  �?  ├── Input.tsx
-�?  �?  ├── Modal.tsx
-�?  �?  └── Table.tsx
-�?  └── [module]/
-�?      ├── [Module]List.tsx
-�?      ├── [Module]Form.tsx
-�?      └── [Module]Card.tsx
-├── hooks/
-�?  ├── useApi.ts         # API wrapper
-�?  ├── useAuth.ts        # Auth state
-�?  └── use[Feature].ts   # Feature hooks
-├── stores/
-�?  ├── auth.ts           # Auth store
-�?  └── [module].ts       # Module stores
-├── pages/
-�?  ├── [module]/
-�?  �?  ├── index.tsx     # List page
-�?  �?  ├── [id].tsx      # Detail page
-�?  �?  └── new.tsx       # Create page
-�?  └── layout/
-�?      ├── Default.tsx
-�?      └── Auth.tsx
-├── api/
-�?  └── [module].ts       # API clients
-├── types/
-�?  └── index.ts          # Shared types
-└── router/
-    └── index.tsx     # Routes
+│   ├── ui/                 # shadcn/ui（button/dialog/select/table/field...）
+│   └── shared/             # DataTable/FilterBar/ConfirmDialog/PageSkeleton...
+├── layouts/
+│   └── SidebarLayout.tsx
+├── lib/
+│   ├── api.ts              # Axios 实例（唯一）
+│   ├── toast.ts            # showSuccess/showError/showWarning/showInfo
+│   ├── menu-config.ts      # 侧边栏 + ⌘K 索引
+│   └── utils.ts
+├── theme-tokens.css        # --lg-* 设计变量
+└── design-utils.css        # .glass-card / .matte-card / .liquid-card
 ```
 
 ---
 
-# Stage 0: Project Initialization（跳过此步 = 复盘问题E）
+# Stage 0: Project Initialization（跳过此步 = 复盘问题 E）
 
 **MUST 先检查 Coordinator 是否已初始化好前端项目目录。** 如果尚未初始化：
 
@@ -117,714 +136,572 @@ src/
 # 步骤 1: 扫描脚手架（P0 强制性）
 ls starters/liquid-glass-frontend/
 
-# 步骤 2: 如果脚手架存在 → 直接复制（推荐）
+# 步骤 2: 脚手架存在 → 直接复制（推荐）
 cp -r starters/liquid-glass-frontend/ frontend/
 cd frontend && bun install
 
-# 步骤 3: 仅在脚手架确实不存在时 → 手动创建
+# 步骤 3: 仅当脚手架确实不存在 → 手动创建
 bun create vite@latest frontend -- --template react-ts
 cd frontend
 bun install tailwindcss @tailwindcss/vite tw-animate-css
-# 然后手动复制 .qoder/skills/references/liquid-glass/theme-tokens.css 等
+# 然后复制 .qoder/skills/references/liquid-glass/ 三件套
 ```
 
-> **红线**：发现 `starters/liquid-glass-frontend/` 存在却仍然 `bun create vite` → P0 错误，上一轮实际发生了。脚手架含完整路由/布局/KpiCard/主题/设计体系，从零创建会丢失所有预设。
+> **红线**：发现 `starters/liquid-glass-frontend/` 存在却仍 `bun create vite` → P0 错误。脚手架含完整路由/布局/主题/设计体系/shared 组件，从零创建会丢失所有预设。
 
 **验证初始化完成**：
+
 - [ ] `bun run dev` 可正常启动
-- [ ] 访问 `http://localhost:5173` 可看到首页（含 blob 动画背景）
+- [ ] 访问 `http://localhost:5173` 可见首页
 - [ ] `@/` 路径别名生效
 - [ ] CSS 变量 `--lg-background` 等可用
+- [ ] `bun run arch:check` 通过
 
 ---
 
-# Stage 1: API Client Setup
+# Stage 1: Service Layer（网络层唯一入口）
+
+> **禁止在 UI 层直接调用 api/axios。** 所有网络逻辑封装在 `src/services/`，返回 Promise。
 
 ```typescript
-// src/api/[module].ts
-import axios from 'axios';
-import type { ModuleListResponse, ModuleItem, CreateModuleDto, UpdateModuleDto } from '@/types';
+// src/services/[module].ts
+import { api } from "@/lib/api"
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
-});
+export interface [Module]Item {
+  id: number
+  name: string
+}
 
-// Add auth interceptor
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+export interface [Module]ListParams {
+  page?: number
+  pageSize?: number
+  keyword?: string
+}
 
-// Response envelope handler
-api.interceptors.response.use(
-  (response) => response.data,
-  (error) => {
-    const message = error.response?.data?.error?.message || error.message;
-    return Promise.reject(new Error(message));
-  }
-);
+export interface [Module]ListResponse {
+  list: [Module]Item[]
+  total: number
+}
 
-export const [module]Api = {
-  list(params?: ListParams) {
-    return api.get<{ success: boolean; data: ModuleListResponse }>('/[module]', { params });
-  },
+export async function fetch[Module]List(
+  params?: [Module]ListParams
+): Promise<[Module]ListResponse> {
+  const res = await api.get("/[module]", { params })
+  return res.data.data
+}
 
-  getById(id: number) {
-    return api.get<{ success: boolean; data: ModuleItem }>(`/[module]/${id}`);
-  },
+export async function fetch[Module]ById(id: number): Promise<[Module]Item> {
+  const res = await api.get(`/[module]/${id}`)
+  return res.data.data
+}
 
-  create(data: CreateModuleDto) {
-    return api.post<{ success: boolean; data: ModuleItem }>('/[module]', data);
-  },
+export async function create[Module](
+  data: Omit<[Module]Item, "id">
+): Promise<[Module]Item> {
+  const res = await api.post("/[module]", data)
+  return res.data.data
+}
 
-  update(id: number, data: UpdateModuleDto) {
-    return api.put<{ success: boolean; data: ModuleItem }>(`/[module]/${id}`, data);
-  },
+export async function update[Module](
+  id: number,
+  data: Partial<Omit<[Module]Item, "id">>
+): Promise<[Module]Item> {
+  const res = await api.put(`/[module]/${id}`, data)
+  return res.data.data
+}
 
-  delete(id: number) {
-    return api.delete<{ success: boolean }>(`/[module]/${id}`);
-  },
-};
+export async function delete[Module](id: number): Promise<void> {
+  await api.delete(`/[module]/${id}`)
+}
 ```
+
+> `src/lib/api.ts` 已内置于脚手架：baseURL 读 `VITE_API_BASE_URL`（默认 `/api`），请求拦截器注入 Bearer token，401 自动刷新并重放请求。**不要再新建第二个 axios 实例。**
 
 ---
 
-# Stage 2: Composable Development
+# Stage 2: React Hooks
 
 ```typescript
 // src/hooks/use[Module].ts
-import { useState, useMemo } from 'react';
-import type { ModuleItem, CreateModuleDto, UpdateModuleDto, ListParams } from '@/types';
-import { [module]Api } from '@/api/[module]';
+import { useCallback, useEffect, useState } from "react"
+
+import {
+  create[Module],
+  delete[Module],
+  fetch[Module]List,
+  update[Module],
+  type [Module]Item,
+  type [Module]ListParams,
+} from "@/services/[module]"
 
 export function use[Module]() {
-  const items = ref<ModuleItem[]>([]);
-  const currentItem = ref<ModuleItem | null>(null);
-  const loading = ref(false);
-  const error = ref<string | null>(null);
+  const [items, setItems] = useState<[Module]Item[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const total = computed(() => items.value.length);
-
-  async function fetchList(params?: ListParams) {
-    loading.value = true;
-    error.value = null;
+  const fetchList = useCallback(async (params?: [Module]ListParams) => {
+    setLoading(true)
+    setError(null)
     try {
-      const response = await [module]Api.list(params);
-      items.value = response.data.list;
+      const data = await fetch[Module]List(params)
+      setItems(data.list)
+      return data
     } catch (e) {
-      error.value = (e as Error).message;
-      throw e;
+      const message = e instanceof Error ? e.message : "加载失败"
+      setError(message)
+      throw e
     } finally {
-      loading.value = false;
+      setLoading(false)
     }
-  }
+  }, [])
 
-  async function fetchById(id: number) {
-    loading.value = true;
-    error.value = null;
+  const create = useCallback(async (data: Omit<[Module]Item, "id">) => {
+    setLoading(true)
+    setError(null)
     try {
-      const response = await [module]Api.getById(id);
-      currentItem.value = response.data;
+      const created = await create[Module](data)
+      setItems((prev) => [created, ...prev])
+      return created
     } catch (e) {
-      error.value = (e as Error).message;
-      throw e;
+      const message = e instanceof Error ? e.message : "创建失败"
+      setError(message)
+      throw e
     } finally {
-      loading.value = false;
+      setLoading(false)
     }
-  }
+  }, [])
 
-  async function create(data: CreateModuleDto) {
-    loading.value = true;
-    error.value = null;
+  const update = useCallback(
+    async (id: number, data: Partial<Omit<[Module]Item, "id">>) => {
+      setLoading(true)
+      setError(null)
+      try {
+        const updated = await update[Module](id, data)
+        setItems((prev) => prev.map((item) => (item.id === id ? updated : item)))
+        return updated
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "更新失败"
+        setError(message)
+        throw e
+      } finally {
+        setLoading(false)
+      }
+    },
+    []
+  )
+
+  const remove = useCallback(async (id: number) => {
+    setLoading(true)
+    setError(null)
     try {
-      const response = await [module]Api.create(data);
-      return response.data;
+      await delete[Module](id)
+      setItems((prev) => prev.filter((item) => item.id !== id))
     } catch (e) {
-      error.value = (e as Error).message;
-      throw e;
+      const message = e instanceof Error ? e.message : "删除失败"
+      setError(message)
+      throw e
     } finally {
-      loading.value = false;
+      setLoading(false)
     }
-  }
+  }, [])
 
-  async function update(id: number, data: UpdateModuleDto) {
-    loading.value = true;
-    error.value = null;
-    try {
-      const response = await [module]Api.update(id, data);
-      currentItem.value = response.data;
-      return response.data;
-    } catch (e) {
-      error.value = (e as Error).message;
-      throw e;
-    } finally {
-      loading.value = false;
-    }
-  }
+  useEffect(() => {
+    // 首屏加载；错误已由组件层 toast 呈现
+    fetchList().catch(() => {})
+  }, [fetchList])
 
-  async function remove(id: number) {
-    loading.value = true;
-    error.value = null;
-    try {
-      await [module]Api.delete(id);
-      items.value = items.value.filter(i => i.id !== id);
-    } catch (e) {
-      error.value = (e as Error).message;
-      throw e;
-    } finally {
-      loading.value = false;
-    }
-  }
-
-  return {
-    items,
-    currentItem,
-    loading,
-    error,
-    total,
-    fetchList,
-    fetchById,
-    create,
-    update,
-    remove,
-  };
+  return { items, loading, error, fetchList, create, update, remove }
 }
 ```
+
+> `.catch(() => {})` 仅限“已在 hook 内 `setError`”的场景；UI 层捕获后 MUST `showError`（gate R015）。
 
 ---
 
 # Stage 3: Component Development
 
-## List Page Template
+## 页面骨架（列表页）
 
-```vue
-<!-- src/pages/[module]/index.tsx -->
-<script setup lang="ts">
-import { useState, useEffect } from 'react';
-import { use[Module] } from '@/hooks/use[Module]';
-import { useNavigate } from 'react-router';
+```tsx
+// src/pages/[Module]ListPage.tsx
+import { useState } from "react"
 
-const router = useNavigate();
-const { items, loading, error, fetchList, remove } = use[Module]();
-const pagination = ref({ page: 1, limit: 10 });
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { DataTable } from "@/components/shared/DataTable"
+import { FilterBar } from "@/components/shared/FilterBar"
+import { Input } from "@/components/ui/input"
+import { use[Module] } from "@/hooks/use[Module]"
+import { showError, showSuccess } from "@/lib/toast"
 
-onMounted(() => {
-  fetchList(pagination.value);
-});
+export default function [Module]ListPage() {
+  const { items, loading, remove } = use[Module]()
+  const [keyword, setKeyword] = useState("")
 
-async function handleDelete(id: number) {
-  if (confirm('确定删除吗？')) {
-    await remove(id);
+  async function handleDelete(id: number) {
+    try {
+      await remove(id)
+      showSuccess("删除成功")
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "删除失败")
+    }
   }
-}
 
-function handleEdit(id: number) {
-  router.push(`/[module]/${id}`);
-}
+  return (
+    <div className="space-y-6">
+      <header className="flex items-center justify-between">
+        <h1 className="font-h2" style={{ color: "var(--lg-text-primary)" }}>
+          [模块名称]
+        </h1>
+        <Button className="btn-primary">新建</Button>
+      </header>
 
-function handleCreate() {
-  router.push(`/[module]/new`);
-}
-</script>
-
-<template>
-  <div class="[module]-page">
-    <header class="page-header">
-      <h1>[模块名称]</h1>
-      <button @click="handleCreate" class="btn-primary">
-        新建
-      </button>
-    </header>
-
-    <div v-if="error" class="alert alert-error">
-      {{ error }}
+      <Card className="glass-card p-6">
+        <DataTable
+          data={items}
+          loading={loading}
+          columns={[
+            { key: "id", title: "ID" },
+            { key: "name", title: "名称" },
+          ]}
+          toolbar={
+            <FilterBar>
+              <Input
+                placeholder="搜索"
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+              />
+            </FilterBar>
+          }
+          onDelete={handleDelete}
+        />
+      </Card>
     </div>
-
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>名称</th>
-          <th>操作</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in items" :key="item.id">
-          <td>{{ item.id }}</td>
-          <td>{{ item.name }}</td>
-          <td>
-            <button @click="handleEdit(item.id)">编辑</button>
-            <button @click="handleDelete(item.id)" class="btn-danger">删除</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-
-    <div v-if="loading" class="loading">加载�?..</div>
-  </div>
-</template>
-
-<style scoped>
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
+  )
 }
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.alert-error {
-  color: red;
-  padding: 1rem;
-  background: #fee;
-}
-</style>
 ```
 
-## Form Component Template
+## 表单弹窗（Dialog）
 
-```vue
-<!-- src/pages/[module]/Form.tsx -->
-<script setup lang="ts">
-import { useState, useEffect } from 'react';
-import type { CreateModuleDto, UpdateModuleDto } from '@/types';
+```tsx
+// src/components/[module]/[Module]FormDialog.tsx
+import { useState } from "react"
+import { Pencil } from "lucide-react"
 
-const props = defineProps<{
-  id?: number;
-}>();
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Field, FieldLabel } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { showError, showSuccess } from "@/lib/toast"
 
-const emit = defineEmits<{
-  (e: 'submit', data: CreateModuleDto | UpdateModuleDto): void;
-  (e: 'cancel'): void;
-}>();
-
-const form = ref<CreateModuleDto>({
-  name: '',
-  // ... other fields
-});
-
-const loading = ref(false);
-
-async function handleSubmit() {
-  loading.value = true;
-  try {
-    emit('submit', form.value);
-  } finally {
-    loading.value = false;
-  }
+interface Props {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSubmit: (data: { name: string }) => Promise<void>
 }
-</script>
 
-<template>
-  <form @submit.prevent="handleSubmit" class="[module]-form">
-    <div class="form-group">
-      <label for="name">名称</label>
-      <input
-        id="name"
-        v-model="form.name"
-        type="text"
-        required
-      />
-    </div>
+export function [Module]FormDialog({ open, onOpenChange, onSubmit }: Props) {
+  const [name, setName] = useState("")
+  const [submitting, setSubmitting] = useState(false)
 
-    <div class="form-actions">
-      <button type="submit" :disabled="loading">
-        {{ loading ? '提交�?..' : '提交' }}
-      </button>
-      <button type="button" @click="emit('cancel')">
-        取消
-      </button>
-    </div>
-  </form>
-</template>
+  async function handleSubmit() {
+    setSubmitting(true)
+    try {
+      await onSubmit({ name })
+      showSuccess("保存成功")
+      onOpenChange(false)
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "保存失败")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-[var(--lg-surface-low)]/95 backdrop-blur-[12px]">
+        <DialogHeader>
+          {/* R021/DESIGN.md：DialogTitle 必须带图标 */}
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="size-4" style={{ color: "var(--lg-info)" }} />
+            新建[模块]
+          </DialogTitle>
+        </DialogHeader>
+
+        <Field>
+          <FieldLabel style={{ color: "var(--lg-text-secondary)" }}>
+            名称
+          </FieldLabel>
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="bg-background/40 backdrop-blur-[12px]"
+          />
+        </Field>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            取消
+          </Button>
+          <Button className="btn-primary" disabled={submitting} onClick={handleSubmit}>
+            {submitting ? "提交中..." : "提交"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 ```
+
+## 共享组件优先（禁止重复造轮子）
+
+| 场景 | 使用 |
+|------|------|
+| 数据表格 | `components/shared/DataTable` |
+| 1000+ 行 | `components/shared/VirtualDataTable` |
+| 筛选工具栏 | `components/shared/FilterBar`（放进 `DataTable` 的 `toolbar`） |
+| 确认弹窗 | `components/shared/ConfirmDialog` |
+| 文件上传 | `components/shared/FileUpload` |
+| 加载骨架 | `components/shared/PageSkeleton` / `TableSkeleton` |
+| ⌘K 搜索 | `components/shared/CommandPalette` |
+
+> 日期范围选择 MUST 用 `components/ui/date-range-picker`，禁止原生 `<input type="date">` 或两个独立输入框。
 
 ---
 
 # Stage 4: Router Setup
 
-```typescript
-// src/router/index.ts
-import { createBrowserRouter,  } from 'react-router';
-import type { RouteObject } from 'react-router';
+```tsx
+// src/App.tsx
+import { lazy, Suspense } from "react"
+import { Navigate, Route, Routes } from "react-router-dom"
+import { Toaster } from "sonner"
 
-const routes: RouteObject[] = [
-  {
-    path: '/[module]',
-    component: () => import('@/pages/layout/Default.tsx'),
-    children: [
-      {
-        path: '',
-        name: '[module]-list',
-        component: () => import('@/pages/[module]/index.tsx'),
-      },
-      {
-        path: ':id',
-        name: '[module]-detail',
-        component: () => import('@/pages/[module]/[id].tsx'),
-      },
-      {
-        path: 'new',
-        name: '[module]-create',
-        component: () => import('@/pages/[module]/new.tsx'),
-      },
-    ],
-  },
-];
+import PageSkeleton from "@/components/shared/PageSkeleton"
+import SidebarLayout from "@/layouts/SidebarLayout"
+import LoginPage from "@/pages/LoginPage"
+import ProtectedRoute from "@/router/ProtectedRoute"
 
-export const router = createBrowserRouter({
-  history: (),
-  routes,
-});
+// 所有页面必须 React.lazy（LoginPage 除外）
+const [Module]ListPage = lazy(() => import("@/pages/[Module]ListPage"))
+
+export default function App() {
+  return (
+    <>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route element={<ProtectedRoute />}>
+          <Route element={<SidebarLayout />}>
+            <Route
+              path="/[module]"
+              element={
+                <Suspense fallback={<PageSkeleton />}>
+                  <[Module]ListPage />
+                </Suspense>
+              }
+            />
+          </Route>
+        </Route>
+        <Route path="*" element={<Navigate to="/404" replace />} />
+      </Routes>
+      <Toaster richColors position="top-right" />
+    </>
+  )
+}
 ```
+
+**新增页面三件套**：页面文件 → `App.tsx` lazy 注册 → `lib/menu-config.ts` 的 `menuGroups` 增加条目（`title` / `path` / `icon` / `keywords` / `englishSub`）。
 
 ---
 
-# Stage 5: Component Interaction Testing (MUST �?迭代8核心修复)
+# Stage 5: Component Interaction Testing（MUST）
 
-**问题**：电商系统的前端组件有大量交互逻辑（购物车、表单验证、弹窗确认），之前组件交互bug只在人工测试时发现（如：表单提交后未清空、弹窗未关闭、状态未同步）�?
-
-**解决方案**：MUST 编写 **Vue组件交互测试**，覆盖组件渲染、用户交互、状态同步、生命周期�?
-
-## Vue组件测试模板
+**工具**：Vitest 4 + `@testing-library/react` 16 + `@testing-library/user-event`
 
 ```typescript
-// src/components/cart/CartItem.spec.ts
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount, flushPromises } from '@testing-library/react';
-import CartItem from './CartItem.tsx';
-import { createZustand, setActiveZustand } from 'zustand';
-import { useCartStore } from '@/stores/cart';
+// src/components/[module]/[Module]FormDialog.test.tsx
+import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import { describe, expect, it, vi } from "vitest"
 
-describe('CartItem Component �?E-commerce Frontend', () => {
-  beforeEach(() => {
-    setActiveZustand(createZustand());
-  });
+import { [Module]FormDialog } from "./[Module]FormDialog"
 
-  // 渲染测试
-  describe('Rendering', () => {
-    it('should display item name, price, and quantity', () => {
-      const wrapper = mount(CartItem, {
-        props: { item: { id: 1, name: 'iPhone', price: 999, quantity: 2 } }
-      });
-      
-      expect(wrapper.text()).toContain('iPhone');
-      expect(wrapper.text()).toContain('$999');
-      expect(wrapper.find('[data-testid="quantity"]').text()).toBe('2');
-    });
+describe("[Module]FormDialog", () => {
+  it("提交时调用 onSubmit", async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
 
-    it('should show out-of-stock badge when stock is 0', () => {
-      const wrapper = mount(CartItem, {
-        props: { item: { id: 1, name: 'iPhone', price: 999, quantity: 1, stock: 0 } }
-      });
-      
-      expect(wrapper.find('[data-testid="out-of-stock"]').exists()).toBe(true);
-    });
+    render(
+      <[Module]FormDialog open onOpenChange={() => {}} onSubmit={onSubmit} />
+    )
 
-    it('should render empty state when no items', () => {
-      const wrapper = mount(CartItem, {
-        props: { item: null }
-      });
-      
-      expect(wrapper.find('[data-testid="empty-cart"]').exists()).toBe(true);
-    });
-  });
+    await user.type(screen.getByLabelText("名称"), "测试")
+    await user.click(screen.getByRole("button", { name: "提交" }))
 
-  // 用户交互测试
-  describe('User Interactions', () => {
-    it('should increment quantity when + button clicked', async () => {
-      const wrapper = mount(CartItem, {
-        props: { item: { id: 1, name: 'iPhone', price: 999, quantity: 1, stock: 5 } }
-      });
-      
-      await wrapper.find('[data-testid="btn-increase"]').trigger('click');
-      await flushPromises();
-      
-      expect(wrapper.emitted('update:quantity')).toBeTruthy();
-      expect(wrapper.emitted('update:quantity')[0]).toEqual([2]);
-    });
+    expect(onSubmit).toHaveBeenCalledWith({ name: "测试" })
+  })
 
-    it('should NOT increment beyond stock limit', async () => {
-      const wrapper = mount(CartItem, {
-        props: { item: { id: 1, name: 'iPhone', price: 999, quantity: 5, stock: 5 } }
-      });
-      
-      await wrapper.find('[data-testid="btn-increase"]').trigger('click');
-      await flushPromises();
-      
-      // MUST: 不触发update事件
-      expect(wrapper.emitted('update:quantity')).toBeFalsy();
-      // MUST: 显示提示
-      expect(wrapper.find('[data-testid="stock-warning"]').exists()).toBe(true);
-    });
+  it("提交失败时展示 toast 且不关闭弹窗", async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    const onSubmit = vi.fn().mockRejectedValue(new Error("boom"))
 
-    it('should remove item when delete clicked and confirmed', async () => {
-      const wrapper = mount(CartItem, {
-        props: { item: { id: 1, name: 'iPhone', price: 999, quantity: 1 } }
-      });
-      
-      // 模拟confirm返回true
-      window.confirm = vi.fn(() => true);
-      
-      await wrapper.find('[data-testid="btn-delete"]').trigger('click');
-      await flushPromises();
-      
-      expect(wrapper.emitted('remove')).toBeTruthy();
-      expect(wrapper.emitted('remove')[0]).toEqual([1]);
-    });
+    render(
+      <[Module]FormDialog
+        open
+        onOpenChange={onOpenChange}
+        onSubmit={onSubmit}
+      />
+    )
 
-    it('should NOT remove item when delete cancelled', async () => {
-      const wrapper = mount(CartItem, {
-        props: { item: { id: 1, name: 'iPhone', price: 999, quantity: 1 } }
-      });
-      
-      window.confirm = vi.fn(() => false);
-      
-      await wrapper.find('[data-testid="btn-delete"]').trigger('click');
-      await flushPromises();
-      
-      expect(wrapper.emitted('remove')).toBeFalsy();
-    });
-  });
+    await user.click(screen.getByRole("button", { name: "提交" }))
 
-  // 状态同步测�?
-  describe('State Synchronization', () => {
-    it('should sync with Zustand store', async () => {
-      const zustand = createZustand();
-      setActiveZustand(zustand);
-      const cartStore = useCartStore();
-      cartStore.addItem({ id: 1, name: 'iPhone', price: 999 });
-      
-      const wrapper = mount(CartItem, {
-        global: { plugins: [zustand] },
-        props: { item: cartStore.items[0] }
-      });
-      
-      await wrapper.find('[data-testid="btn-increase"]').trigger('click');
-      await flushPromises();
-      
-      // MUST: store状态同步更�?
-      expect(cartStore.items[0].quantity).toBe(2);
-    });
-
-    it('should recalculate total when quantity changes', async () => {
-      const wrapper = mount(CartItem, {
-        props: { item: { id: 1, name: 'iPhone', price: 100, quantity: 2 } }
-      });
-      
-      expect(wrapper.find('[data-testid="item-total"]').text()).toBe('$200');
-      
-      await wrapper.find('[data-testid="btn-increase"]').trigger('click');
-      await flushPromises();
-      
-      expect(wrapper.find('[data-testid="item-total"]').text()).toBe('$300');
-    });
-  });
-
-  // 表单验证测试
-  describe('Form Validation', () => {
-    it('should validate coupon code format', async () => {
-      const wrapper = mount(CouponInput, {
-        props: { modelValue: '' }
-      });
-      
-      const input = wrapper.find('input');
-      await input.setValue('INVALID@CODE');
-      await input.trigger('blur');
-      
-      expect(wrapper.find('[data-testid="error-msg"]').text()).toContain('Invalid format');
-      expect(wrapper.emitted('update:modelValue')).toBeFalsy();
-    });
-
-    it('should apply valid coupon and update total', async () => {
-      const wrapper = mount(CouponInput, {
-        props: { modelValue: '', total: 100 }
-      });
-      
-      const input = wrapper.find('input');
-      await input.setValue('SAVE20');
-      await wrapper.find('[data-testid="btn-apply"]').trigger('click');
-      await flushPromises();
-      
-      expect(wrapper.emitted('apply')).toBeTruthy();
-      expect(wrapper.emitted('apply')[0]).toEqual([{ code: 'SAVE20', discount: 20 }]);
-    });
-  });
-
-  // 生命周期测试
-  describe('Lifecycle', () => {
-    it('should fetch data on mount', async () => {
-      const mockFetch = vi.fn().mockResolvedValue({ data: { stock: 10 } });
-      
-      const wrapper = mount(ProductDetail, {
-        props: { productId: 1 },
-        global: {
-          provide: { fetchStock: mockFetch }
-        }
-      });
-      
-      await flushPromises();
-      
-      expect(mockFetch).toHaveBeenCalledWith(1);
-      expect(wrapper.find('[data-testid="stock"]').text()).toBe('10');
-    });
-
-    it('should cleanup on unmount', async () => {
-      const clearTimer = vi.fn();
-      
-      const wrapper = mount(CountdownTimer, {
-        props: { endTime: Date.now() + 60000 }
-      });
-      
-      wrapper.unmount();
-      
-      // MUST: 清除定时器，防止内存泄漏
-      expect(clearTimer).toHaveBeenCalled();
-    });
-  });
-});
+    // 错误已由 showError 呈现；弹窗不得关闭
+    expect(onOpenChange).not.toHaveBeenCalledWith(false)
+  })
+})
 ```
 
-## 前端组件测试覆盖率要�?
+## 覆盖率要求
 
-| 测试类型 | 最低数�?| 说明 |
+| 测试类型 | 最低数量 | 说明 |
 |---------|---------|------|
-| 渲染测试 | 每个组件 | props变化、空状态、加载状�?|
-| 交互测试 | 每个可交互元�?| 点击、输入、选择、提�?|
-| 状态同�?| 每个store关联 | Zustand状态变更同�?|
-| 表单验证 | 每个表单 | 必填、格式、长度、异步校�?|
-| 生命周期 | 每个有副作用的组�?| mount、update、unmount |
+| 渲染测试 | 每个组件 | props 变化、空状态、加载态 |
+| 交互测试 | 每个可交互元素 | 点击、输入、选择、提交 |
+| 状态同步 | 每个 store 关联 | Zustand 变更同步 |
+| 表单验证 | 每个表单 | 必填、格式、长度、异步校验 |
 
-## 测试工具配置
+---
 
-```typescript
-// vitest.config.ts
-import { defineConfig } from 'vitest/config';
-import react from '@vitejs/plugin-react';
+# Liquid Glass 风格强制（v2.20 — 对齐脚手架）
 
-export default defineConfig({
-  plugins: [react()],
-  test: {
-    environment: 'jsdom', // MUST: 模拟DOM环境
-    globals: true,
-    include: ['src/**/*.spec.ts'],
-  },
-});
-```
+> 生成任何 UI 前先读 `DESIGN.md`。以下是高频规则，完整规范以脚手架为准。
+
+## 颜色
+
+- MUST 用 `--lg-*` 变量或 Tailwind theme 映射（`bg-background`、`text-foreground`、`border-border`）
+- MUST NOT 硬编码 `#22c55e`、`rgba(...)`、`text-red-500`、`bg-red-600`
+- 语义色：错误用 `variant="destructive"` 或 `var(--lg-danger)`；信息用 `var(--lg-info)`
+
+## 字体
+
+| 用途 | 类 | 变量 |
+|------|----|------|
+| 标题 | `font-heading` / `font-h2` | `--font-heading` (Manrope) |
+| 正文 | `font-body` | `--font-body` (Inter) |
+| 数据/KPI | `font-mono` | `--font-mono` (JetBrains Mono) |
+
+## 容器与玻璃拟态
+
+- 卡片：`12px` 圆角（`rounded-[12px]` 或 `var(--lg-radius-lg)`），**禁止** `rounded-lg`
+- 玻璃卡片：`.glass-card` / `.liquid-card` / `.matte-card`（`design-utils.css`）
+- 弹层/弹窗/下拉：`backdrop-filter: blur(12px)` 必须存在
+- 间距：4px 基线（`p-6` = 24px 卡片内边距，`gap-4` = 16px 卡片间距）
+
+## 结构约定
+
+- 页面标题：`className="font-h2"` + `style={{ color: "var(--lg-text-primary)" }}`，**不带图标**
+- 弹窗标题：`DialogTitle` **必须带图标**
+- 表格筛选：全部塞进 `DataTable` 的 `toolbar` + `FilterBar`
+- 日期范围：用 `date-range-picker`，禁止原生 date input
+
+---
 
 # Quality Checklist
 
-- [ ] All API calls use hook
-- [ ] Loading states handled
-- [ ] Error states handled
-- [ ] Form validation implemented
-- [ ] TypeScript types used throughout
-- [ ] Responsive design applied
-- [ ] Component tests written (render + interaction + state + lifecycle)
+- [ ] 所有网络调用经 `services/`（UI 层无 `@/lib/api` / axios / fetch）
+- [ ] 所有页面 `React.lazy()` + `Suspense`（LoginPage 除外）
+- [ ] toast 经 `@/lib/toast`（无直接 `import "sonner"`）
+- [ ] Loading / Error / Empty 三态处理
+- [ ] 表单校验实现
+- [ ] TypeScript 类型完整，无未使用变量/导入
+- [ ] 颜色/字体/圆角符合 Liquid Glass（无硬编码色值）
+- [ ] 组件测试覆盖渲染 + 交互 + 状态 + 生命周期
+- [ ] `bun run arch:check` 通过
 
 ---
 
 # Constraints
 
 **MUST DO:**
+
 - Use mock API URL in development
 - Handle loading and error states
-- Use Composition API (not Options API)
+- Use Hooks only (no class components)
 - Type all props and emits
-- Write computed style assertions (防线1) for every page/component that renders visible UI
-- Generate visual regression baselines (防线2) for key pages and states
+- Write computed style assertions for every page/component with visible UI
+- Generate visual regression baselines for key pages and states
 - Run full visual verification suite before marking DONE
 - Mark VISUAL_PENDING when layout/CSS is modified (do NOT self-mark DONE)
-- **D-09 前端一致性**：如果使用了 starters/ 脚手架，开发完成后必须用产物覆盖/替换脚手架源码，或删除 starters/。确保 `diff -r starters/<name>/src/ src/` 无差异。用户浏览器访问的前端 MUST == E2E 测试的前端
+- **D-09 前端一致性**：使用 starters/ 脚手架时，开发产物必须覆盖/替换脚手架源码，或删除 starters/。确保用户浏览器访问的前端 == E2E 验证的前端
 
 **MUST NOT DO:**
+
 - Use any type without reason
 - Hardcode API URLs (use env vars)
 - Skip loading states
-- Use var instead of const/let
+- Use `var` instead of `const`/`let`
+- Hardcode colors or use Tailwind raw color classes
+- Import `api` / `axios` / `sonner` directly in UI components
 - Self-mark DONE after CSS/layout changes without human visual review
-- Skip visual test execution (防线1+2+3) and claim "looks fine"
+- Skip visual test execution and claim "looks fine"
 
 ---
 
 ## Gotchas
 
-- **Mock URL** �?Set VITE_API_BASE_URL in .env for mock vs real API
-- **Auth token** �?Store in localStorage, attach in interceptor
-- **Response envelope** �?Always check `response.data.success` first
-- **Error handling** �?API errors throw, handle with try/catch
-- **Type safety** �?Define DTO types before using in components
-- **UI Framework lock-in** �?Once Phase 0 selects a UI framework (e.g., Ant Design), ALL components MUST use that framework. Never mix Element Plus buttons with Ant Design tables
-- **Default stack** �?If no UI framework specified, use Ant Design for B2B/admin, Tailwind CSS for branded web
-- **MVP exemptions** �?No SSR, no PWA, no complex state hydration. Keep it simple.
-- **Axios baseURL** �?Always use env var `VITE_API_BASE_URL`, default to `/api`
-- **Mock env setup** �?Development: `VITE_API_BASE_URL=http://localhost:3001/api`；Production: `/api`
-- **Visual verification is MANDATORY** �?`toBeVisible()` is NOT enough. Every page MUST have computed style assertions. Key pages MUST have visual regression screenshots. Agent cannot claim "done" based solely on DOM text assertions.
-- **VISUAL_PENDING �?DONE** �?Modifying CSS or layout �?mark VISUAL_PENDING, not DONE. Only human eyes can confirm visual correctness. Autonomously claiming visual correctness is a P0 error.
-- **Computed styles are deterministic** �?`toHaveCSS('color', 'rgb(...)')` is reliable and doesn't need AI vision. Use it aggressively.
-- **Screenshot retries** �?Visual regression failures due to font/OS differences can be retried once. Second failure �?VISUAL_PENDING.
-- **🇨🇳 中文编码规范（复盘问题B）** �?placeholder/label 等 HTML 属性值禁止使用 U+201C/U+201D（“”），一律用 ASCII 双引号 `"` 包裹。Write 每个 .tsx 后执行 `grep -rnP '[\x{fffd}]' <file>` 自检，发现 � 损坏字符必须立即修复。参考 `.qoder/skills/references/encoding-guard.md`。
+- **Mock URL** — 在 `.env.development` 设置 `VITE_API_BASE_URL`
+- **Auth token** — accessToken 仅内存，refreshToken 存 sessionStorage（脚手架 `stores/auth.ts`）
+- **Response envelope** — 统一 `{ success, data, message }`；service 层返回 `res.data.data`
+- **Error handling** — service 抛错，UI 捕获后 `showError`，禁止空 `.catch(() => {})`
+- **UI lock-in** — 一旦选定 shadcn/ui，所有组件 MUST 用它，禁止混用 Ant Design 组件
+- **默认栈** — 未指定时用 shadcn/ui + Liquid Glass
+- **MVP exemptions** — No SSR, no PWA, no complex state hydration. Keep it simple.
+- **Axios** — 只用 `src/lib/api.ts` 的单例；禁止再 `axios.create()`
+- **Visual verification is MANDATORY** — `toBeVisible()` 不够，关键页面必须有 computed style 断言 + 截图基线
+- **VISUAL_PENDING → DONE** — 改 CSS/布局 → 标 VISUAL_PENDING，不自行 DONE
+- **🇨🇳 中文编码规范** — placeholder/label 等 HTML 属性值禁止使用 U+201C/U+201D，一律用 ASCII 双引号 `"`；Write 后 `grep -rnP '[\x{fffd}]' <file>` 自检
 
 ---
 
-# 前端三层测试（FT1-FT3�?
-
-> 白皮�?v2.5 定义的前端三层测试体系，覆盖组件渲染、交互行为、页面流程�?
+# 前端三层测试（FT1-FT3）
 
 | 层级 | 测试类型 | 工具 | 覆盖目标 |
 |------|---------|------|---------|
-| **FT1** | 组件单元测试 | Vitest + @testing-library/react | 组件渲染、props、事件、slot、hook |
-| **FT2** | 页面交互测试 | Vitest + @testing-library/react + Mock API | 表单验证、状态管理、路由跳转、API 调用 |
-| **FT3** | 端到端流程测�?| Playwright | 完整用户旅程、跨页面流程、真实浏览器渲染 |
+| **FT1** | 组件单元测试 | Vitest + @testing-library/react | 渲染、props、事件、hook |
+| **FT2** | 页面交互测试 | Vitest + @testing-library/react + Mock API | 表单、状态、路由、API 调用 |
+| **FT3** | 端到端流程测试 | Playwright | 完整用户旅程、跨页面、真实浏览器 |
 
-**测试文件位置**�?
-```
+```text
 src/__tests__/
-├── components/      # FT1: 组件单元测试
-├── pages/           # FT2: 页面交互测试
-└── e2e/             # FT3: Playwright 端到端测�?
+├── components/      # FT1
+├── pages/           # FT2
+└── e2e/             # FT3
 ```
 
 ---
 
-# Mock 连接与验证规�?
+# Mock 连接与验证规则
 
-## 环境变量配置
+## 环境变量
 
 ```env
 # .env.development
-VITE_API_BASE_URL=http://localhost:3001/api
+VITE_API_BASE_URL=http://localhost:3000
 
 # .env.production
 VITE_API_BASE_URL=/api
 ```
 
-## API 配置切换（api.config.ts�?
-
-```typescript
-// src/api/config.ts
-export const apiConfig = {
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
-  // 按模块映�?baseURL，支持逐模块切�?Mock �?Real
-  moduleBaseURL: {
-    auth: import.meta.env.VITE_API_AUTH_URL || import.meta.env.VITE_API_BASE_URL || '/api',
-    user: import.meta.env.VITE_API_USER_URL || import.meta.env.VITE_API_BASE_URL || '/api',
-    // Stage4 联调时逐个模块切换�?
-    // user: 'http://localhost:3000/api',  // 切换到真实后�?
-  }
-};
-```
-
 ## Mock 持续验证
 
-开发期间每�?`bun run dev` 时自动验�?Mock 契约�?
 ```json
 {
   "scripts": {
@@ -834,319 +711,129 @@ export const apiConfig = {
 }
 ```
 
-> Mock drift 超过 24h �?前端标记 BLOCKED �?等待 Mock 同步
+> Mock drift 超过 24h → 前端标记 BLOCKED，等待 Mock 同步。
 
 ---
 
-# 视觉自验证协议（Visual Self-Verification Protocol�?
+# 视觉自验证协议（Visual Self-Verification Protocol）
 
-> **核心问题**：LLM 无视觉能力，不能"�?到渲染结果。Playwright �?`toBeVisible()` 只检查元素存在于 DOM，不检�?CSS 布局是否正确、颜色是否匹配、元素是否被遮挡。Agent 声称"改好�?但实际页面错乱，根源在此�?
+> **核心问题**：LLM 不能"看到"渲染结果。`toBeVisible()` 只检查元素存在于 DOM，不检查 CSS 布局/颜色/遮挡。三道自动化防线，全部确定性可验证。
 
-> **解决方案**：三道自动化防线，不依赖 AI 视觉，全部确定性可验证�?
+> **Playwright 基础设施**：配置、截图基线、浏览器实例池、storageState 复用由 `kf-mvp-playwright-infra` 管理。
 
----
-
-> **Playwright 基础设施**：`playwright.config.ts` 配置、截图基线管理、浏览器实例池、storageState 复用统一由 `kf-mvp-playwright-infra` 管理。Playwright API 核心约定（locator 优先级、等待策略、网络拦截）见该技能 Section 8。
-
-## 防线 1：Computed Style 断言（MUST �?每个页面组件�?
-
-Playwright 可读取浏览器实际渲染�?computed styles。这些是**确定性数�?*，LLM 可直接验证：
+## 防线 1：Computed Style 断言（每个页面）
 
 ```typescript
 // tests/visual/<page>.visual.spec.ts
-import { test, expect } from '@playwright/test';
+import { expect, test } from "@playwright/test"
 
-test.describe('Dashboard Page �?Visual Verification', () => {
+test.describe("Dashboard Page — Visual Verification", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/dashboard');
-    await page.waitForLoadState('networkidle');
-  });
+    await page.goto("/dashboard")
+    await page.waitForLoadState("networkidle")
+  })
 
-  // ====== 关键元素样式断言 ======
+  test("primary button follows Liquid Glass tokens", async ({ page }) => {
+    const btn = page.locator(".btn-primary").first()
+    // Dark 默认主题 Qoder Green #22c55e = rgb(34, 197, 94)
+    await expect(btn).toHaveCSS("background-color", "rgb(34, 197, 94)")
+    const radius = await btn.evaluate(
+      (el) => getComputedStyle(el).borderRadius
+    )
+    expect(radius).not.toBe("0px")
+  })
 
-  test('primary button should have correct colors', async ({ page }) => {
-    const btn = page.locator('.btn-primary').first();
-    await expect(btn).toHaveCSS('background-color', 'rgb(59, 130, 246)');
-    await expect(btn).toHaveCSS('color', 'rgb(255, 255, 255)');
-    await expect(btn).toHaveCSS('border-radius', '6px');
-    await expect(btn).toHaveCSS('font-size', '14px');
-  });
+  test("glass card has 12px radius and blur", async ({ page }) => {
+    const card = page.locator(".glass-card").first()
+    await expect(card).toHaveCSS("border-radius", "12px")
+    const backdrop = await card.evaluate(
+      (el) => getComputedStyle(el).backdropFilter
+    )
+    expect(backdrop).toContain("blur(12px)")
+  })
 
-  test('page header should have correct layout', async ({ page }) => {
-    const header = page.locator('.page-header');
-    await expect(header).toHaveCSS('display', 'flex');
-    await expect(header).toHaveCSS('justify-content', 'space-between');
-    await expect(header).toHaveCSS('align-items', 'center');
-
-    // 最小高�?
-    const box = await header.boundingBox();
-    expect(box!.height).toBeGreaterThanOrEqual(60);
-  });
-
-  // ====== 布局完整性断言 ======
-
-  test('no overlapping elements at standard resolutions', async ({ page }) => {
-    // 桌面�?1920x1080
-    await page.setViewportSize({ width: 1920, height: 1080 });
-    await page.waitForTimeout(500);
-    const overlaps1920 = await checkOverlaps(page);
-    expect(overlaps1920).toHaveLength(0);
-
-    // 笔记�?1366x768
-    await page.setViewportSize({ width: 1366, height: 768 });
-    await page.waitForTimeout(500);
-    const overlaps1366 = await checkOverlaps(page);
-    expect(overlaps1366).toHaveLength(0);
-  });
-
-  test('scrollbar only when content overflows', async ({ page }) => {
-    // 主内容区
-    const main = page.locator('main');
-    const hasScroll = await main.evaluate(el => el.scrollHeight > el.clientHeight);
-
-    if (hasScroll) {
-      await expect(main).toHaveCSS('overflow-y', /auto|scroll/);
-    }
-  });
-
-  // ====== 空状�?错误状态断言 ======
-
-  test('empty state should be centered', async ({ page }) => {
-    // 访问无数据页�?
-    await page.goto('/dashboard?empty=true');
-
-    const empty = page.locator('[data-testid="empty-state"]');
-    await expect(empty).toBeVisible();
-    await expect(empty).toHaveCSS('text-align', 'center');
-
-    // 空状态图标不应为 0x0
-    const icon = empty.locator('svg, img').first();
-    if (await icon.count() > 0) {
-      const box = await icon.boundingBox();
-      expect(box!.width).toBeGreaterThan(0);
-      expect(box!.height).toBeGreaterThan(0);
-    }
-  });
-
-  test('error banner should have red background', async ({ page }) => {
-    await page.goto('/dashboard?error=true');
-
-    const errorBanner = page.locator('[data-testid="error-banner"], .alert-error').first();
-    if (await errorBanner.count() > 0) {
-      const bg = await errorBanner.evaluate(el => getComputedStyle(el).backgroundColor);
-      // 红色系背景（rgb �?R 分量明显大于 G �?B�?
-      const match = bg.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
-      if (match) {
-        const r = parseInt(match[1]), g = parseInt(match[2]), b = parseInt(match[3]);
-        expect(r).toBeGreaterThan(g + 50);
-        expect(r).toBeGreaterThan(b + 50);
-      }
-    }
-  });
-
-  // ====== z-index 层级断言 ======
-
-  test('modal should be above overlay', async ({ page }) => {
-    await page.locator('[data-testid="btn-open-modal"]').click();
-    await page.waitForSelector('.modal');
-
-    const overlayZ = await page.locator('.modal-overlay').evaluate(el => parseInt(getComputedStyle(el).zIndex) || 0);
-    const modalZ = await page.locator('.modal').evaluate(el => parseInt(getComputedStyle(el).zIndex) || 0);
-
-    expect(modalZ).toBeGreaterThan(overlayZ);
-  });
-});
-
-// ====== 通用工具：重叠检�?======
-
-async function checkOverlaps(page) {
-  const overlaps = await page.evaluate(() => {
-    const results: string[] = [];
-    const selectors = ['.card', '.panel', '.sidebar', '.modal', '[data-testid]'];
-    for (const sel of selectors) {
-      const elements = document.querySelectorAll(sel);
-      for (let i = 0; i < elements.length; i++) {
-        for (let j = i + 1; j < elements.length; j++) {
-          const a = elements[i].getBoundingClientRect();
-          const b = elements[j].getBoundingClientRect();
-          if (a.width === 0 || b.width === 0) continue; // skip hidden
-          if (!(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom)) {
-            results.push(`${sel}[${i}] �?${sel}[${j}]`);
-          }
-        }
-      }
-    }
-    return results;
-  });
-  return overlaps;
-}
+  test("page header layout", async ({ page }) => {
+    const header = page.locator("header").first()
+    await expect(header).toHaveCSS("display", "flex")
+    const box = await header.boundingBox()
+    expect(box!.height).toBeGreaterThanOrEqual(56)
+  })
+})
 ```
 
-**必须覆盖�?computed style 检查项**�?
+**必覆盖的 computed style 维度**：
 
-| 检查类�?| 关键属�?| 适用场景 |
-|---------|---------|---------|
-| **颜色** | `background-color`, `color`, `border-color` | 按钮、标签、告警、状态指示器 |
-| **尺寸** | `width`, `height`, `min-height`, `max-width` | 容器、卡片、图片、头�?|
-| **间距** | `padding`, `margin`, `gap` | 列表、网格、表单组 |
-| **排版** | `font-size`, `font-weight`, `line-height`, `text-align` | 标题、正文、标�?|
-| **布局** | `display`, `flex-direction`, `justify-content`, `align-items` | 页面框架、工具栏、卡片组 |
-| **定位** | `position`, `z-index`, `top/right/bottom/left` | 模态框、下拉菜单、固定导航栏 |
-| **边框** | `border-radius`, `border-width`, `border-style` | 卡片、按钮、输入框 |
+| 类别 | 关键属性 | 场景 |
+|------|---------|------|
+| 颜色 | `background-color`、`color`、`border-color` | 按钮、标签、告警、状态 |
+| 尺寸 | `width`、`height`、`min-height` | 容器、卡片、图片 |
+| 间距 | `padding`、`margin`、`gap` | 列表、网格、表单组 |
+| 排版 | `font-size`、`font-weight`、`line-height` | 标题、正文、标签 |
+| 布局 | `display`、`flex-direction`、`justify-content` | 页面框架、工具栏 |
+| 定位 | `position`、`z-index` | 弹窗、下拉、固定导航 |
+| 边框 | `border-radius`、`border-width` | 卡片（12px）、按钮、输入框 |
 
----
-
-## 防线 2：视觉回归快照（自动像素对比�?
-
-Playwright 内置 `toHaveScreenshot()` 进行像素级对比。首次运行生成基线，后续自动对比�?
+## 防线 2：视觉回归快照
 
 ```typescript
-// tests/visual/<page>.screenshot.spec.ts
-import { test, expect } from '@playwright/test';
-
-test.describe('Visual Regression �?Dashboard', () => {
-  // 关键页面/状态截�?
-
-  test('dashboard main view', async ({ page }) => {
-    await page.goto('/dashboard');
-    await page.waitForLoadState('networkidle');
-    await expect(page).toHaveScreenshot('dashboard-main.png', {
-      fullPage: false,        // 仅视口，非全�?
-      maxDiffPixels: 100,     // 允许 100 像素差异（字体渲染差异容差）
-    });
-  });
-
-  test('dashboard empty state', async ({ page }) => {
-    await page.goto('/dashboard?empty=true');
-    await page.waitForLoadState('networkidle');
-    await expect(page).toHaveScreenshot('dashboard-empty.png');
-  });
-
-  test('modal open state', async ({ page }) => {
-    await page.goto('/dashboard');
-    await page.locator('[data-testid="btn-create"]').click();
-    await page.waitForSelector('.modal');
-    await expect(page).toHaveScreenshot('modal-create.png');
-  });
-
-  test('form validation errors', async ({ page }) => {
-    await page.goto('/dashboard');
-    await page.locator('[data-testid="btn-create"]').click();
-    await page.locator('[data-testid="btn-submit"]').click(); // 空表单提�?
-    await page.waitForSelector('.error-message');
-    await expect(page).toHaveScreenshot('form-validation.png');
-  });
-});
+test("dashboard main view", async ({ page }) => {
+  await page.goto("/dashboard")
+  await page.waitForLoadState("networkidle")
+  await expect(page).toHaveScreenshot("dashboard-main.png", {
+    maxDiffPixels: 100,
+  })
+})
 ```
-
-**基线管理**�?
 
 ```bash
-# 首次：生成基线截图（在本地有头浏览器运行�?
+# 首次生成基线（本地有头）
 bunx playwright test --project=chromium-headed --update-snapshots
-
-# CI：对比基线（无头浏览器）
+# CI 对比
 bunx playwright test --project=chromium-headless
-
-# 基线存储在版本控制中
-tests/visual/
-├── dashboard-main-snapshots/
-�?  └── dashboard-main.png          # 黄金基线（提交到 Git�?
-├── dashboard-empty-snapshots/
-�?  └── dashboard-empty.png
-└── ...
 ```
 
-> ⚠️ **假阳性处�?*：不�?OS/字体可能导致像素差异。设�?`maxDiffPixels: 100` 容忍微小差异。超过阈值的差异标记�?VISUAL_REGRESSION �?Agent 必须修复�?
-
----
-
-## 防线 3：DOM 结构快照（A11y Tree�?
-
-比像素对比更稳定，不受字体渲染影响，能发现结构性布局问题�?
+## 防线 3：DOM 结构快照（A11y Tree）
 
 ```typescript
-import { test, expect } from '@playwright/test';
-
-test('dashboard a11y structure', async ({ page }) => {
-  await page.goto('/dashboard');
-  await page.waitForLoadState('networkidle');
-
-  // 获取完整可访问性树（只含可见元素的结构化描述）
-  const snapshot = await page.accessibility.snapshot();
-
-  // 验证关键区域存在
-  const roles = extractRoles(snapshot);
-  expect(roles).toContain('navigation');  // 导航�?
-  expect(roles).toContain('main');        // 主内容区
-  expect(roles).toContain('heading');     // 页面标题
-
-  // 存储快照用于回归对比
-  expect(snapshot).toMatchSnapshot('dashboard-a11y-tree.json');
-});
-
-function extractRoles(node: any, roles: string[] = []): string[] {
-  if (node.role) roles.push(node.role);
-  if (node.children) {
-    for (const child of node.children) {
-      extractRoles(child, roles);
-    }
-  }
-  return roles;
-}
+test("dashboard a11y structure", async ({ page }) => {
+  await page.goto("/dashboard")
+  await page.waitForLoadState("networkidle")
+  const snapshot = await page.accessibility.snapshot()
+  expect(snapshot).toMatchSnapshot("dashboard-a11y-tree.json")
+})
 ```
 
----
+## 开发完成即执行（Agent 强制流程）
 
-## 开发完成即执行（Agent 强制流程�?
-
-**每个前端页面/组件开发完成后，Agent 必须执行以下步骤才能标记 DONE�?*
-
-```
+```text
 1. 启动 dev server
-   bunx --bun vite --port 5173 &
-
-2. 运行 computed style 断言
-   bunx playwright test tests/visual/<page>.visual.spec.ts
-   �?全部 PASS 才继�?
-
-3. 运行视觉回归快照
-   bunx playwright test tests/visual/<page>.screenshot.spec.ts
-   �?首次运行自动生成基线；后续运行对比基�?
-
-4. 运行布局完整性检�?
-   bunx playwright test tests/visual/<page>.visual.spec.ts -g "overlapping"
-   �?无重叠元�?
-
-5. 产出视觉验证报告 �?写入 Done 文件 visual_verification 字段
+2. 运行 computed style 断言 → 全部 PASS
+3. 运行视觉回归快照 → 首次生成基线，后续对比
+4. 运行布局重叠检查 → 无重叠
+5. 视觉验证报告写入 DONE 文件 visual_verification 字段
 ```
 
----
+## VISUAL_PENDING 状态
 
-## VISUAL_PENDING 状�?
-
-当修改涉及以下内容时，Agent **不能自行标记 DONE**，必须标�?`VISUAL_PENDING`�?
-
-| 变更类型 | 状�?| 解除条件 |
+| 变更类型 | 状态 | 解除条件 |
 |---------|------|---------|
-| 修改 .css / scoped style | VISUAL_PENDING | 人类审核截图 �?改标 DONE |
-| 新增/修改组件布局结构 | VISUAL_PENDING | 人类审核截图 �?改标 DONE |
-| 新增/修改动画/过渡 | VISUAL_PENDING | 人类审核截图 �?改标 DONE |
-| 纯逻辑修复（hook/api/store�?| 可自�?DONE | 所�?computed style 断言通过 |
-| 纯文�?文案修改 | 可自�?DONE | 所�?computed style 断言通过 |
+| 修改 .css / 布局结构 | VISUAL_PENDING | 人类审核截图 |
+| 新增/修改动画/过渡 | VISUAL_PENDING | 人类审核截图 |
+| 纯逻辑修复（hook/service/store） | 可自标 DONE | computed style 断言通过 |
+| 纯文案修改 | 可自标 DONE | computed style 断言通过 |
 
-**VISUAL_PENDING 标记模板**（写入模块目录下�?`VISUAL_PENDING` 文件）：
 ```yaml
+# VISUAL_PENDING 文件模板
 module: dashboard
 agent: frontend-dev-1
 status: VISUAL_PENDING
-reason: "CSS layout changed, header + sidebar + main area restructured"
+reason: "CSS layout changed"
 screenshots:
   before: "screenshots/dashboard-before.png"
   after: "screenshots/dashboard-after.png"
   diff: "screenshots/dashboard-diff.png"
 computed_style_checks_passed: true
-visual_regression_passed: false  # 布局变更，需要人类确�?
+visual_regression_passed: false
 review_url: "http://localhost:5173/dashboard"
-human_action: "请打开 review_url 查看视觉效果，确认无误后删除此文件并创建 DONE"
+human_action: "请打开 review_url 确认视觉效果，无误后删除此文件并创建 DONE"
 ```

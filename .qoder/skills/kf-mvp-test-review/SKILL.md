@@ -25,7 +25,7 @@ graph:
 
 **Default Tech Stack Context**: 
 - Backend: Node.js + Hono + Drizzle ORM + SQLite
-- Frontend: Vue 3 + Vite + Pinia + Vue Router + Axios
+- Frontend: React 19 + Vite 8 + Zustand + React Router 7 + Axios
 - Testing: Vitest + Playwright
 - Third-party: ALL Mock
 

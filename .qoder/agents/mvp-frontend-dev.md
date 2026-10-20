@@ -20,10 +20,11 @@ skills:
 
 ## Output
 ```
-src/views/<page>.tsx        # 页面组件
-src/components/<comp>.tsx   # 公共组件
-src/composables/<hook>.ts   # 组合式函数
-src/api/<module>.ts         # API 调用封装
+src/pages/<Page>.tsx        # 页面组件（必须在 App.tsx 中 React.lazy 注册）
+src/components/<comp>.tsx   # 公共组件（ui/ + shared/）
+src/hooks/use<Module>.ts    # 自定义 Hooks
+src/services/<module>.ts    # 网络层（唯一可 import @/lib/api）
+src/lib/menu-config.ts      # 侧边栏 + ⌘K 索引（新增页面必改）
 ```
 
 ## 执行流程
@@ -34,7 +35,7 @@ src/api/<module>.ts         # API 调用封装
    → **禁止**：不扫描就直接 bun create vite
 1. 读取分配的页面/模块定义
 2. 读取 `api-contract.yaml` 中相关端点
-3. 创建 API 调用封装层（指向 Mock 服务）
+3. 创建 service 层（`src/services/`，指向 Mock 服务；UI 层禁止直连 api/axios）
 4. 开发页面组件：列表页 + 详情页 + 表单页
 5. 抽取公共组件到 `src/components/`
 6. 配置路由
@@ -112,11 +113,12 @@ src/api/<module>.ts         # API 调用封装
 ## Constraints
 - 不改动其他 Agent 负责的页面
 - 不修改后端代码
-- UI 框架遵循用户指定或默认（shadcn/ui / Ant Design / 自建）
+- UI 框架默认 shadcn/ui（radix-nova）+ Liquid Glass，禁止混用其他框架
 - API 调用封装必须与 `api-contract.yaml` 严格一致
 - **HTML 属性值禁止使用中文引号** (U+201C/U+201D)，统一用 ASCII 双引号 `"` 包裹 placeholder/label 等
 - **Write 后强制自检**：每个 .tsx 文件 Write 完成后立即 grep `\ufffd`，发现损坏字符必须修复
-- **规则遵从**：遵守 `gate-rules.yaml` 中适用于 frontend-dev 的规则（R002,R004,R012,R015,R018,R019,R021）。开发完成后运行 `check-stage3-gate.ps1` 自检。血案见 PLAYBOOK.md
+- **架构分层**：UI 层（pages/components）禁止直连 `@/lib/api`/axios/fetch，必须经 `src/services/`；禁止直连 sonner，必须经 `@/lib/toast`；页面必须 `React.lazy`
+- **规则遵从**：遵守 `gate-rules.yaml` 中适用于 frontend-dev 的规则（R002,R004,R012,R015,R018,R019,R021,R022,R023,R024,R025,R026,R027）。开发完成后运行 `check-stage3-gate.ps1` + `check-liquid-glass-style.ps1` 自检。血案见 PLAYBOOK.md
 
 ## 开发自检清单（每完成一个页面必答 — v2.16 反模式雷达）
 
@@ -135,3 +137,10 @@ src/api/<module>.ts         # API 调用封装
 5. **CSS 副作用（v2.17）**：修改了共享 UI 组件（Field/Button/Modal/Dialog 等）吗？
    → 必须验证其 CSS 变体（*:w-full、flex-col 等）不破坏 Checkbox/Radio/Switch/Toggle 等非标准控件
    → Preview 亲眼检查弹窗/表单全貌，而非仅看修改的那一行
+
+6. **Liquid Glass 风格（v2.20）**：颜色/字体/圆角/玻璃拟态是否符合设计体系？
+   → 颜色只用 `--lg-*` 变量或主题类，禁止硬编码 hex/rgba
+   → 标题 `font-heading`、正文 `font-body`、数据 `font-mono`
+   → 卡片 `12px` 圆角（禁止 `rounded-lg`）+ 玻璃类 `.glass-card`/`.matte-card`
+   → 弹窗/下拉必须有 `backdrop-blur(12px)`
+   → 跑 `bun run arch:check` + `check-liquid-glass-style.ps1`
