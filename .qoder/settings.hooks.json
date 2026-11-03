@@ -1,0 +1,17 @@
+{
+  "_comment": "all-in-mvp 门禁 hooks 模板 — 由 bootstrap-all-in-mvp.ps1 写入工作区 .qoder/settings.json（仅当该文件不存在时）。若工作区已有 settings.json，请把 hooks 段手工并入。",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/quality-gate-hook.ps1",
+            "timeout": 20
+          }
+        ]
+      }
+    ]
+  }
+}

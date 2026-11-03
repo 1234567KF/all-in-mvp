@@ -75,6 +75,18 @@ Copy-Asset -Name "gate-rules.yaml" -Source (Join-Path $FrameworkHome "gate-rules
 Copy-Asset -Name "PLAYBOOK.md" -Source (Join-Path $FrameworkHome "PLAYBOOK.md") -Destination (Join-Path $TargetDir ".qoder\PLAYBOOK.md")
 Copy-Asset -Name "rules/quality-gate.md" -Source (Join-Path $FrameworkHome "rules\quality-gate.md") -Destination (Join-Path $TargetDir ".qoder\rules\quality-gate.md")
 
+# ── 1b. hooks 配置（永不覆盖已有 settings.json，只在新工作区落地）──────
+$settingsDst = Join-Path $TargetDir ".qoder\settings.json"
+$settingsSrc = Join-Path $FrameworkHome "settings.hooks.json"
+if (Test-Path $settingsDst) {
+    $results += [PSCustomObject]@{ Asset = "settings.json"; Status = "SKIPPED"; Path = $settingsDst }
+} elseif (Test-Path $settingsSrc) {
+    Copy-Item -Path $settingsSrc -Destination $settingsDst -Force
+    $results += [PSCustomObject]@{ Asset = "settings.json (hooks)"; Status = "COPIED"; Path = $settingsDst }
+} else {
+    $results += [PSCustomObject]@{ Asset = "settings.hooks.json"; Status = "MISSING_SOURCE"; Path = $settingsSrc }
+}
+
 # ── 2. 门禁脚本 ────────────────────────────────────────────────
 $scriptSrc = Join-Path $FrameworkHome "scripts"
 if (Test-Path $scriptSrc) {
@@ -95,7 +107,10 @@ if (Test-Path $agentSrc) {
     $results += [PSCustomObject]@{ Asset = "agents/"; Status = "MISSING_SOURCE"; Path = $agentSrc }
 }
 
-# ── 4. React 权威脚手架 ────────────────────────────────────────
+# ── 4. 技能共享 references（21 个 kf-mvp-* 技能按此路径加载技术栈/模板）──
+Copy-Asset -Name "skills/references/" -Source (Join-Path $FrameworkHome "skills\references") -Destination (Join-Path $TargetDir ".qoder\skills\references") -IsDirectory
+
+# ── 5. React 权威脚手架 ────────────────────────────────────────
 if (-not $SkipScaffold) {
     Copy-Asset -Name "starters/liquid-glass-frontend/" -Source (Join-Path $FrameworkHome "starters\liquid-glass-frontend") -Destination (Join-Path $TargetDir "starters\liquid-glass-frontend") -IsDirectory
 }

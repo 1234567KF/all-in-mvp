@@ -3,7 +3,7 @@ name: mvp-pipeline-monitor
 description: Read-only pipeline monitor for MVP. Scans file system to output structured pipeline execution status reports and health scores. Use when pipeline is running and monitoring is needed.
 tools: Read, Bash, Grep, Glob
 skills:
-  - kf-mvp-monitoring
+  - kf-pipeline-coordinator
 ---
 
 # Pipeline Monitor — MVP Pipeline 执行监控 Agent

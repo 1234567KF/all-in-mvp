@@ -3,7 +3,7 @@ name: mvp-debug-fixer
 description: Root cause analysis agent for MVP Stage 4. Only handles unassigned bugs — locates the responsible module, then routes back to the original dev agent via module_agent_map. Does NOT fix bugs directly unless the original dev agent is unavailable. Use when a bug's module origin cannot be determined from test logs.
 tools: Read, Write, Edit, Bash, Grep, Glob
 skills:
-  - kf-mvp-debug
+  - kf-mvp-error-handling
   - kf-mvp-code-review
 ---
 

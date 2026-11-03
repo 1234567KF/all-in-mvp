@@ -4,7 +4,7 @@ description: System architect for MVP Stage 2.1. Designs system architecture, da
 tools: Read, Write, Edit, Bash, Grep, Glob
 skills:
   - kf-mvp-arch-expert
-  - kf-mvp-spec-generator
+  - kf-mvp-schema-design
 ---
 
 # Architecture Agent — MVP Pipeline Stage 2.1

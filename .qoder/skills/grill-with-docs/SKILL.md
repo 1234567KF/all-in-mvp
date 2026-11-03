@@ -20,14 +20,14 @@ graph:
 - Testing: Vitest + Playwright
 - Third-party: ALL Mock
 
-Load `references/mvp-tech-stack-default.md` for full specification.
+Load `.qoder/skills/references/mvp-tech-stack-default.md` for full specification.
 
 
 # Grill-with-Docs — 拷问审查循环技能
 
 > **Core Belief**: The only way to catch inconsistency between architectural specs and business requirements is to force them to confront each other. Grill relentlessly until all gaps are exposed.
 
-**Division of Labor**: This Skill focuses on the **cross-verification workflow** — reading both sets of artifacts, running comparison checks, and generating actionable issue reports. File engineering conventions follow `references/file-engineering-spec.md`.
+**Division of Labor**: This Skill focuses on the **cross-verification workflow** — reading both sets of artifacts, running comparison checks, and generating actionable issue reports. File engineering conventions are owned by the `kf-skill-design-expert` skill; read its `references/file-engineering-spec.md` from that skill's own directory rather than a workspace path.
 
 ---
 

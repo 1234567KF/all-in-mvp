@@ -37,8 +37,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\.qoder\scr
 **补齐清单**：
 
 - `.qoder/gate-rules.yaml`、`.qoder/PLAYBOOK.md`、`.qoder/rules/quality-gate.md`
+- `.qoder/settings.json`（仅当工作区没有该文件时写入 hooks；已存在需手工并入 `hooks.PostToolUse`）
 - `.qoder/scripts/check-*.ps1`（全部门禁脚本）
 - `.qoder/agents/mvp-*.md`（Qoder 子 Agent）
+- `.qoder/skills/references/`（技术栈默认值 + PRD/字段/边界规则，21 个技能按此路径加载）
 - `starters/liquid-glass-frontend/`（React 19 + shadcn/ui + Liquid Glass 权威脚手架）
 
 > 已存在默认跳过；需要覆盖加 `-Force`；只想补门禁资产加 `-SkipScaffold`。
@@ -1319,7 +1321,7 @@ Agent({ subagent_type: 'mvp-grill-review',   description: '交叉审查', prompt
 - [ ] `integration-tests/modules/` 已产出
 - [ ] `integration-tests/scenarios/` 已产出
 - [ ] ③c 测试用例静态审查通过（无 ERROR）
-- [x] **E2E Quality Gate 脚本通过（v2.12）**：运行 `powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/skills/all-in-mvp/scripts/e2e-quality-gate.ps1 --all` 必须返回 PASS（退出码 0）。脚本检测 5 项硬指标（浏览器交互比/权限矩阵/双向断言/CRUD生命周期/断言质量），不依赖 LLM 记忆，直接扫描文件系统。
+- [x] **E2E Quality Gate 脚本通过（v2.12）**：运行 `powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/e2e-quality-gate.ps1 --all` 必须返回 PASS（退出码 0）。脚本检测 5 项硬指标（浏览器交互比/权限矩阵/双向断言/CRUD生命周期/断言质量），不依赖 LLM 记忆，直接扫描文件系统。
 
 ### 主 Agent 动作
 
@@ -1329,7 +1331,7 @@ Agent({ subagent_type: 'mvp-grill-review',   description: '交叉审查', prompt
 4. 审查产出卡片，逐项核对门禁清单
 5. **🔴 强制运行 E2E Quality Gate 脚本**（不可跳过）：
    ```powershell
-   powershell -ExecutionPolicy Bypass -File ".qoder/skills/all-in-mvp/scripts/e2e-quality-gate.ps1" --all
+   powershell -ExecutionPolicy Bypass -File ".qoder/scripts/e2e-quality-gate.ps1" --all
    ```
    脚本返回 FAIL（退出码 1）→ 🔴 禁止进入 Stage 3，必须回退修复 E2E 用例。
 6. 门禁全部通过 → 进入 Stage3
@@ -1348,7 +1350,7 @@ Agent({ subagent_type: 'mvp-grill-review',   description: '交叉审查', prompt
 | 4 | `task.md` | Glob("task.md") | 模块任务清单 |
 | 5 | `modules/` 目录 | Glob("modules/*.md") | 模块文档 |
 | 6 | `integration-tests/scenarios/` | Glob("integration-tests/scenarios/*.spec.ts") | **Stage 2 ③b-2 E2E 用例** |
-| **7** | **E2E Quality Gate 脚本 PASS** | **Bash: `powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/skills/all-in-mvp/scripts/e2e-quality-gate.ps1 --all`** | **v2.12 质量门禁探针** |
+| **7** | **E2E Quality Gate 脚本 PASS** | **Bash: `powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/e2e-quality-gate.ps1 --all`** | **v2.12 质量门禁探针** |
 
 ```
 执行检查（Agent 用 Glob + Bash 工具）：
@@ -1442,7 +1444,7 @@ Bug 修复进入
 ```
 
 **血案**：B020 修复模式绕过门禁 → 漏修 Checkbox 异常。B019 CSS `*:w-full` 副作用。
-**强制规则**：[quality-gate.md](../rules/quality-gate.md) — 审查清单 + [settings.json](../settings.json) `hooks.PostToolUse` — 文件路径命中即派发审查/契约校验/冒烟。
+**强制规则**：[quality-gate.md](.qoder/rules/quality-gate.md) — 审查清单 + [settings.json](.qoder/settings.json) `hooks.PostToolUse` — 文件路径命中即派发审查/契约校验/冒烟。
 
 ---
 
@@ -1708,7 +1710,7 @@ for i in {1..3}; do npx vitest run; done
 | 1 | `E2E_READY` 标记存在 | Glob("integration-tests/scenarios/E2E_READY") | Stage 3.5 完成标记 |
 | 2 | `E2E_READY` 中 `status: "READY"` | Read 确认内容 | ≥70 用例已通过 |
 | 3 | `contract-drift-log.md` 存在 | Glob("contract-drift-log.md") | 契约漂移已扫描 |
-| **4** | **E2E Quality Gate 脚本 PASS** | **Bash: `powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/skills/all-in-mvp/scripts/e2e-quality-gate.ps1 --all`** | **v2.12 质量门禁复查** |
+| **4** | **E2E Quality Gate 脚本 PASS** | **Bash: `powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/e2e-quality-gate.ps1 --all`** | **v2.12 质量门禁复查** |
 
 ```
 执行检查（Agent 用 Glob + Read + Bash 工具）：
@@ -2420,7 +2422,7 @@ const E2E_COVERAGE_CHECKER = {
 
 ## 强制规则索引（v2.15+ — 三层保障架构）
 
-> **规则定义**：[gate-rules.yaml](../gate-rules.yaml) — 单一真源 | **血案详情**：[PLAYBOOK.md](../PLAYBOOK.md) — 按需查阅
+> **规则定义**：[gate-rules.yaml](.qoder/gate-rules.yaml) — 单一真源 | **血案详情**：[PLAYBOOK.md](.qoder/PLAYBOOK.md) — 按需查阅
 > **门禁命令**：`powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/check-stage3-gate.ps1` / `check-stage4-gate.ps1` — 自动化 PASS/FAIL
 
 | ID | 版本 | 规则 | 严重度 | Stage | 门禁脚本 |

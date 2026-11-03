@@ -4,7 +4,6 @@ description: Stage4 integration coordinator for MVP. Orchestrates backend merge,
 tools: Read, Write, Edit, Bash, Grep, Glob
 skills:
   - kf-mvp-stage4-coordinator
-  - kf-mvp-integration
 ---
 
 # Stage4 Coordinator Agent — MVP Pipeline Stage 4

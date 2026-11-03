@@ -4,7 +4,6 @@ description: Product manager agent for MVP Stage 1. Converts user requirements i
 tools: Read, Write, Edit, Bash, Grep, Glob
 skills:
   - kf-mvp-prd-generator
-  - kf-mvp-product-manager
 ---
 
 # Product Manager Agent — MVP Pipeline Stage 1

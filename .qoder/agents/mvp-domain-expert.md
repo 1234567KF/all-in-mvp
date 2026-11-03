@@ -4,7 +4,6 @@ description: Domain expert for MVP Stage 2.2. Splits modules, defines boundaries
 tools: Read, Write, Edit, Bash, Grep, Glob
 skills:
   - kf-mvp-biz-expert
-  - kf-mvp-task-splitter
 ---
 
 # Domain Expert Agent — MVP Pipeline Stage 2.2

@@ -39,7 +39,7 @@ graph:
 - UI: shadcn/ui (radix-nova) + Tailwind CSS 4
 - Design System: **Liquid Glass** (see `DESIGN.md`)
 
-Load `references/mvp-tech-stack-default.md` for full specification.
+Load `.qoder/skills/references/mvp-tech-stack-default.md` for full specification.
 
 ---
 

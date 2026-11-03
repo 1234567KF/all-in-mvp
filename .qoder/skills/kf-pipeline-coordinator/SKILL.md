@@ -3,7 +3,7 @@ name: kf-pipeline-coordinator
 description: >-
   Load when user asks to coordinate, schedule, or dispatch modules to backend/frontend
   agents in MVP parallel development. Triggers: 调度, 分配任务, coordinator,
-  任务调度, 模块分配, parallel, 并行开�? Also load when backend/frontend
+  任务调度, 模块分配, parallel, 并行开发. Also load when backend/frontend
   agents need module assignments.
 metadata:
   pattern: pipeline
@@ -25,10 +25,10 @@ graph:
 - Testing: Vitest + Playwright
 - Third-party: ALL Mock
 
-Load `references/mvp-tech-stack-default.md` for full specification.
+Load `.qoder/skills/references/mvp-tech-stack-default.md` for full specification.
 
 
-# Pipeline Coordinator �?任务调度器技�?
+# Pipeline Coordinator — 任务调度器技能
 
 > **Core Belief**: Parallel development only works when dependencies are respected. The Coordinator is the single source of truth for who does what and when.
 
@@ -38,12 +38,12 @@ Load `references/mvp-tech-stack-default.md` for full specification.
 
 # Core Philosophy
 
-Derived from MVP Whitepaper Section 3.0 �?Pipeline Coordinator:
+Derived from MVP Whitepaper Section 3.0 — Pipeline Coordinator:
 
-1. **Dependency graph is law** �?Modules are scheduled based on dependency readiness, not convenience
-2. **Expert matching maximizes quality** �?Assign modules to agents with matching domains
-3. **Single source of truth** �?One Coordinator, one schedule, no ambiguity
-4. **Batch scheduling** �?Process modules in rounds, not one-by-one
+1. **Dependency graph is law** — Modules are scheduled based on dependency readiness, not convenience
+2. **Expert matching maximizes quality** — Assign modules to agents with matching domains
+3. **Single source of truth** — One Coordinator, one schedule, no ambiguity
+4. **Batch scheduling** — Process modules in rounds, not one-by-one
 
 ---
 
@@ -76,9 +76,9 @@ Each round:
 
 | Agent | Domain | Preferred Modules |
 |-------|--------|-------------------|
-| Backend-1 | 认证与权�?| user, role, organization, auth, jwt |
+| Backend-1 | 认证与权限 | user, role, organization, auth, jwt |
 | Backend-2 | 业务核心 | product, category, order, inventory |
-| Backend-3 | 工具与配�?| template, trace, code, file |
+| Backend-3 | 工具与配置 | template, trace, code, file |
 
 **Matching Rules**:
 1. Match module domain to agent domain
@@ -90,7 +90,7 @@ Each round:
 | Priority | Rule | Reason |
 |----------|-------|--------|
 | 1 | Modules with more dependents first | Avoid blocking long dependency chains |
-| 2 | Same priority �?alphabetical by name | Deterministic, same input = same output |
+| 2 | Same priority → alphabetical by name | Deterministic, same input = same output |
 
 ---
 
@@ -98,23 +98,23 @@ Each round:
 
 ```
 Each round:
-┌─────────────────────────────────────────�?
-�?Step 1: Dependency Graph Filter          �?
-�?  �?Find all modules ready to schedule  �?
-�?  (dependencies satisfied, not allocated)�?
-├─────────────────────────────────────────�?
-�?Step 2: Expert Matching                  �?
-�?  �?Assign matched domain agents         �?
-�?  �?Match success �?assign               �?
-�?  �?Match fail �?go to fallback          �?
-├─────────────────────────────────────────�?
-�?Step 3: Fallback Assignment              �?
-�?  �?Remaining modules �?any free agent    �?
-├─────────────────────────────────────────�?
-�?Step 4: Mark and Log                     �?
-�?  �?Mark modules as "allocated"          �?
-�?  �?Log assignment for tracking          �?
-└─────────────────────────────────────────�?
+┌─────────────────────────────────────────┐
+│ Step 1: Dependency Graph Filter          │
+│   → Find all modules ready to schedule  │
+│   (dependencies satisfied, not allocated)│
+├─────────────────────────────────────────┤
+│ Step 2: Expert Matching                  │
+│   → Assign matched domain agents         │
+│   → Match success → assign               │
+│   → Match fail → go to fallback          │
+├─────────────────────────────────────────┤
+│ Step 3: Fallback Assignment              │
+│   → Remaining modules → any free agent    │
+├─────────────────────────────────────────┤
+│ Step 4: Mark and Log                     │
+│   → Mark modules as "allocated"          │
+│   → Log assignment for tracking          │
+└─────────────────────────────────────────┘
 ```
 
 ---
@@ -938,20 +938,20 @@ n  alerts: {
 
 **Output**:
 ```markdown
-## 依赖图分�?
+## 依赖图分析
 
-| 模块 | 依赖模块 | 被依赖次�?| 是否就绪 |
+| 模块 | 依赖模块 | 被依赖次数 | 是否就绪 |
 |------|----------|------------|----------|
-| user | - | 2 | �?|
-| organization | - | 1 | �?|
-| product | user, organization | 1 | �?(等待依赖) |
-| template | user | 1 | �?(等待依赖) |
-| trace | product, template | 0 | �?(等待依赖) |
+| user | - | 2 | ✅ |
+| organization | - | 1 | ✅ |
+| product | user, organization | 1 | ❌ (等待依赖) |
+| template | user | 1 | ❌ (等待依赖) |
+| trace | product, template | 0 | ❌ (等待依赖) |
 
-**图结�?*:
-- Round 1 可调�? user, organization
-- Round 2 可调�? product, template
-- Round 3 可调�? trace
+**图结构**:
+- Round 1 可调度: user, organization
+- Round 2 可调度: product, template
+- Round 3 可调度: trace
 ```
 
 ---
@@ -969,23 +969,23 @@ n  alerts: {
 ```markdown
 ## Round 1 分配指令
 
-**Agent**: Backend-1 (认证与权限专�?
+**Agent**: Backend-1 (认证与权限专家)
 **分配模块**: user
 **模块路径**: src/modules/user/
-**验收标准**: �?kf-mvp-biz-expert/user.md
+**验收标准**: 见 kf-mvp-biz-expert/user.md
 
-**Agent**: Backend-1 (认证与权限专�?
+**Agent**: Backend-1 (认证与权限专家)
 **分配模块**: organization
 **模块路径**: src/modules/organization/
-**验收标准**: �?kf-mvp-biz-expert/organization.md
+**验收标准**: 见 kf-mvp-biz-expert/organization.md
 ```
 
 **Agent spawn instruction**:
 ```yaml
-# Agent 分配摘要（Coordinator �?Agent，用于降低上下文消耗）
+# Agent 分配摘要（Coordinator → Agent，用于降低上下文消耗）
 agent: Backend-1
-role: 后端开发专�?
-domain: 认证与权�?
+role: 后端开发专家
+domain: 认证与权限
 module: user
 apis:
   - GET /api/users
@@ -1000,13 +1000,13 @@ module_spec_path: src/modules/user.md
 integration_test: integration-tests/modules/user.test.ts
 ```
 
-> Agent 需要完整信息时通过文件路径按需读取 `<module>.md`。摘要版 YAML 降低上下文消耗�?
+> Agent 需要完整信息时通过文件路径按需读取 `<module>.md`。摘要版 YAML 降低上下文消耗。
 
 **完整执行指令**:
 ```
 Agent: Backend-1
-Role: 后端开发专�?
-Domain: 认证与权�?
+Role: 后端开发专家
+Domain: 认证与权限
 Assigned: user module
 
 Read: 
@@ -1031,9 +1031,9 @@ Execute TDD loop:
 **After each round, track**:
 
 ```markdown
-## 调度状�?
+## 调度状态
 
-| 模块 | 状�?| Agent | 完成时间 |
+| 模块 | 状态 | Agent | 完成时间 |
 |------|------|-------|----------|
 | user | ALLOCATED | Backend-1 | - |
 | organization | ALLOCATED | Backend-2 | - |
@@ -1061,32 +1061,32 @@ Execute TDD loop:
 
 ---
 
-### 每轮分配后：三检机制（MUST�?
+### 每轮分配后：三检机制（MUST）
 
-> 每轮分配完成后，Coordinator 必须执行「三检」，任一失败 �?写入 `SCHEDULER_ERROR.md` �?人类介入�?
+> 每轮分配完成后，Coordinator 必须执行「三检」，任一失败 → 写入 `SCHEDULER_ERROR.md` → 人类介入。
 
 | 检查项 | 验证内容 | 失败处理 |
 |--------|---------|---------|
-| **�?全集校验** | 已分配集�?+ 未分配集�?== 模块全集 | 漏分配或重复分配 �?ERROR |
-| **�?依赖校验** | 已分配模块的依赖是否全部 DONE | 依赖未满�?�?回退该模块为 UNALLOCATED |
-| **�?容量校验** | 本轮分配�?�?空闲 Agent �?| 超配 �?自动按优先级裁剪到空�?slot �?|
+| **① 全集校验** | 已分配集合 + 未分配集合 == 模块全集 | 漏分配或重复分配 → ERROR |
+| **② 依赖校验** | 已分配模块的依赖是否全部 DONE | 依赖未满足 → 回退该模块为 UNALLOCATED |
+| **③ 容量校验** | 本轮分配数 ≤ 空闲 Agent 数 | 超配 → 自动按优先级裁剪到空闲 slot 数 |
 
 ```typescript
-// 三检伪代�?
+// 三检伪代码
 function tripleCheck(assigned: Set<string>, unassigned: Set<string>, all: string[]): CheckResult {
-  // �?全集校验
+  // ① 全集校验
   if (assigned.size + unassigned.size !== all.length) {
-    return { pass: false, error: '全集校验失败：漏分配或重复分�? };
+    return { pass: false, error: '全集校验失败：漏分配或重复分配' };
   }
-  // �?依赖校验
+  // ② 依赖校验
   for (const mod of assigned) {
     if (!allDepsDone(mod)) {
-      return { pass: false, error: `依赖校验失败�?{mod} 的依赖未满足` };
+      return { pass: false, error: `依赖校验失败：${mod} 的依赖未满足` };
     }
   }
-  // �?容量校验
+  // ③ 容量校验
   if (assigned.size > availableSlots) {
-    return { pass: false, error: `容量校验失败：分�?${assigned.size} > 空闲 ${availableSlots}` };
+    return { pass: false, error: `容量校验失败：分配 ${assigned.size} > 空闲 ${availableSlots}` };
   }
   return { pass: true };
 }
@@ -1094,9 +1094,9 @@ function tripleCheck(assigned: Set<string>, unassigned: Set<string>, all: string
 
 ---
 
-### 状态持久化（pipeline-state.json�?
+### 状态持久化（pipeline-state.json）
 
-Coordinator 维护 `pipeline-state.json`，每次状态变更原子写入（先写临时文件 �?重命名）�?
+Coordinator 维护 `pipeline-state.json`，每次状态变更原子写入（先写临时文件 → 重命名）：
 
 ```json
 {
@@ -1127,40 +1127,40 @@ Coordinator 维护 `pipeline-state.json`，每次状态变更原子写入（先�
 }
 ```
 
-**崩溃恢复**：Coordinator 重启后读�?`pipeline-state.json`，恢复所�?slot 和模块状态�?
+**崩溃恢复**：Coordinator 重启后读取 `pipeline-state.json`，恢复所有 slot 和模块状态。
 
 ---
 
-### 数据竞争检�?
+### 数据竞争检测
 
-> 每个领域所有模�?DONE 后执行一次，检测多模块操作同一张表引发的潜在竞争�?
+> 每个领域所有模块 DONE 后执行一次，检测多模块操作同一张表引发的潜在竞争。
 
 ```
-触发条件：某个领域（认证/业务核心/工具配置）下所有模�?DONE
-  �?
+触发条件：某个领域（认证/业务核心/工具配置）下所有模块 DONE
+  ↓
 1. 提取该领域所有模块的 schema 定义
 2. 检测是否存在两个模块操作同一张表（即使操作不同字段）
 3. 检测外键关联表上的操作时序是否正确
-4. 发现潜在竞争 �?写入 race-condition-warnings.md
-  �?
-Stage4 联调重点验证 race-condition-warnings.md 中列出的�?
+4. 发现潜在竞争 → 写入 race-condition-warnings.md
+  ↓
+Stage4 联调重点验证 race-condition-warnings.md 中列出的项
 ```
 
-**race-condition-warnings.md 模板**�?
+**race-condition-warnings.md 模板**：
 ```markdown
 # Data Race Condition Warnings
 
-**检测时�?*: [ISO datetime]
-**检测领�?*: 业务核心
+**检测时间**: [ISO datetime]
+**检测领域**: 业务核心
 
 ## 潜在数据竞争
 
 | 表名 | 操作模块 A | 操作模块 B | 冲突类型 | 风险 |
 |------|-----------|-----------|---------|------|
-| products | product (WRITE) | trace (READ) | 读写竞争 | �?|
+| products | product (WRITE) | trace (READ) | 读写竞争 | 中 |
 
-## 建议验证�?
-- [ ] 并发场景�?product 写入同时 trace 读取的一致�?
+## 建议验证项
+- [ ] 并发场景下 product 写入同时 trace 读取的一致性
 ```
 
 ---
@@ -1172,7 +1172,7 @@ Stage4 联调重点验证 race-condition-warnings.md 中列出的�?
 **Write Protocol**:
 ```typescript
 // NEVER write directly to the final filename
-// ALWAYS: write .tmp �?atomic rename
+// ALWAYS: write .tmp → atomic rename
 import { writeFile, rename } from 'fs/promises';
 
 async function atomicWriteMarker(
@@ -1214,11 +1214,11 @@ async function scanMarkers(moduleDir: string): Promise<string[]> {
 ## 模块阻塞报告
 
 **阻塞模块**: trace
-**阻塞原因**: product 模块产出�?api-contract.yaml 不一�?
+**阻塞原因**: product 模块产出与 api-contract.yaml 不一致
 **建议处理**:
-1. 暂停 trace 开�?
-2. 优先修复 product 不一致问�?
-3. 重新同步后恢�?trace 开�?
+1. 暂停 trace 开发
+2. 优先修复 product 不一致问题
+3. 重新同步后恢复 trace 开发
 
 **决策**:
 - [ ] 继续等待 product 修复
@@ -1229,8 +1229,8 @@ async function scanMarkers(moduleDir: string): Promise<string[]> {
 ### Situation: Agent Unavailable
 
 **Fallback rules**:
-1. If matched agent unavailable �?assign to any available agent
-2. If no agents available �?queue module for next round
+1. If matched agent unavailable → assign to any available agent
+2. If no agents available → queue module for next round
 3. Never wait indefinitely for specific agent
 
 ---
@@ -1244,7 +1244,7 @@ After all modules scheduled:
 
 ## 分配历史
 
-| Round | 分配模块 | Agent | 状�?|
+| Round | 分配模块 | Agent | 状态 |
 |-------|----------|-------|------|
 | 1 | user, organization | Backend-1, Backend-2 | DONE |
 | 2 | product, template | Backend-2, Backend-3 | DONE |
@@ -1253,7 +1253,7 @@ After all modules scheduled:
 ## 关键路径
 
 最长的依赖链决定了总工期：
-user �?product �?trace (3�?
+user → product → trace (3轮)
 
 ## 并行效率
 
@@ -1303,7 +1303,7 @@ user �?product �?trace (3�?
 - Log all assignments for traceability
 - Handle exceptions explicitly
 - Detect VISUAL_PENDING markers and **do NOT** treat them as DONE
-- Notify human when VISUAL_PENDING files accumulate (�?2 unconfirmed)
+- Notify human when VISUAL_PENDING files accumulate (≥ 2 unconfirmed)
 - **Scan E2E_READY marker before entering Stage 4 (v2.10)**: ALL modules DONE + E2E_READY exists -> Stage 4 unlocked. Missing E2E_READY -> BLOCKED, trigger E2E-Adapt phase
 - **Track E2E coverage in pipeline-state.json (v2.10)**: Update e2e_state on each checkpoint save
 
@@ -1320,13 +1320,13 @@ user �?product �?trace (3�?
 
 # Gotchas
 
-- **Dependency is prerequisite, not preference** �?A module cannot start until all its dependencies are DONE
-- **Name stability** �?Sort by name for deterministic scheduling (same input = same output)
-- **Domain matching is soft** �?If no match available, fallback to any agent
-- **State lives in files** �?DONE/BLOCKED markers are the source of truth, not memory
-- **Coordinator is lightweight** �?It doesn't write code, just manages state and dispatches
-- **VISUAL_PENDING is NOT DONE (v2.5)** �?Frontend modules with VISUAL_PENDING markers are incomplete. Do NOT release their downstream dependencies. Send a prompt to human: "N 个前端页面等待视觉确认，请在浏览器中审核后删�?VISUAL_PENDING 文件并创�?DONE"
-- **VISUAL_PENDING accumulation alert** �?If �?2 VISUAL_PENDING files exist for > 30 min, escalate to human. This prevents pipeline stall from forgotten visual reviews.
+- **Dependency is prerequisite, not preference** — A module cannot start until all its dependencies are DONE
+- **Name stability** — Sort by name for deterministic scheduling (same input = same output)
+- **Domain matching is soft** — If no match available, fallback to any agent
+- **State lives in files** — DONE/BLOCKED markers are the source of truth, not memory
+- **Coordinator is lightweight** — It doesn't write code, just manages state and dispatches
+- **VISUAL_PENDING is NOT DONE (v2.5)** — Frontend modules with VISUAL_PENDING markers are incomplete. Do NOT release their downstream dependencies. Send a prompt to human: "N 个前端页面等待视觉确认，请在浏览器中审核后删除 VISUAL_PENDING 文件并创建 DONE"
+- **VISUAL_PENDING accumulation alert** — If ≥ 2 VISUAL_PENDING files exist for > 30 min, escalate to human. This prevents pipeline stall from forgotten visual reviews.
 - **E2E_READY is the Stage 4 gate (v2.10)**: Stage 3 -> Stage 4 transition requires ALL modules DONE AND integration-tests/scenarios/E2E_READY exists. Missing E2E_READY = pipeline stall. Coordinator MUST NOT advance to Stage 4 without it. If E2E_READY missing after all modules DONE, trigger E2E-Adapt phase.
 - **E2E coverage tracked in pipeline-state.json (v2.10)**: Every checkpoint save includes e2e_state with status/scenario_count/total_cases. Coordinator uses this to detect E2E gaps early.
 - **DONE markers should include E2E_SCENARIOS field (v2.10)**: When an agent marks a module DONE, the DONE file should optionally list which E2E scenario files cover this module. Example: {" e2e_scenarios\: [\workflows-internal.spec.ts\, \opportunities.spec.ts\]}. This helps Coordinator verify cross-module coverage.

@@ -3,9 +3,7 @@ name: mvp-verifier
 description: MSVP verification agent for MVP Stage 4. Performs mandatory smoke verification from real user perspective - cold start, menu completeness, core user journey, console error check, and A-class blocking bug detection. Use when all modules are integrated and ready for delivery verification.
 tools: Read, Write, Edit, Bash, Grep, Glob
 skills:
-  - kf-mvp-debug
   - kf-mvp-test-e2e
-  - kf-mvp-health-check
 ---
 
 # MSVP Verification Agent — 强制冒烟验证
