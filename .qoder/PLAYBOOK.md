@@ -12,8 +12,8 @@
 - **现象**：`check-token-sync.ps1` / `check-silent-catch.ps1` / `check-liquid-glass-style.ps1` 带 `-Json` 且真有违规时，输出
   `无法将值"System.String"转换为类型"SwitchParameter"`，且不产出 JSON；`sync-qoder-homes.ps1` 里 `foreach ($home in ...)` 直接抛
   `无法覆盖变量 HOME`；用 `-Json` 的调用方拿到空/脏 stdout 无法解析
-- **根因**：① PowerShell 变量名**不区分大小写** → 局部 `$json` 与 `param([switch]$Json)` 同名，赋值即类型冲突；② `$HOME` 是只读自动变量；③ 脚本用 `$ErrorActionPreference = "Continue"`，崩溃后继续走到末尾 `exit 0`；④ `-File` 下 `Write-Host` 与 JSON 混进同一 stdout；⑤ 取退出码时管道给了 `tail` → `$?` 永远是 tail 的 0，把 rc=1 读成 rc=0
-- **教训**：门禁脚本一律 `$ErrorActionPreference = "Stop"`（需要容错的具体 cmdlet 单独 `-ErrorAction SilentlyContinue`）；`-Json` 分支禁止任何 `Write-Host`；局部变量避开自动变量与开关同名（统一 `$detailsJson`）；**跳过必须报 SKIPPED 而不是 PASS**（`checked=0` / 无前端源码两种情形都已改）；测退出码必须先落盘再判，不许 `... | tail; echo $?`
+- **根因**：① PowerShell 变量名**不区分大小写** → 局部 `$json` 与 `param([switch]$Json)` 同名，赋值即类型冲突；② `$HOME` 是只读自动变量、`$matches` 是 `-match` 每轮都会被覆写的自动变量；③ 脚本用 `$ErrorActionPreference = "Continue"`，崩溃后继续走到末尾 `exit 0`；④ `-File` 下 `Write-Host` 与 JSON 混进同一 stdout（`check-api-path-source.ps1` 的两个 skip 分支就是漏掉 `-Json` 分支，把 `[SKIP]` 文本吐进了机器可读输出）；⑤ 取退出码时管道给了 `tail` → `$?` 永远是 tail 的 0，把 rc=1 读成 rc=0
+- **教训**：门禁脚本一律 `$ErrorActionPreference = "Stop"`（需要容错的具体 cmdlet 单独 `-ErrorAction SilentlyContinue`）；`-Json` 分支禁止任何 `Write-Host`；局部变量避开自动变量与开关同名（统一 `$detailsJson` / `$contractMatches` / `$homeDir`，并全仓 `grep -E '^\s*\$(Matches|Home|Host|Input|Error|PSItem)\s*='` 扫过一遍）；**跳过必须报 SKIPPED 而不是 PASS**（`checked=0` / 无前端源码 / 无 contract 文件三种情形都已改）；测退出码必须先落盘再判，不许 `... | tail; echo $?`
 
 ### B023 — 权威脚手架 arch-check.ts 在 Windows 上完全失效
 - **规则**：R022-R025（TS 侧权威实现，PowerShell 门禁镜像它）

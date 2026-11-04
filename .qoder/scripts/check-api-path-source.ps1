@@ -17,14 +17,18 @@ $contractFile = Join-Path $TargetDir $ContractFile
 if (Test-Path $contractFile) {
     $content = Get-Content $contractFile -Raw -ErrorAction SilentlyContinue
     $pathPattern = '^\s*(/\S+):\s*$'
-    $matches = [regex]::Matches($content, $pathPattern, [System.Text.RegularExpressions.RegexOptions]::Multiline)
-    foreach ($m in $matches) {
+    $contractMatches = [regex]::Matches($content, $pathPattern, [System.Text.RegularExpressions.RegexOptions]::Multiline)   # 不能叫 $matches：PowerShell 的自动变量，任何 -match 都会覆写它（同 B022 的撞名家族）
+    foreach ($m in $contractMatches) {
         $contractPaths[$m.Groups[1].Value] = $true
     }
 }
 
 if ($contractPaths.Count -eq 0) {
-    Write-Host "[SKIP] R012 — api-contract.yaml 未找到或为空" -ForegroundColor Gray
+    if ($Json) {
+        Write-Output '{"status":"SKIPPED","rule":"R012","skipped":true,"message":"api-contract.yaml 未找到或为空，契约校验未执行（不是通过）"}'
+    } else {
+        Write-Host "[SKIP] R012 — api-contract.yaml 未找到或为空" -ForegroundColor Gray
+    }
     exit 0
 }
 
@@ -33,7 +37,11 @@ $serviceFiles = Get-ChildItem -Path $TargetDir -Recurse -Include "*.ts","*.tsx" 
     Where-Object { $_.FullName -match "services[/\\]" -and $_.FullName -notmatch "node_modules|\.git|dist" }
 
 if ($serviceFiles.Count -eq 0) {
-    Write-Host "[SKIP] R012 — 未找到 services/ 目录" -ForegroundColor Gray
+    if ($Json) {
+        Write-Output '{"status":"SKIPPED","rule":"R012","skipped":true,"message":"未找到 services/ 目录，路径比对未执行（不是通过）"}'
+    } else {
+        Write-Host "[SKIP] R012 — 未找到 services/ 目录" -ForegroundColor Gray
+    }
     exit 0
 }
 

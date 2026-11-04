@@ -205,6 +205,8 @@ CODE REVIEW: dispatch subagent "mvp-code-reviewer" (skill kf-mvp-code-review) fo
 | 跳过报成 PASS（无前端源码 / 权威脚手架不存在） | `check-liquid-glass-style.ps1`、`check-token-sync.ps1`（`checked=0`） | 状态改 `SKIPPED`，exit 0 语义不变 |
 | `-Json` 时 `Write-Host` 混进 stdout → 调用方 JSON 解析失败 | `sync-qoder-homes.ps1` 初版 | 文本输出整体移入 `if (-not $Json)` |
 | `foreach ($home in ...)` 撞只读自动变量 `$HOME` | `sync-qoder-homes.ps1` | 改 `$homeDir` |
+| skip 分支缺 `-Json` 版本 → `[SKIP]` 文本混进机器可读输出；`$matches` 撞自动变量 | `check-api-path-source.ps1:26/35/20` | 两个 skip 分支补 `{"status":"SKIPPED",...}`；`$matches` → `$contractMatches` |
+| 全仓自动变量撞名扫描（`^\s*\$(Matches|Home|Host|Input|Error|PSItem)\s*=`）| `.qoder/scripts/*.ps1` + `starters` | 除上述两处外无命中 |
 | 取退出码用了管道（`cmd \| tail; echo $?`）→ 把 rc=1 读成 rc=0 | 上一轮我自己的一次误判 | 一律先落盘再取 rc，并在文档写明 |
 
 ### 8.5 权威脚手架 arch-check.ts 在 Windows 失效（血案 B023）
