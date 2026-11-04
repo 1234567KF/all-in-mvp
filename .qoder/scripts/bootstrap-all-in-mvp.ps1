@@ -14,10 +14,15 @@ param(
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }  # 保证 UTF-8 输出
 
 $ErrorActionPreference = "Continue"
-$FrameworkHome = Join-Path $env:USERPROFILE ".qoder\frameworks\all-in-mvp"
+# Qoder 有两个 home：桌面/CLI（CN 版）用 .qoder-cn，IDE 版用 .qoder。优先在用的那个。
+$FrameworkHome = ""
+foreach ($h in @(".qoder-cn", ".qoder")) {
+    $cand = Join-Path $env:USERPROFILE "$h\frameworks\all-in-mvp"
+    if (Test-Path $cand) { $FrameworkHome = $cand; break }
+}
 
-if (-not (Test-Path $FrameworkHome)) {
-    $msg = "全局框架目录不存在: $FrameworkHome。请先完成全局注册（复制 .qoder/frameworks/all-in-mvp）。"
+if (-not $FrameworkHome) {
+    $msg = "全局框架目录不存在（已查找 ~/.qoder-cn/frameworks/all-in-mvp 与 ~/.qoder/frameworks/all-in-mvp）。请先完成全局注册（复制 .qoder 到 <home>/frameworks/all-in-mvp）。"
     if ($Json) {
         [PSCustomObject]@{ status = "FAIL"; message = $msg } | ConvertTo-Json -Compress
     } else {

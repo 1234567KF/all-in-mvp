@@ -28,10 +28,13 @@ metadata:
 
 ## 🔴 Global Bootstrap（其他工作区首次使用 — 自动执行）
 
-> 本技能族已注册到全局（`~/.qoder/skills/`、`~/.qoder/agents/`）。在任何新工作区首次触发时，**先检查** `.qoder/gate-rules.yaml` 与 `starters/liquid-glass-frontend/` 是否存在；缺失则运行全局 bootstrap 一次补齐，再进入下方的模式判定。
+> 本技能族已注册到**用户级目录**，在任何工作区都能召回。Qoder 有两个 home：桌面/CLI（CN 版）读 `~/.qoder-cn/`，IDE 版读 `~/.qoder/` —— 两处都要放才两边可用，技能与子 Agent 分别落在 `<home>/skills/` 与 `<home>/agents/`。
+> 首次在新工作区触发时，**先检查** `.qoder/gate-rules.yaml` 与 `starters/liquid-glass-frontend/` 是否存在；缺失则运行一次 bootstrap 把门禁资产补到**当前工作区**（用户级目录只提供技能与 Agent，不提供工作区门禁），再进入下方的模式判定。
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\.qoder\scripts\bootstrap-all-in-mvp.ps1"
+# 自动挑当前在用的 Qoder home（优先 .qoder-cn，回退 .qoder）
+$QH = @(".qoder-cn", ".qoder") | Where-Object { Test-Path "$env:USERPROFILE\$_\scripts\bootstrap-all-in-mvp.ps1" } | Select-Object -First 1
+powershell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\$QH\scripts\bootstrap-all-in-mvp.ps1"
 ```
 
 **补齐清单**：

@@ -129,7 +129,25 @@ A: `.gitattributes` 的 `export-ignore` 规则让 GitHub tarball 自动排除文
 
 ### Q: 技能是全局的还是项目级的？
 
-A: **项目级**。技能在 `.qoder/skills/`，Qoder 自动识别且优先级高于全局。每个项目独立拥有，互不影响。
+A: **两种都支持，项目级优先**。项目级在 `.qoder/skills/` + `.qoder/agents/`（随仓库分发，团队成员共享）；用户级（全局）把它们放到 Qoder 的 home 目录，任何工作区都能召回：
+
+```powershell
+# Qoder 桌面/CLI（CN 版）读 ~/.qoder-cn，IDE 版读 ~/.qoder —— 两处都要放才两边可用
+$QH = @(".qoder-cn", ".qoder") | Where-Object { Test-Path "$env:USERPROFILE\$_" } | Select-Object -First 1
+mkdir -p "$env:USERPROFILE\$QH\agents"
+cp -r .qoder/skills/*  "$env:USERPROFILE\$QH\skills/"
+cp -r .qoder/agents/*  "$env:USERPROFILE\$QH\agents/"
+# bootstrap 真源 + 入口脚本（跨工作区补门禁资产用）
+mkdir -p "$env:USERPROFILE\$QH\frameworks\all-in-mvp" "$env:USERPROFILE\$QH\scripts"
+cp -r .qoder/PLAYBOOK.md .qoder/gate-rules.yaml .qoder/settings.hooks.json "$env:USERPROFILE\$QH\frameworks\all-in-mvp/"
+cp -r .qoder/rules .qoder/scripts .qoder/agents "$env:USERPROFILE\$QH\frameworks/all-in-mvp/"
+cp -r .qoder/skills/references "$env:USERPROFILE\$QH\frameworks/all-in-mvp/skills/" 2>$null
+cp -r starters "$env:USERPROFILE\$QH\frameworks/all-in-mvp/"
+cp .qoder/scripts/bootstrap-all-in-mvp.ps1 "$env:USERPROFILE\$QH\scripts/"
+```
+
+> 放完需**重启 Qoder** 才会重新扫描技能目录。
+> 全局只让「技能 + 子 Agent」可召回；**门禁资产（`gate-rules.yaml` / `check-*.ps1` / `rules/` / hooks）仍是工作区级**，新项目首次使用时按技能内的 Global Bootstrap 补一次。
 
 ### Q: 为什么 giget URL 需要 `#all-in-mvp`？
 
