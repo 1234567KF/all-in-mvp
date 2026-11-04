@@ -46,7 +46,9 @@ Invoke-Check -ScriptName "check-api-path-source.ps1" -RuleId "R012"
 Invoke-Check -ScriptName "check-silent-catch.ps1" -RuleId "R015"
 Invoke-Check -ScriptName "check-liquid-glass-style.ps1" -RuleId "R022-R026"
 Invoke-Check -ScriptName "check-token-sync.ps1" -RuleId "R028"
+Invoke-Check -ScriptName "check-skill-frontmatter.ps1" -RuleId "R029"
 # R002/R004/R027 暂不可脚本化，由 Agent 自检
+# R030/R031 由 starter 的 ESLint project-rules 承担（bun run lint），不在 PS 门禁重复实现
 
 Write-Host ""
 Write-Host "------------------------------------------------------------" -ForegroundColor Cyan

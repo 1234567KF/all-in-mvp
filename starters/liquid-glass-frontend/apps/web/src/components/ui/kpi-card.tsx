@@ -157,8 +157,8 @@ export function KpiCard({
           <div
             className={cn(
               "relative z-10 mt-4 flex items-center gap-1 font-mono text-[11px]",
-              trend.direction === "up" && "text-emerald-500",
-              trend.direction === "down" && "text-red-500",
+              trend.direction === "up" && "text-[var(--data-success)]",
+              trend.direction === "down" && "text-destructive",
               trend.direction === "flat" && "text-muted-foreground"
             )}
           >

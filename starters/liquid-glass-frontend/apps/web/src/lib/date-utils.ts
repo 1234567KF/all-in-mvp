@@ -72,3 +72,42 @@ export function formatTimestamp(
     })
   }
 }
+
+/**
+ * 日期格式化，支持 ISO 字符串 / Unix 毫秒时间戳 / Date / null。
+ * 统一输出 "YYYY-MM-DD"（本地时区）。
+ *
+ * 这是 no-toisostring-slice 规则给出的正解入口：需要"今天的日期串"时用
+ * formatDate(new Date())，不要写 new Date().toISOString().slice(0, 10) —
+ * 后者取的是 UTC 日期，在 UTC+ 时区会把日期往前挪一天。
+ */
+export function formatDate(
+  iso: string | number | Date | null | undefined
+): string {
+  if (iso === null || iso === undefined) return "-"
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return String(iso)
+
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${y}-${m}-${day}`
+}
+
+/**
+ * 取本地某一天的边界时刻（完整 ISO 串），用于日期范围查询参数。
+ *
+ * 直接对 toISOString() 截断得到的是 UTC 日的起止，跨时区会漏掉或多吃一天；
+ * 正确做法是先按本地时间构造当天 00:00:00.000 / 23:59:59.999，再转 ISO。
+ */
+export function getLocalDayBoundaryISO(
+  date: Date,
+  boundary: "start" | "end"
+): string {
+  const y = date.getFullYear()
+  const m = date.getMonth()
+  const d = date.getDate()
+  return boundary === "start"
+    ? new Date(y, m, d, 0, 0, 0, 0).toISOString()
+    : new Date(y, m, d, 23, 59, 59, 999).toISOString()
+}

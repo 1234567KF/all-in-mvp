@@ -12,7 +12,18 @@
  * Correct alternatives:
  *   - For display:          formatDate(new Date())       // @/lib/date-utils
  *   - For query parameters: new Date().toISOString()      // full ISO, no truncation
- *   - For end-of-day range: construct local 23:59:59 then .toISOString()
+ *   - For end-of-day range: getLocalDayBoundaryISO(new Date(), "end")  // @/lib/date-utils
+ *
+ * Scope note: formatDate / getLocalDayBoundaryISO live in apps/web, and the "@/"
+ * alias resolves only there (apps/api defines no path alias). In apps/api, pass
+ * the full ISO timestamp or add the helper to packages/shared.
+ *
+ * Known blind spots（lint 绿不代表没有同类日期 bug）:
+ *   - 跨语句拆分：`const iso = d.toISOString(); iso.slice(0, 10)` 是同一种错，
+ *     但 slice 的接收者已不是 toISOString() 调用，AST 上拦不到。
+ *   - 其它 UTC 来源：`Date.UTC(...)`、`toISOString().slice` 之外的
+ *     手搓日期拼接（如 `${y}-${m}-${d}` 用 getUTCXxx）不在本规则范围。
+ *   这两类由 code-review 与 date-utils 的时区不变量测试兜底。
  */
 export default {
   meta: {

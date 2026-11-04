@@ -12,6 +12,7 @@
 4. 弹窗类修改 → 验证所有控件可见 + 提交成功（对应 R020 门禁 2）
 5. 列表类修改 → 验证排序/分页/筛选联动（对应 R020 门禁 2）
 6. 共享组件修改 → 验证其 CSS 变体不破坏 Checkbox/Radio/Switch（对应 R021）
+7. 修改 `SKILL.md` / `.qoder/agents/*.md` 的 frontmatter 后，必须让 `check-skill-frontmatter.ps1` 退出码为 0（对应 R029；hooks Gate 0 已自动执行，禁止绕过）。含 `": "` 的字段用块标量 `>-` 或整体加引号——解析失败的技能会在 App 列表里静默消失，而 Agent 侧仍能调到它（血案 B024）
 
 ## 禁止行为
 

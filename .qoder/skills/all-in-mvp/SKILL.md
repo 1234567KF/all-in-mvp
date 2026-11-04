@@ -1,6 +1,11 @@
 ---
 name: all-in-mvp
-description: Load when user wants to build a full-stack MVP prototype using multi-agent parallel development pipeline. Triggers: MVP, 原型开发, 多Agent并行开发, 全栈快速原型, multi-agent pipeline, 从需求到交付, 多Agent流水线, 并行开发, 快速验证产品, 原型系统, 并行工程. NOT for: single API endpoint, bug fixing, code refactoring, deployment, code review alone.
+description: >-
+  Load when user wants to build a full-stack MVP prototype using multi-agent parallel
+  development pipeline. Triggers: MVP, 原型开发, 多Agent并行开发, 全栈快速原型, multi-agent
+  pipeline, 从需求到交付, 多Agent流水线, 并行开发, 快速验证产品, 原型系统, 并行工程.
+  NOT for: single API endpoint, bug fixing, code refactoring, deployment, code review
+  alone.
 metadata:
   pattern: pipeline+inversion+reviewer+generator
   stage-gates: true

@@ -297,7 +297,7 @@ export default function OverlaysPage() {
                     <Mail data-icon="inline-start" /> 发送通知
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-red-400">
+                  <DropdownMenuItem variant="destructive">
                     <LogOut data-icon="inline-start" /> 移除成员
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
@@ -357,7 +357,7 @@ export default function OverlaysPage() {
                 <div className="space-y-4 py-2">
                   <div className="space-y-1.5">
                     <Label className="text-on-surface-variant">
-                      分配部门 <span className="text-red-500">*</span>
+                      分配部门 <span className="text-destructive">*</span>
                     </Label>
                     <Select
                       value={demoDept}
@@ -381,7 +381,7 @@ export default function OverlaysPage() {
 
                   <div className="space-y-1.5">
                     <Label className="text-on-surface-variant">
-                      负责人 <span className="text-red-500">*</span>
+                      负责人 <span className="text-destructive">*</span>
                     </Label>
                     <Select
                       value={demoUser}

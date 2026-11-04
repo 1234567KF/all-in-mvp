@@ -52,6 +52,15 @@ Add-Row "workspace" "gate-rules.yaml" $(if (Test-Path ".qoder\gate-rules.yaml") 
 $scriptCount = @(Get-ChildItem -Path ".qoder\scripts" -Filter "check-*.ps1" -ErrorAction SilentlyContinue).Count
 Add-Row "workspace" "门禁脚本" $(if ($scriptCount -ge 8) { "PASS" } elseif ($scriptCount -gt 0) { "WARN" } else { "FAIL" }) "check-*.ps1 共 $scriptCount 个"
 Add-Row "workspace" "quality-gate-hook.ps1" $(if (Test-Path ".qoder\scripts\quality-gate-hook.ps1") { "PASS" } else { "FAIL" }) "PostToolUse 入口"
+# R029 实际执行（不只查文件存在）：frontmatter 解析失败会让技能在 App 列表里静默消失
+$fmScript = Join-Path ".qoder\scripts" "check-skill-frontmatter.ps1"
+if (Test-Path $fmScript) {
+    $fmOut = @(& powershell -NoProfile -ExecutionPolicy Bypass -File $fmScript -Json 2>&1 | ForEach-Object { "$_" }) -join " "
+    $fmStatus = if ($LASTEXITCODE -eq 0) { "PASS" } elseif ($LASTEXITCODE -eq 1) { "FAIL" } else { "WARN" }
+    Add-Row "workspace" "R029 frontmatter YAML" $fmStatus $fmOut
+} else {
+    Add-Row "workspace" "R029 frontmatter YAML" "FAIL" "check-skill-frontmatter.ps1 缺失 -> 技能注册无门禁"
+}
 $rules = @(Get-ChildItem -Path ".qoder\rules" -Filter "*.md" -ErrorAction SilentlyContinue).Count
 Add-Row "workspace" "rules/*.md" $(if ($rules -gt 0) { "PASS" } else { "WARN" }) "$rules 个（自动加载进上下文）"
 

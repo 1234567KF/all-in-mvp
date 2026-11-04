@@ -5,6 +5,24 @@
 
 ---
 
+## v2.25 血案（技能注册"看起来在，实际没注册"）
+
+### B024 — 门面技能 frontmatter 解析失败，App 侧列表静默 omit
+- **规则**：R029（配套 Gate 0：编辑 `SKILL.md` 后 `hooks.PostToolUse` 直接跑校验）
+- **现象**：用严格 YAML 解析器复核全仓 46 个 frontmatter，唯一 FAIL 就是门面技能
+  `.qoder/skills/all-in-mvp/SKILL.md` → `mapping values are not allowed here`。
+  它仍出现在会话的可用技能清单里（Agent 侧加载器宽容），但按 Qoder 的严格解析路径它会被整块丢弃 ——
+  触发词写得最全的那个技能，恰恰是注册最不稳的那个
+- **根因**：`description:` 是 plain scalar，值里却含 `": "`（`Triggers: MVP, 原型开发…` / `NOT for: single API…`）。
+  YAML 把第二个 `: ` 当成嵌套映射分隔符 → 整个 frontmatter 作废。"触发词列表"这种写法本身就在制造该坑
+- **教训**：① 含 `: ` 的字段一律改块标量（`description: >-` + 缩进）或整体加引号，别指望加载器宽容；
+  ② **两侧解析器宽严不对称 → "Agent 能调到"不能证明"注册成功"**，裁决权交给严格解析器；
+  ③ 门禁要能响：本次故意写坏一个临时技能，Gate 0 立刻 `exit 2` 阻断，才是有效验证 —— 只验"全绿"证明不了检测能力（同 B022/B023）；
+  ④ 同族反向坑：**`.ps1` 含中文必须带 UTF-8 BOM**（PowerShell 5.1 无 BOM 时按 ANSI 码页读，字符串定界符被吞 → 整个脚本语法报错），
+     而 **`SKILL.md` 必须无 BOM**（BOM 会粘进首个键名）。两个方向相反，改完必须分别用对应加载器复核
+
+---
+
 ## v2.24 血案（门禁脚本"静默漏检"）
 
 ### B022 — 门禁脚本崩溃却被判定为通过

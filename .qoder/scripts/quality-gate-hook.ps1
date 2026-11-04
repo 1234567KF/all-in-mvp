@@ -32,6 +32,31 @@ if (-not $path) { exit 0 }
 
 $p = ($path -replace '\\', '/').ToLower()
 
+# --- Gate 0 -- skill/agent frontmatter must survive a strict YAML parser (rule R029) ---
+# This gate RUNS the checker instead of only reminding: a frontmatter that fails to parse makes
+# the skill disappear from the Qoder app Skills list while the agent-side loader still activates
+# it, so the damage is invisible until someone wonders "where did my skill go" (blood case B024).
+if ($p -match '/\.qoder/skills/[^/]+/skill\.md$' -or $p -match '/\.qoder/agents/[^/]+\.md$' -or $p -match '/\.agents/skills/[^/]+/skill\.md$') {
+    $fmScript = Join-Path $PSScriptRoot 'check-skill-frontmatter.ps1'
+    if (-not (Test-Path $fmScript)) {
+        [Console]::Error.WriteLine('[QUALITY-GATE][R029] check-skill-frontmatter.ps1 is missing in this repo -- the frontmatter gate did NOT run. Restore it before shipping skill edits.')
+        exit 2
+    }
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $fmScript *> $null
+    if ($LASTEXITCODE -ne 0) {
+        $fmMsg = @(
+            ('[QUALITY-GATE][R029 FAIL] frontmatter YAML check failed after editing: ' + $path),
+            'Details: powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/check-skill-frontmatter.ps1',
+            'Typical cause: a plain-scalar value containing ": " (e.g. "Triggers: MVP, ... NOT for: ..."). Fix with a folded block (description: >-) or quote the whole value.',
+            'Also check: UTF-8 BOM in SKILL.md, unclosed quotes, tab indentation, missing name/description.',
+            'Do not mark this task COMPLETE before the check exits 0.'
+        )
+        [Console]::Error.WriteLine(($fmMsg -join "`n"))
+        exit 2
+    }
+    exit 0
+}
+
 # --- skip noise: dependencies, build output, and this framework's own skill sources ---
 if ($p -match 'node_modules|(^|/)(dist|build|coverage|playwright-report)/|(^|/)\.qoder/skills/|(^|/)\.qoder/agents/') { exit 0 }
 

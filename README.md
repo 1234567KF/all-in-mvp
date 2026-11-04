@@ -98,7 +98,8 @@ starters/                   ← 前端脚手架模板
 
 1. **Stage 入口**：`powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/check-stage3-gate.ps1`（Stage4 同理）
 2. **随手改代码**：`settings.json` → `hooks.PostToolUse` → `quality-gate-hook.ps1`，命中 `src/**`、路由/服务层、共享 UI 路径时，向 Agent 注入"必须审查/契约校验/冒烟"指令
-3. **行为约束**：`.qoder/rules/quality-gate.md`（每次会话自动加载）
+3. **改技能自身**：同一 hook 的 Gate 0 在编辑 `SKILL.md` / `agents/*.md` 后**直接执行** `check-skill-frontmatter.ps1`（R029），frontmatter 解析不过就 `exit 2` 阻断 —— 因为解析失败的技能会在 App 技能列表里静默消失，而 Agent 侧照样能调到（血案 B024）
+4. **行为约束**：`.qoder/rules/quality-gate.md`（每次会话自动加载）
 
 ### 极致节能引擎（可选，需 Node.js）
 

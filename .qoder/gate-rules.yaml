@@ -341,13 +341,74 @@ rules:
       任何 theme-tokens.css / design-utils.css / index.css / DESIGN.md 漂移 → FAIL。
       禁止手工维护双份 token，必须从脚手架重新复制。
 
+  # ---- v2.25 规则（借鉴 starters/liquid-glass-starter：AST 可判定的走 ESLint，跨文件不变量才留给 arch:check）----
+  - id: R029
+    version: v2.25
+    name: 技能/Agent frontmatter 严格 YAML 校验
+    severity: BLOCKER
+    stage: [stage3, stage4, fix]
+    check_script: scripts/check-skill-frontmatter.ps1
+    applies_to: [all]
+    description: |
+      SKILL.md / agents/*.md 的 frontmatter 必须能被严格 YAML 解析器读通。
+      致命形态：plain scalar 内含 ": "（如 description 写 "Triggers: A, B. NOT for: C."）
+      → YAML 报 mapping values are not allowed here → 整块 frontmatter 作废。
+      后果不对称：App 侧技能列表会静默 omit 该技能，Agent 侧加载器却仍能激活它，
+      于是出现"看起来装了，实际没注册"（血案 B024，门面技能 all-in-mvp 曾长期命中）。
+      同时校验：UTF-8 BOM、引号未闭合、Tab 缩进、name/description 缺失、frontmatter 未闭合。
+      已声明盲区（本脚本是行级近似，不是完整 YAML 解析器）：
+        1) 不解析多行 plain scalar 折叠后的真实值，只按行判形态；
+        2) 嵌套 flow 集合的内层未闭合看不全；
+        3) 引号内转义引号（"a \" b"）可能误判为未闭合；
+        4) 只覆盖 .qoder/skills/*/SKILL.md、.qoder/agents/*.md、starters/*/.agents/skills/*/SKILL.md 三类路径，
+           更深目录的 SKILL.md 需 -IncludeHomes 或手工扩路径；
+        5) 语义正确性（触发词是否合理、描述是否准确）不在范围 — 由 kf-skill-design-expert 负责。
+      最终裁决用真解析器复核：uv run --no-project --with pyyaml python -c "import yaml,io;yaml.safe_load(...)"。
+      关联：hooks.PostToolUse → quality-gate-hook.ps1 Gate 0 会在编辑 SKILL.md 后直接跑本脚本。
+
+  - id: R030
+    version: v2.25
+    name: UI 窄屏分叉禁用 window.innerWidth
+    severity: HIGH
+    stage: [stage3, stage4, fix]
+    check_script: null  # 由 starter ESLint 承担：project-rules/no-raw-viewport-check（apps/web pages/components = error）
+    applies_to: [frontend-dev]
+    description: |
+      窄屏结构分叉 MUST 走单一真源 useIsMobile()（@/hooks/use-mobile，md/768px）或 Tailwind 断点类；
+      触摸能力检测走 pointer-coarse。直读 window.innerWidth 会制造 640/768/1024 混用、且不响应 resize。
+      已声明盲区（lint 绿 ≠ 响应式规范已满足）：
+        1) 别名/其它全局：`const w = window; w.innerWidth`、`globalThis.innerWidth` 拦不到；
+        2) 其它宽度来源：clientWidth、matchMedia("(max-width: …)")、offsetWidth 不在范围；
+        3) 只治 innerWidth，innerHeight 分叉不拦；
+        4) 仅 pages/ 与 components/ 启用，layouts/ 与 hooks/ 默认不检查。
+      永久豁免需附理由与移除条件，见 starters/liquid-glass-frontend/eslint.config.js
+      （错误页鼠标视差的坐标归一化已按此登记）。
+
+  - id: R031
+    version: v2.25
+    name: 禁止截断 UTC ISO 字符串取日期
+    severity: BLOCKER
+    stage: [stage3, stage4, fix]
+    check_script: null  # 由 starter ESLint 承担：project-rules/no-toisostring-slice（全仓 warn，违规即修）
+    applies_to: [frontend-dev, backend-tdd]
+    description: |
+      禁止 .toISOString().slice/substring/substr/split —— toISOString() 返回 UTC，
+      截断取日期在 UTC+ 时区会把日期往前挪一天（UTC+8 的 00:00 → 前一日 16:00Z）。
+      替代：展示用 formatDate()（apps/web/src/lib/date-utils）、日期范围用
+      getLocalDayBoundaryISO(d, "start"|"end")、查询参数传完整 ISO 不截断。
+      已声明盲区：
+        1) 跨语句拆分 `const iso = d.toISOString(); iso.slice(0,10)` AST 上拦不到；
+        2) 其它 UTC 来源（Date.UTC、getUTCXxx 手搓拼接）不在范围；
+        3) apps/api 无 @/ 别名，date-utils 仅存在于 apps/web —— api 侧需传完整 ISO 或下沉到 packages/shared。
+      前两类由 code-review 与 date-utils 的时区不变量测试兜底。
+
 # ============================================================
 # Stage 门禁映射（供聚合脚本使用）
 # ============================================================
 gates:
   stage3:
     description: "Stage 3 入口门禁 — 开发前必须通过的规则"
-    rules: [R002, R004, R012, R015, R018, R019, R021, R022, R023, R024, R025, R026, R027, R028]
+    rules: [R002, R004, R012, R015, R018, R019, R021, R022, R023, R024, R025, R026, R027, R028, R029, R030, R031]
     aggregate_script: scripts/check-stage3-gate.ps1
 
   stage3.5:
@@ -357,10 +418,10 @@ gates:
 
   stage4:
     description: "Stage 4 入口门禁 — 集成验收前必须通过的规则"
-    rules: [R001, R003, R005, R006, R007, R008, R009, R010, R012, R013, R014, R015, R016, R017, R018, R019, R021, R022, R023, R024, R025, R026, R027, R028]
+    rules: [R001, R003, R005, R006, R007, R008, R009, R010, R012, R013, R014, R015, R016, R017, R018, R019, R021, R022, R023, R024, R025, R026, R027, R028, R029, R030, R031]
     aggregate_script: scripts/check-stage4-gate.ps1
 
   fix:
     description: "修复模式门禁 — 任何 Bug 修复必须通过的最小审查（v2.17）"
-    rules: [R020, R021, R022, R023, R024, R025, R026, R027]
+    rules: [R020, R021, R022, R023, R024, R025, R026, R027, R029, R030, R031]
     aggregate_script: null  # 修复模式不能脚本化；由 quality-gate.md（行为真源）+ settings.json hooks.PostToolUse → scripts/quality-gate-hook.ps1（路径命中即派发审查/冒烟）联合驱动

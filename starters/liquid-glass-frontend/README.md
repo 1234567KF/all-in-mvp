@@ -218,13 +218,28 @@ function App() {
 | `bun run build:web`    | 单独编译前端静态包                                        |
 | `bun run build:api`    | 单独编译后端 API 代码                                     |
 | `bun run typecheck`    | 执行全局 TypeScript 类型检查                              |
-| `bun run lint`         | 运行 ESLint 检查                                          |
-| `bun run test`         | 运行全部单元测试 (shared + web + api)                     |
+| `bun run lint`         | 运行 ESLint 检查（web + api + shared 三包，带 cache）     |
+| `bun run test`         | 运行全部测试 (自定义规则 + shared + web + api)            |
 | `bun run test:web`     | 运行前端 Vitest 单元测试                                  |
 | `bun run test:api`     | 运行后端 Bun 单元测试                                     |
 | `bun run test:shared`  | 运行共享包单元测试                                        |
+| `bun run test:eslint`  | 运行 `eslint-rules/` 的 RuleTester 回归用例               |
 | `bun run test:ci`      | CI 模式测试 (含覆盖率)                                    |
 | `bun run arch:check`   | 架构依赖检查                                              |
+
+### 自定义 ESLint 规则（`eslint-rules/`）
+
+单文件 AST 可判定的约束走 ESLint，跨文件不变量才交给 `arch:check`：
+
+| 规则 id | 拦什么 | 生效范围 |
+| ------- | ------ | -------- |
+| `project-rules/no-toisostring-slice` | `.toISOString().slice(0,10)` 之类截断 UTC → UTC+ 时区日期倒退一天 | 全仓 `warn` |
+| `project-rules/no-tailwind-raw-colors` | `className` 里的 Tailwind 原色类（`text-red-500` 等） | `pages/` `components/` = `error` |
+| `project-rules/no-raw-viewport-check` | 直读 `window.innerWidth` 做窄屏分叉（应走 `useIsMobile()` / 断点类） | `pages/` `components/` = `error` |
+
+每条规则的 JSDoc 都写了 **Known blind spots** —— lint 绿不等于该类问题已绝迹，判据与盲区以规则文件为准。
+豁免是棘轮式的：`reportUnusedDisableDirectives` 为 `error`，修完必须删掉 `eslint-disable`；
+`eslint.config.js` 里的永久豁免块必须附"为什么无法满足 + 什么改动可以移除"两句话。
 
 **数据库命令**（在 `apps/api` 目录下运行）：
 

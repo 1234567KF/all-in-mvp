@@ -229,6 +229,63 @@ CODE REVIEW: dispatch subagent "mvp-code-reviewer" (skill kf-mvp-code-review) fo
 - §6 的两项 opt-in（SKILL.md 2900+ 行瘦身、技能正文 Vue→React 示例）仍未做，属内容重构，不在兼容平移范围内。
 - `.gitattributes` 的 `export-ignore` 缺口（内部复盘文档是否随 tarball 分发）需你决定。
 
+## 9. 第三轮执行（v2.25）— 借鉴权威仓库 T1 + 门面技能注册失效（血案 B024）
+
+> 输入：内网 GitLab `192.168.110.2/starters/liquid-glass-starter`（只读克隆到临时目录，HEAD `167e561`）。
+> 与我们的 `starters/liquid-glass-frontend` 同源：后者是它 2026-07-16 的快照 —— 179 个同名文件，97 个只在他们那边，41 个同名文件已分叉。
+> 本轮按你的要求只做 T1（通用、且不依赖 T2 能力的那一档），T2/T3 只登记不动手。
+
+### 9.1 修掉的 bug：门面技能根本没注册成功（血案 B024 → R029）
+
+- `.qoder/skills/all-in-mvp/SKILL.md` 的 `description` 是 plain scalar，值里含 `Triggers: MVP, …` / `NOT for: …` → 严格 YAML 解析报 `mapping values are not allowed here`，**整块 frontmatter 作废**。
+- 全仓 46 个 frontmatter 用 `uv run --no-project --with pyyaml` 逐个严格解析，只有这一个 FAIL —— 恰好是门面技能。
+- 后果不对称：App 侧技能列表会 omit 它，Agent 侧加载器仍按文本激活它，所以"能调到"一直掩盖着"没注册"。
+- 修复：`description: >-` 折叠块（16 个触发词逐一 round-trip 校验，长度 304，无 BOM）；`sync-qoder-homes.ps1` 同步两个 home，home 副本复查亦为 OK。
+
+### 9.2 新增门禁 R029（可执行 + 声明盲区）
+
+| 项 | 内容 |
+|----|------|
+| 脚本 | `.qoder/scripts/check-skill-frontmatter.ps1`（无外部依赖，纯行级结构扫描；`-Json` / `-IncludeHomes`） |
+| 拦什么 | plain scalar 含 `": "`、引号未闭合、Tab 缩进、UTF-8 BOM、frontmatter 未闭合、`name`/`description` 缺失、保留指示符开头 |
+| 注册 | `gate-rules.yaml` R029（BLOCKER，stage3/stage4/fix），盲区 5 条写在 description 里 |
+| 接入 | `check-stage3-gate.ps1` / `check-stage4-gate.ps1` 各加一条 `Invoke-Check`（Stage3 由 4 PASS → 5 PASS）；`verify-all-in-mvp.ps1` 新增一行**实际执行**而非查存在；`quality-gate-hook.ps1` 新增 Gate 0 —— 编辑 `SKILL.md`/`agents/*.md` 后**直接跑校验**，失败 `exit 2` 阻断 |
+| 有效验证 | 故意写坏一个临时技能 → hook 当场 `[QUALITY-GATE][R029 FAIL] exit 2`（不是只验全绿，见 B022/B023）； fixture 三连（含 `": "` / 未闭合引号 / BOM）全部命中，正例不误报；`rm` 临时技能后 rc=0 |
+
+### 9.3 同族反向坑：`.ps1` 必须带 BOM，`SKILL.md` 必须无 BOM
+
+新写的 `check-skill-frontmatter.ps1` 第一版无 BOM → PowerShell 5.1 按 ANSI 码页读，中文注释吞掉字符串定界符，整个脚本语法报错。全仓审计 `check-*.ps1`：含非 ASCII 的脚本一律带 BOM，`quality-gate-hook.ps1` 因全 ASCII 才可无 BOM。规则写入 R029 的"同族坑"提示与 PLAYBOOK B024 教训④。
+
+### 9.4 starter T1 移植（ESLint 治理层）
+
+| 移植项 | 落点 | 说明 |
+|--------|------|------|
+| 自定义规则 | `eslint-rules/no-tailwind-raw-colors.js`（新）、`no-raw-viewport-check.js`（新）、`no-toisostring-slice.js`（补盲区） | 每条 JSDoc 带 Rationale / Correct alternatives / **Known blind spots**；替代物逐条核对本仓真实存在（`tag-red/green/blue/purple`、`badge-active/inactive`、`--data-success`、`useIsMobile`），并修掉"提示指向不存在函数"的坑：补上 `formatDate` / `getLocalDayBoundaryISO` |
+| 规则测试 | `eslint-rules/*.test.js` × 3，28 用例（`bun test eslint-rules/`，已串进 `bun run test`） | 含把"同串多个违规只报一条"这类**静默漏报**当 bug 修（改 `matchAll`），而不是放松测试 |
+| 配置分层 | `eslint.config.js` | UI 作用域 `error` + 三个错误页的**带理由永久豁免**；`reportUnusedDisableDirectives: 'error'` 作豁免棘轮；`globalIgnores(['**/dist'])`（裸 `dist` 只匹配配置目录，`apps/*/dist` 会被当源码扫） |
+| lint 覆盖面 | 根 `lint`/`lint:fix` 串 web+api+shared | 立刻抓到长期漏网的 `packages/shared/src/index.ts` export 排序错误（此前根 lint 只跑 web） |
+| 存量违规清理 | `kpi-card.tsx`、`OverlaysPage.tsx` | `text-emerald-500`→`text-[var(--data-success)]`、`text-red-500`→`text-destructive`、`className="text-red-400"`→`variant="destructive"` |
+| 工程纪律 | `starters/liquid-glass-frontend/AGENTS.md` | 新增 Architecture Gates（ESLint vs arch:check 分工 + 棘轮）、Enum Values、Date & Time、Testing 分层表、Verify After Every Change；只写本仓真实存在的能力 |
+
+### 9.5 独立审查与真实浏览器冒烟（R020/R021）
+
+- `mvp-code-reviewer` 独立审查结论 **PASS**，0 BLOCKER / 0 HIGH，4 条 LOW；其中 L1/L2（规则作用域只覆盖 `.tsx`、`window[\`innerWidth\`]` 与参数解构两条盲区未声明）已补进 JSDoc，L3/L4 记录在案。
+- 真实浏览器（browser-use MCP，`bun run dev` web:5173 + api:3000，admin 登录）：
+  - `/dashboard` 4 个 KpiCard 趋势元素计算色 `rgb(34,197,94)`（= `--data-success`）与 `rgb(186,26,26)`（= `--destructive`），涨绿跌红正确；
+  - `/components/overlays` 对话框内 2 个必填星号 `rgb(186,26,26)`，5 个控件均有正尺寸；DropdownMenu 打开后"移除成员"`rgb(186,26,26)`、其余两项保持 `rgb(25,28,30)`（`variant` 走的是 `data-[variant=destructive]`，图标与焦点态一并生效）；
+  - console 无 error（仅 vite 连接与 React DevTools 提示）。
+- Starter 四件套复跑：`bun run lint` rc=0（0 error / 15 条存量 jsx-a11y warning）、`typecheck` rc=0、`test` rc=0（28 规则 + web 17 + api 3 + shared passWithNoTests）、`arch:check` rc=0（96 文件）。
+- 环境自检：`verify-all-in-mvp.ps1` → **20 PASS / 0 WARN / 0 FAIL**（含新增 R029 行）。
+
+### 9.6 未做（明确留在 T2/T3，不是遗漏）
+
+- T2（依赖我们脚手架里没有的能力，硬搬会变成死代码）：TanStack Query 数据层与 `query-keys` 体系、`OpCtx`/审计/权限注册表、`ResponsiveDialog`/`MobileCard`/`StatusBadge` 等响应式原语、6 主题色系统与 `ThemeColorPicker`、`usePagedList`。
+- T3（不该进 MVP 脚手架）：`audit_logs` 表与审计写穿、dnd-kit 拖拽、权限树业务页、GitLab SSH 部署、Go/Kotlin 模板。
+- 我们**领先**的两项，无需回搬：`arch-check.ts` 的 Windows 修复（对方仍是 `URL.pathname` + 反斜杠 `relative()`，Rule 1/2/4 在 Windows 静默不触发）、Claude 残留清理。
+- 对方 ROADMAP 自己标 E2E 为 `🔲 待做 (P0)`，且 `useAsyncData` 已被他们标为 Breaking Change 移除（我们仍在 `apps/web/src/hooks/useAsyncData.ts` 使用）→ 不跟。
+- Playwright 二进制本轮已在（`ms-playwright\chromium-1248`，`verify-all` 由 FAIL 转 PASS），但**一次真实 E2E 运行仍未执行**（遗留项 #9）。
+
+
 ## 附录 A — 关键证据
 - `file .qoder/skills/all-in-mvp/SKILL.md` → "UTF-8 (with BOM), CRLF"；`kf-mvp-api-contract/SKILL.md`（正常）→ 无 BOM。
 - `ls .claude` → 不存在；`grep ".claude/workflows" .qoder/skills` → 仅 `all-in-mvp/SKILL.md`。
