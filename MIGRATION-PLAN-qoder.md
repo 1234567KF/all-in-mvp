@@ -172,6 +172,61 @@ CODE REVIEW: dispatch subagent "mvp-code-reviewer" (skill kf-mvp-code-review) fo
 
 ---
 
+## 8. 第二轮执行（v2.24）— 全局调用 / Claude 残留 / hooks / 执行层 / 门禁静默漏检
+
+用户追加要求：「解决不能全局调用的问题；Claude 残留；硬阻塞；hooks；执行层缺 Node 等问题」。逐项落地与实测结果：
+
+### 8.1 全局调用（已解决，且可重复）
+
+- 根因：本 CLI 的 home 是 `~/.qoder-cn`（官方文档写的 `~/.qoder` 属 IDE 版），而技能/子 Agent 只装在项目里 → 其他工作区召不回。
+- 新增 `.qoder/scripts/sync-qoder-homes.ps1`：把 HEAD 的 skills/agents/scripts/frameworks/starters 推进**所有存在的 home**，随后 SHA256 逐文件比对，`DRIFT>0` 直接 exit 1（不再"看起来成功了"）。
+- 实测：两个 home 各 `skills=78 agents=18 scripts=15`，`drift=0`，二次运行幂等；`-Json` 输出可被 `json.loads` 解析。
+- 必须排除 `node_modules|dist|.vite|.vite-temp|...`：首次运行时并行的 vite 构建产生瞬时 `.vite-temp` 文件，复制到一半 `ENOENT` → 这正是"边构建边同步"的真实故障。
+
+### 8.2 hooks（用户级已生效）
+
+- `-InstallGlobalHooks` 把 `hooks.PostToolUse`（命令为 **home 内绝对路径**）合并进 `<home>/settings.json`，先备份 `settings.json.bak`，只加 `hooks` 键。
+- 校验（python 逐键对比 before/after）：`.qoder-cn` 保留 `enabledPlugins`，`.qoder` 保留 `aicodingPluginSettingsVersion/enabledPlugins/providers`，`lost keys=[]`、非 hooks 值完全一致。
+- hook 脚本可脱离 Qoder 单测：从 stdin 喂 hook JSON，在任意 cwd 下对 `src/services/user.ts` 输出 `[QUALITY-GATE]` + exit 2。
+- **本会话内实测用户级 hooks 已触发**（PostToolUse 拦截写入 `apps/web/src/pages/*`），说明该版本用户级 hooks 不必重启；工作区级仍按"改完重启"兜底。
+
+### 8.3 执行层缺运行时（已解除）
+
+- Node：官方 zip → `~/.local/node` → `setx PATH`（广播 WM_SETTINGCHANGE），v26.13.0。
+- Bun：GitHub Release 直下 37MB 实测掉速至 ~13KB/s（未下完，已终止）→ 改走 `npm install -g bun`（registry，1 分钟内完成）得到 **bun 1.4.4**。
+- Starter 真实执行（全部 rc=0）：`bun install` 784 包 → `bun run build`（shared+api+web，web 497ms）→ `bun run typecheck`（web+api）→ `bun run test:shared` / `test:api`（3 pass）/ `test:web`（9 passed / 3 files）→ `bun run arch:check`（96 文件）。
+
+### 8.4 门禁脚本静默漏检（血案 B022）
+
+| 缺陷 | 位置 | 修复 |
+|------|------|------|
+| `$json` 与 `param([switch]$Json)` 撞名（PS 变量名不区分大小写）→ 有违规时抛 SwitchParameter 异常 | `check-token-sync.ps1:88`、`check-silent-catch.ps1:51`、`check-liquid-glass-style.ps1:152` | 改名 `$detailsJson` 并留注释 |
+| `check-liquid-glass-style.ps1` 用 `$ErrorActionPreference="Continue"` → 崩溃后仍走到 `exit 0` | 同上:15 | 改 `Stop`，与其余 `check-*.ps1` 一致 |
+| 跳过报成 PASS（无前端源码 / 权威脚手架不存在） | `check-liquid-glass-style.ps1`、`check-token-sync.ps1`（`checked=0`） | 状态改 `SKIPPED`，exit 0 语义不变 |
+| `-Json` 时 `Write-Host` 混进 stdout → 调用方 JSON 解析失败 | `sync-qoder-homes.ps1` 初版 | 文本输出整体移入 `if (-not $Json)` |
+| `foreach ($home in ...)` 撞只读自动变量 `$HOME` | `sync-qoder-homes.ps1` | 改 `$homeDir` |
+| 取退出码用了管道（`cmd \| tail; echo $?`）→ 把 rc=1 读成 rc=0 | 上一轮我自己的一次误判 | 一律先落盘再取 rc，并在文档写明 |
+
+### 8.5 权威脚手架 arch-check.ts 在 Windows 失效（血案 B023）
+
+- `new URL("..", import.meta.url).pathname` 在 Windows 得 `/D:/...` → `join` 后 `\D:\...` → `ENOENT scandir`，脚本根本跑不起来。
+- 即便路径可用：`relative()` 返回反斜杠，而规则按 `apps/web/src/components/` 与 `split("/")` 匹配 → Rule 1/2/4 **静默不触发**。
+- 修复：`fileURLToPath` + `toPosix()` / `relOf()` 统一分隔符。
+- 交叉验证（不只验"全绿"）：临时放入违例页 `ArchProbePage.tsx`（`@/lib/api` + `sonner` 直连），TS 侧报 `ui-no-direct-api` + `no-direct-sonner`（rc=1），PS 侧报 R022 + R024（rc=1），两处一致；探针文件已删除，未进提交。
+
+### 8.6 Claude 残留（本轮补完）
+
+- `kf-skill-design-expert` 的 description 仍写 "Claude Code skill" → 已改 "Qoder Skill"（本会话技能列表里可见新文案，证明全局副本同步生效）。
+- `execution-playbook.md` 路径表与 Workflow 语义、`liquid-glass/DESIGN.md` 的 Cursor/Claude 措辞已清理。
+- **R028 门禁抓到真实漂移**：只改了技能侧镜像 `DESIGN.md` 而漏了权威源 `starters/liquid-glass-frontend/DESIGN.md` → `check-token-sync.ps1` 报"首次差异在第 183 行"。补齐权威源后 `PASS checked=4`。
+
+### 8.7 仍未验证 / 遗留
+
+- Playwright 浏览器二进制：本机 `~\AppData\Local\ms-playwright` 不存在，`bunx playwright install chromium` 仍在下载中 → **Stage3.5/Stage4 的真实 E2E 运行尚未验证**；R020 冒烟当前依赖 browser-use MCP（已实测可用）。
+- `model.name = deepseek-v4-flash` 是否在你的账号模型列表内：离线无法确认，缺失时删掉 `model` 块即可。
+- §6 的两项 opt-in（SKILL.md 2900+ 行瘦身、技能正文 Vue→React 示例）仍未做，属内容重构，不在兼容平移范围内。
+- `.gitattributes` 的 `export-ignore` 缺口（内部复盘文档是否随 tarball 分发）需你决定。
+
 ## 附录 A — 关键证据
 - `file .qoder/skills/all-in-mvp/SKILL.md` → "UTF-8 (with BOM), CRLF"；`kf-mvp-api-contract/SKILL.md`（正常）→ 无 BOM。
 - `ls .claude` → 不存在；`grep ".claude/workflows" .qoder/skills` → 仅 `all-in-mvp/SKILL.md`。

@@ -12,7 +12,8 @@ param(
 
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }  # 保证 UTF-8 输出
 
-$ErrorActionPreference = "Continue"
+# Stop（与其余 check-*.ps1 一致）：脚本内部崩溃必须非零退出，否则门禁"静默漏检"仍报成功
+$ErrorActionPreference = "Stop"
 $violations = @()
 
 # ── 定位 web 源码目录 ─────────────────────────────────────────────
@@ -24,10 +25,11 @@ if (Test-Path (Join-Path $TargetDir "apps/web/src")) {
 }
 
 if (-not $webSrc) {
+    # 不写 PASS：跳过 ≠ 通过。exit 0 保持（无前端源码时该规则不适用），但状态必须让 Agent/调用方看得见
     if ($Json) {
-        Write-Output '{"status":"PASS","rule":"R022-R026","skipped":true,"message":"未检测到 apps/web/src 或 src，跳过风格检查"}'
+        Write-Output '{"status":"SKIPPED","rule":"R022-R026","skipped":true,"message":"未检测到 apps/web/src 或 src，风格检查未执行（请确认前端源码路径是否正确）"}'
     } else {
-        Write-Host "[PASS] R022-R026 Liquid Glass 风格检查 — 未检测到前端源码目录，跳过" -ForegroundColor Green
+        Write-Host "[SKIP] R022-R026 Liquid Glass 风格检查 — 未检测到前端源码目录，未执行检查" -ForegroundColor Yellow
     }
     exit 0
 }
@@ -149,8 +151,8 @@ if ($violations.Count -eq 0) {
     exit 0
 } else {
     if ($Json) {
-        $json = $violations | ConvertTo-Json -Compress
-        Write-Output "{`"status`":`"FAIL`",`"rule`":`"R022-R026`",`"violations`":$($violations.Count),`"details`":$json}"
+        $detailsJson = $violations | ConvertTo-Json -Compress   # 不能叫 $json：与 param [switch]$Json 同名（PS 变量名不区分大小写），赋值会触发 SwitchParameter 转换异常
+        Write-Output "{`"status`":`"FAIL`",`"rule`":`"R022-R026`",`"violations`":$($violations.Count),`"details`":$detailsJson}"
     } else {
         Write-Host "[FAIL] R022-R026 Liquid Glass 风格检查 — 发现 $($violations.Count) 处违规：" -ForegroundColor Red
         foreach ($v in $violations) {

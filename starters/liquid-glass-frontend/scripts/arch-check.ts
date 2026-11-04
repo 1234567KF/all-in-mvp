@@ -13,9 +13,14 @@
  */
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { extname, join, relative } from "node:path"
+import { fileURLToPath } from "node:url"
 
-const ROOT = new URL("..", import.meta.url).pathname
+// Windows 下 URL.pathname 会得到 "/D:/..."，join 后变成 "\D:\..."（ENOENT）→ 必须用 fileURLToPath
+const ROOT = fileURLToPath(new URL("..", import.meta.url))
 const WEB_SRC = join(ROOT, "apps/web/src")
+// node:path.relative 在 Windows 返回反斜杠；规则里按 POSIX 分隔符匹配 → 统一归一化，否则规则静默不触发
+const toPosix = (p: string) => p.replace(/\\/g, "/")
+const relOf = (base: string, target: string) => toPosix(relative(base, target))
 
 interface Violation {
   rule: string
@@ -47,7 +52,7 @@ const SONNER_ALLOWLIST = new Set([
 const files = walk(WEB_SRC)
 
 for (const file of files) {
-  const rel = relative(ROOT, file)
+  const rel = relOf(ROOT, file)
   const lines = readFileSync(file, "utf-8").split("\n")
   const isUiLayer = rel.startsWith("apps/web/src/components/") || rel.startsWith("apps/web/src/pages/")
 
@@ -78,13 +83,13 @@ const appSrc = readFileSync(appTsxPath, "utf-8")
 const pagesDir = join(WEB_SRC, "pages")
 const pageFiles = walk(pagesDir).filter((f) => f.endsWith(".tsx"))
 for (const pageFile of pageFiles) {
-  const base = pageFile.split("/").pop()!.replace(/\.tsx$/, "")
+  const base = toPosix(pageFile).split("/").pop()!.replace(/\.tsx$/, "")
   // 跳过 LoginPage 与 index 类文件
   if (base === "LoginPage" || base.startsWith("_")) continue
   // 只关注顶层「Page」文件（子组件不算）
   if (!base.endsWith("Page")) continue
   // 允许两种引法：React.lazy(...) 或 lazy(...)
-  const pathHint = relative(WEB_SRC, pageFile).replace(/\.tsx$/, "")
+  const pathHint = relOf(WEB_SRC, pageFile).replace(/\.tsx$/, "")
   const lazyRe = new RegExp(`lazy\\(\\s*\\(\\)\\s*=>\\s*import\\(\\s*["']@?/?${pathHint.replace(/\//g, "\\/")}["']`)
   const importedDirect = new RegExp(`import\\s+[A-Za-z]+\\s+from\\s+["']@\\/${pathHint.replace(/\//g, "\\/")}["']`)
 
@@ -94,7 +99,7 @@ for (const pageFile of pageFiles) {
   if (directMatch && !lazyMatch) {
     violations.push({
       rule: "page-must-lazy",
-      file: relative(ROOT, pageFile),
+      file: relOf(ROOT, pageFile),
       line: 1,
       code: `${base} 被直接 import，应使用 React.lazy()`,
     })

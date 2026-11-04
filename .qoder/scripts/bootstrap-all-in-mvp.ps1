@@ -80,16 +80,37 @@ Copy-Asset -Name "gate-rules.yaml" -Source (Join-Path $FrameworkHome "gate-rules
 Copy-Asset -Name "PLAYBOOK.md" -Source (Join-Path $FrameworkHome "PLAYBOOK.md") -Destination (Join-Path $TargetDir ".qoder\PLAYBOOK.md")
 Copy-Asset -Name "rules/quality-gate.md" -Source (Join-Path $FrameworkHome "rules\quality-gate.md") -Destination (Join-Path $TargetDir ".qoder\rules\quality-gate.md")
 
-# ── 1b. hooks 配置（永不覆盖已有 settings.json，只在新工作区落地）──────
+# ── 1b. hooks 配置（缺则写入；已有 settings.json 则合并 hooks，不覆盖用户其他配置）──────
 $settingsDst = Join-Path $TargetDir ".qoder\settings.json"
 $settingsSrc = Join-Path $FrameworkHome "settings.hooks.json"
-if (Test-Path $settingsDst) {
-    $results += [PSCustomObject]@{ Asset = "settings.json"; Status = "SKIPPED"; Path = $settingsDst }
-} elseif (Test-Path $settingsSrc) {
+if (-not (Test-Path $settingsSrc)) {
+    $results += [PSCustomObject]@{ Asset = "settings.hooks.json"; Status = "MISSING_SOURCE"; Path = $settingsSrc }
+} elseif (-not (Test-Path $settingsDst)) {
     Copy-Item -Path $settingsSrc -Destination $settingsDst -Force
     $results += [PSCustomObject]@{ Asset = "settings.json (hooks)"; Status = "COPIED"; Path = $settingsDst }
 } else {
-    $results += [PSCustomObject]@{ Asset = "settings.hooks.json"; Status = "MISSING_SOURCE"; Path = $settingsSrc }
+    $raw = [System.IO.File]::ReadAllText($settingsDst)
+    try { $obj = $raw | ConvertFrom-Json } catch { $obj = $null }
+    if ($null -eq $obj) {
+        $results += [PSCustomObject]@{ Asset = "settings.json"; Status = "SKIPPED"; Path = "$settingsDst (JSON 解析失败，请手工并入 hooks)" }
+    } else {
+        $hasGateHook = ($raw -match "quality-gate-hook")
+        if ($hasGateHook -and -not $Force) {
+            $results += [PSCustomObject]@{ Asset = "settings.json (hooks)"; Status = "SKIPPED"; Path = "$settingsDst (已含 quality-gate-hook)" }
+        } else {
+            # 合并：保留原有键，补 hooks.PostToolUse（matcher = Write|Edit|MultiEdit）
+            $hookTemplate = [System.IO.File]::ReadAllText($settingsSrc) | ConvertFrom-Json
+            if ($obj.PSObject.Properties.Name -contains "hooks") {
+                $obj.hooks = $hookTemplate.hooks
+            } else {
+                $obj | Add-Member -NotePropertyName hooks -NotePropertyValue $hookTemplate.hooks -Force
+            }
+            $merged = $obj | ConvertTo-Json -Depth 20
+            # UTF-8 无 BOM 写回（BOM 会破坏配置解析）
+            [System.IO.File]::WriteAllText($settingsDst, $merged, (New-Object System.Text.UTF8Encoding($false)))
+            $results += [PSCustomObject]@{ Asset = "settings.json (hooks merged)"; Status = "COPIED"; Path = $settingsDst }
+        }
+    }
 }
 
 # ── 2. 门禁脚本 ────────────────────────────────────────────────

@@ -15,10 +15,10 @@
 
 ## 参考链接
 
-1. OpenClaw Skill Creator — https://github.com/anthropics/claude-code-skills
+1. Qoder Skills 官方文档 — https://docs.qoder.com/zh/cli/Skills （本技能族的运行平台，技能发现与自动召回机制以此为准）
 2. Kiro IDE Spec Document Generation — Amazon Kiro IDE 设计理念
 3. Progressive Disclosure 原则 — skill-creator 核心设计原则
-4. Claude Code Skills 官方文档 — Anthropic 官方 Skill 设计指南
+4. 历史出处：Anthropic 的 skill 设计指南（https://github.com/anthropics/claude-code-skills）—— 方法论来源，机制细节以 Qoder 文档为准
 
 ## 改造说明
 

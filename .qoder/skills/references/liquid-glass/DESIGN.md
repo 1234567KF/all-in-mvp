@@ -180,7 +180,7 @@ spacing:
 
 # Liquid Glass Design System Specifications
 
-This document defines the "Liquid Glass" design system, engineered for high-fidelity data environments. It serves as a persistent contract for developers and AI agents (such as Cursor and Claude) to generate consistent UI across the project.
+This document defines the "Liquid Glass" design system, engineered for high-fidelity data environments. It serves as a persistent contract for developers and AI agents (Qoder subagents such as mvp-frontend-dev, and any external coding agent) to generate consistent UI across the project.
 
 ## Overview
 

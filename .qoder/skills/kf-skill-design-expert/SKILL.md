@@ -1,8 +1,8 @@
 ---
 name: kf-skill-design-expert
 description: >-
-  Load when user asks to design, create, review, or optimize a Claude Code
-  skill (触发: "设计Skill", "创建Skill", "优化Skill", "审查Skill", "skill design",
+  Load when user asks to design, create, review, or optimize a Qoder Skill
+  (触发: "设计Skill", "创建Skill", "优化Skill", "审查Skill", "skill design",
   "固化经验", "技能设计"). Also load when evaluating whether a skill's benefit
   exceeds its context-window tax.
 metadata:
@@ -34,7 +34,7 @@ Derived from Perplexity's *"Designing, Refining, and Maintaining Agent Skills at
 3. **Gotchas > Instructions** — The model already knows how to do things. What it doesn't know are your project's specific traps, naming inconsistencies, and edge cases. Gotchas are the highest-signal content.
 4. **Every Skill is a tax** — Before adding anything, ask: *"Would the Agent get this wrong without it?"* If not, it cannot afford to be there. "I have only made this letter longer because I have not had the time to make it shorter."
 5. **Evals before content** — Write evaluation cases first. Negative examples (when the Skill should NOT load) often matter more than positive ones.
-6. **Multi-model reality** — Skills must work across model families (Claude Opus, Claude Sonnet, DeepSeek, etc.). They behave differently with the same Skill.
+6. **Multi-model reality** — Skills must work across the model families Qoder routes to (pro-tier vs flash-tier reasoning models behave differently with the same Skill). Write instructions that survive the weaker tier.
 7. **Append-mostly maintenance** — After shipping, the gotchas section accrues the most value. Failure → add gotcha. Wrong load → tighten description. Missed load → add keyword.
 
 ---

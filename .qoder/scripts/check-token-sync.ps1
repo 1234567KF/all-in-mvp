@@ -74,10 +74,12 @@ foreach ($pair in $pairs) {
 }
 
 if ($violations.Count -eq 0) {
+    # checked=0 表示权威脚手架不存在：规则未真正执行，状态报 SKIPPED 而不是 PASS
+    $status = if ($checked -eq 0) { "SKIPPED" } else { "PASS" }
     if ($Json) {
-        Write-Output "{`"status`":`"PASS`",`"rule`":`"R028`",`"checked`":$checked,`"skipped`":$($skipped.Count)}"
+        Write-Output "{`"status`":`"$status`",`"rule`":`"R028`",`"checked`":$checked,`"skipped`":$($skipped.Count)}"
     } else {
-        Write-Host "[PASS] R028 设计 token 镜像同步 — 已比对 $checked 个文件" -ForegroundColor Green
+        Write-Host "[$status] R028 设计 token 镜像同步 — 已比对 $checked 个文件" -ForegroundColor $(if ($status -eq "PASS") { "Green" } else { "Yellow" })
         if ($skipped.Count -gt 0) {
             Write-Host "  (跳过 $($skipped.Count) 个：脚手架不存在 → $($skipped -join ', '))" -ForegroundColor DarkGray
         }
@@ -85,8 +87,8 @@ if ($violations.Count -eq 0) {
     exit 0
 } else {
     if ($Json) {
-        $json = $violations | ConvertTo-Json -Compress
-        Write-Output "{`"status`":`"FAIL`",`"rule`":`"R028`",`"violations`":$($violations.Count),`"details`":$json}"
+        $detailsJson = $violations | ConvertTo-Json -Compress   # 不能叫 $json：与 param [switch]$Json 同名（PS 变量名不区分大小写），赋值会触发 SwitchParameter 转换异常
+        Write-Output "{`"status`":`"FAIL`",`"rule`":`"R028`",`"violations`":$($violations.Count),`"details`":$detailsJson}"
     } else {
         Write-Host "[FAIL] R028 设计 token 镜像漂移 — $($violations.Count) 处：" -ForegroundColor Red
         $violations | ForEach-Object {

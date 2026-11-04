@@ -48,8 +48,8 @@ if ($violations.Count -eq 0) {
     exit 0
 } else {
     if ($Json) {
-        $json = $violations | ConvertTo-Json -Compress
-        Write-Output "{`"status`":`"FAIL`",`"rule`":`"R015`",`"violations`":$($violations.Count),`"details`":$json}"
+        $detailsJson = $violations | ConvertTo-Json -Compress   # 不能叫 $json：与 param [switch]$Json 同名（PS 变量名不区分大小写），赋值会触发 SwitchParameter 转换异常
+        Write-Output "{`"status`":`"FAIL`",`"rule`":`"R015`",`"violations`":$($violations.Count),`"details`":$detailsJson}"
     } else {
         Write-Host "[FAIL] R015 禁止静默吞错误 — 发现 $($violations.Count) 处违规：" -ForegroundColor Red
         $violations | ForEach-Object {

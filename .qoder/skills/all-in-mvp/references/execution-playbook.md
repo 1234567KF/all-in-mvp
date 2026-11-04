@@ -8,7 +8,7 @@
 
 ### 协作模式（默认）：子 Agent 编排
 
-Qoder 和 Claude Code 均支持子 Agent 协作编排。主 Agent 负责调度，通过平台的子 Agent 机制派发任务：
+Qoder 原生支持子 Agent 协作编排（`Agent` 工具 + `.qoder/agents/*.md`）。主 Agent 负责调度，通过平台的子 Agent 机制派发任务：
 
 ```
 主 Agent（编排者）
@@ -20,7 +20,7 @@ Qoder 和 Claude Code 均支持子 Agent 协作编排。主 Agent 负责调度�
 
 **特点**：
 - 主 Agent 负责编排 + 审查结果，子 Agent 负责执行
-- 子 Agent 通过 API/MCP（Qoder）或 Workflow（Claude Code）调度
+- 子 Agent 通过 `Agent(subagent_type='mvp-*')` 派发（Qoder 原生机制）
 - 上下文天然隔离（每个子 Agent 独立执行）
 - 支持 fan-out 并行（最多 3 个后端/前端模块同时进行）
 
@@ -50,7 +50,7 @@ Qoder 和 Claude Code 均支持子 Agent 协作编排。主 Agent 负责调度�
 技能加载完成
   ↓
 1. 检测子 Agent 编排能力
-   ├── 支持子 Agent 机制（Qoder API/MCP / Claude Code Workflow）→ 协作模式
+   ├── `Agent` 工具可用（Qoder 子 Agent 机制）→ 协作模式
    └── 不支持子 Agent 编排 → 降级模式（单 Agent 角色扮演，串行执行）
   ↓
 2. 初始化项目目录
@@ -67,7 +67,7 @@ Qoder 和 Claude Code 均支持子 Agent 协作编排。主 Agent 负责调度�
 📋 手动驾驶 Pipeline 启动确认
 
 🔭 运行模式
-├── 平台：协作模式（Qoder API/MCP 或 Claude Code Workflow）/ 降级模式（单 Agent 串行）
+├── 编排：协作模式（Qoder `Agent` 派发）/ 降级模式（单 Agent 串行）
 ├── 技术栈：<默认推荐 / 用户指定>
 └── 预计流程：Stage1 → Stage2 → Stage3 → Stage4 → Stage5
 
@@ -463,8 +463,8 @@ Pipeline 可能因用户离线、上下文耗尽、或主动暂停而中断。�
 
 | 引用位置 | 解析方式 | 示例 |
 |---------|---------|------|
-| `agents/*.md` | 相对于技能目录 | `.claude/skills/manual-driving/agents/pm-agent.md` |
-| `references/*.md` | 相对于技能目录 | `.claude/skills/manual-driving/references/execution-playbook.md` |
+| `agents/*.md` | 相对于技能目录 | `.qoder/skills/all-in-mvp/agents/pm-agent.md` |
+| `references/*.md` | 相对于技能目录 | `.qoder/skills/all-in-mvp/references/execution-playbook.md` |
 | `decisions/*.md` | 相对于项目根目录 | `<project>/decisions/stage1-prd-decisions.md` |
 | `PRD.md` / `spec.md` | 相对于项目根目录 | `<project>/PRD.md` |
 

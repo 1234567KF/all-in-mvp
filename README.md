@@ -28,6 +28,21 @@ cp -r /tmp/all-in-mvp/.qoder ./          # 核心产物就是这一个目录
 
 > 在当前项目根目录执行。`.qoder/skills/` 出现在项目中，重启 Qoder 即可。
 
+### 运行前置（决定你能跑到哪一步）
+
+| 能力 | 依赖 | 缺了会怎样 |
+|------|------|-----------|
+| 技能召回、子 Agent 编排、文档产出、静态门禁（`.ps1`） | 只需 PowerShell 5.1 + Git | ✅ 完整可用 |
+| Stage3 TDD、`vite build`、`tsc` 类型检查 | **Node.js**（或 Bun） | ❌ 执行层跑不动，只能产出代码文本 |
+| Starter 全栈（`bun --filter` / `bun:sqlite` / `bun:test`）、Stage4 E2E | **Bun**（必需，Node 不能替代） | ❌ `npm install` 会因 peer 依赖冲突失败，权威脚手架只认 `bun.lock` |
+| 真实浏览器冒烟（R020 门禁） | browser-use MCP 或 Playwright 任一 | ⚠️ 二者都缺时无法验收 UI |
+
+> 自检：`powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/verify-all-in-mvp.ps1` 会逐项列出上面这些前置 + 用户级注册状态（PASS/WARN/FAIL）。
+> 免管理员安装运行时（本机已按此路径实测通过，Node v26.13.0 + Bun 1.4.4）：
+> Node 用官方 zip 解压到 `~\.local\node` 再追加到用户 PATH（`setx PATH "<原值>;C:\Users\<you>\.local\node"`，会广播 WM_SETTINGCHANGE，新终端即刻可见）；
+> Bun 优先用 `npm install -g bun`（走 npm registry，实测 1 分钟内完成，shim 落在 Node 目录里，PATH 已覆盖）；`powershell -c "irm https://bun.sh/install.ps1 | iex"` 走 GitHub Releases，本机实测掉速到 ~13KB/s（37MB 未下完），只在 registry 不可用时用。
+> 实测执行层：`bun install`（784 包）→ `bun run build`（shared+api+web）→ `bun run typecheck` → `bun run test:shared|test:api|test:web`（3+9 用例全绿）→ `bun run arch:check`（96 文件）全部退出码 0。
+
 ---
 
 ## 安装后你得到什么
@@ -40,9 +55,9 @@ cp -r /tmp/all-in-mvp/.qoder ./          # 核心产物就是这一个目录
 │   └── references/         ← 按需加载的规则/手册（不进上下文）
 ├── agents/                 ← 子 Agent 18 个（mvp-*，流水线角色）
 ├── rules/                  ← 自动加载的行为规则（质量门禁 / 节能索引）
-├── scripts/                ← 门禁脚本 9 个 .ps1（含 PostToolUse hook）
-├── gate-rules.yaml         ← 规则单一真源（R001–R021）
-├── PLAYBOOK.md             ← 血案库（B001–B020）
+├── scripts/                ← 门禁与自检脚本 15 个 .ps1（PostToolUse hook、bootstrap、verify、sync-qoder-homes）
+├── gate-rules.yaml         ← 规则单一真源（R001–R028）
+├── PLAYBOOK.md             ← 血案库（22 条，B002–B023）
 └── settings.json           ← 项目配置（模型 + hooks 门禁）
 
 ultra-cost-effective/       ← 极致节能引擎 v2.0（可选，需 Node.js）
@@ -129,25 +144,19 @@ A: `.gitattributes` 的 `export-ignore` 规则让 GitHub tarball 自动排除文
 
 ### Q: 技能是全局的还是项目级的？
 
-A: **两种都支持，项目级优先**。项目级在 `.qoder/skills/` + `.qoder/agents/`（随仓库分发，团队成员共享）；用户级（全局）把它们放到 Qoder 的 home 目录，任何工作区都能召回：
+A: **两种都支持，项目级优先**。项目级在 `.qoder/skills/` + `.qoder/agents/`（随仓库分发，团队成员共享）；用户级（全局）把它们放到 Qoder 的 home 目录，任何工作区都能召回。
 
 ```powershell
-# Qoder 桌面/CLI（CN 版）读 ~/.qoder-cn，IDE 版读 ~/.qoder —— 两处都要放才两边可用
-$QH = @(".qoder-cn", ".qoder") | Where-Object { Test-Path "$env:USERPROFILE\$_" } | Select-Object -First 1
-mkdir -p "$env:USERPROFILE\$QH\agents"
-cp -r .qoder/skills/*  "$env:USERPROFILE\$QH\skills/"
-cp -r .qoder/agents/*  "$env:USERPROFILE\$QH\agents/"
-# bootstrap 真源 + 入口脚本（跨工作区补门禁资产用）
-mkdir -p "$env:USERPROFILE\$QH\frameworks\all-in-mvp" "$env:USERPROFILE\$QH\scripts"
-cp -r .qoder/PLAYBOOK.md .qoder/gate-rules.yaml .qoder/settings.hooks.json "$env:USERPROFILE\$QH\frameworks\all-in-mvp/"
-cp -r .qoder/rules .qoder/scripts .qoder/agents "$env:USERPROFILE\$QH\frameworks/all-in-mvp/"
-cp -r .qoder/skills/references "$env:USERPROFILE\$QH\frameworks/all-in-mvp/skills/" 2>$null
-cp -r starters "$env:USERPROFILE\$QH\frameworks/all-in-mvp/"
-cp .qoder/scripts/bootstrap-all-in-mvp.ps1 "$env:USERPROFILE\$QH\scripts/"
+# 一条命令同步到本机所有存在的 Qoder home（skills / agents / scripts / frameworks / starters），
+# 并逐字节校验 home 与仓库一致（DRIFT=0 才算通过）；node_modules、dist 等构建产物不进全局目录
+powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/sync-qoder-homes.ps1
+# 额外把 hooks 合并进 <home>/settings.json（原文件自动备份为 settings.json.bak，只补 hooks 键，不动 model 等已有配置）
+powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/sync-qoder-homes.ps1 -InstallGlobalHooks
 ```
 
-> 放完需**重启 Qoder** 才会重新扫描技能目录。
-> 全局只让「技能 + 子 Agent」可召回；**门禁资产（`gate-rules.yaml` / `check-*.ps1` / `rules/` / hooks）仍是工作区级**，新项目首次使用时按技能内的 Global Bootstrap 补一次。
+> Qoder 桌面/CLI（CN 版）读 `~/.qoder-cn`，IDE 版读 `~/.qoder`；脚本两处都写，谁在用都能召回。只新增/覆盖，**不删除** home 里与本项目无关的其他技能。
+> 用户级 hooks 的命令必须是**绝对路径**（工作区相对路径换到别的项目就解析不到）。实测 Qoder CLI 1.31.2：同步后技能与用户级 hooks **当次会话即生效，无需重启**；若你的版本没有立刻生效，重启是兜底手段。
+> 全局只让「技能 + 子 Agent」可召回；**工作区门禁资产（`gate-rules.yaml` / `check-*.ps1` / `rules/`）仍需在新项目首次使用时由 Global Bootstrap 补齐**。
 
 ### Q: 为什么 giget URL 需要 `#all-in-mvp`？
 
@@ -177,7 +186,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/check-stage3-
 
 ### Q: 质量门禁 hook 什么时候开始生效？
 
-A: `settings.json` 的 `hooks` 在会话启动时读取，**改完需重启 Qoder**。生效后可故意编辑 `src/` 下任一 `.ts` 文件验证：应看到 `[QUALITY-GATE]` 提示要求派发审查子 Agent（本仓库已在 Qoder CLI 1.31.2 实测通过：命中 `src/**.ts` 即返回 exit 2 并注入 `[QUALITY-GATE]`；未命中路径静默通过）。
+A: 工作区级 `settings.json` 的 `hooks` 在会话启动时读取，**改完需重启 Qoder** 保证加载；用户级（`<home>/settings.json`）实测在同一版本上**当次会话即被加载并触发**。生效后可故意编辑 `src/` 下任一 `.ts` 文件验证：应看到 `[QUALITY-GATE]` 提示要求派发审查子 Agent（本仓库已在 Qoder CLI 1.31.2 实测：命中 `src/**.ts` 即返回 exit 2 并注入 `[QUALITY-GATE]`；未命中路径静默通过；hook 脚本本身也可脱离 Qoder 单测——把一段 hook JSON 从 stdin 喂给它，任意 cwd 下都应输出门禁文案并 exit 2）。
 
 ### Q: `model.name` 填什么？
 

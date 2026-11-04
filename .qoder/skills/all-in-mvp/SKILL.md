@@ -40,7 +40,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\$QH\script
 **补齐清单**：
 
 - `.qoder/gate-rules.yaml`、`.qoder/PLAYBOOK.md`、`.qoder/rules/quality-gate.md`
-- `.qoder/settings.json`（仅当工作区没有该文件时写入 hooks；已存在需手工并入 `hooks.PostToolUse`）
+- `.qoder/settings.json`（没有则写入 hooks；**已有则合并 `hooks.PostToolUse`，保留你原有的 `model` / `outputStyle` 等键**；已含 quality-gate-hook 时跳过，需覆盖加 `-Force`）
 - `.qoder/scripts/check-*.ps1`（全部门禁脚本）
 - `.qoder/agents/mvp-*.md`（Qoder 子 Agent）
 - `.qoder/skills/references/`（技术栈默认值 + PRD/字段/边界规则，21 个技能按此路径加载）
@@ -48,6 +48,18 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\$QH\script
 
 > 已存在默认跳过；需要覆盖加 `-Force`；只想补门禁资产加 `-SkipScaffold`。
 > Bootstrap 完成后，按「强制模式声明」继续判定轻量/全量/增量模式。
+
+**两个维护脚本**（改了本仓库的技能/脚本后必须跑，否则全局调用读到旧版）：
+
+```powershell
+# HEAD → 用户级 home（skills/agents/scripts/frameworks/starters），逐字节校验 DRIFT=0 才算通过
+powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/sync-qoder-homes.ps1 -InstallGlobalHooks
+# 自检：双 home 注册 + 工作区门禁资产 + Node/Bun 运行时，一次列出 PASS/WARN/FAIL
+powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/verify-all-in-mvp.ps1
+```
+
+> `-InstallGlobalHooks` 把 hooks 以**绝对路径**合并进 `<home>/settings.json`（自动备份 `.bak`，只加 hooks 键），使门禁在任意工作区生效；实测 Qoder CLI 1.31.2 用户级 hooks 当次会话即触发。
+> 血案 B022/B023：门禁脚本 `-Json` 分支禁止 `Write-Host`；局部变量避开 `$HOME`/与开关同名；**跳过必须报 SKIPPED 而不是 PASS**；跨平台路径先归一化分隔符，且两套实现（TS `arch-check.ts` + PS `check-*.ps1`）要用同一个违例样本交叉验证。
 
 ---
 
