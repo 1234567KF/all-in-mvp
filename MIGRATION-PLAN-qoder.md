@@ -456,6 +456,7 @@ Playwright E2E 仍未真实跑过（task #9，两侧 CI 都不跑 E2E）。
 **终局**：`check-stage4-gate.ps1` 对权威 starter = **7 PASS / 2 FAIL，且两条 FAIL 都是真实缺陷**——
 R014 孤端点 `/api/auth/change-password`（§11.4/B028）、R010 `apps/api/src/db.ts` 结构自举 inline 插入 admin 与 `apps/api/scripts/seed-dev.ts` 构成两套账号定义。按既定处置原则，**业务代码只报不修**。
 `gate-rules.yaml` 的 R010/R011 描述重写并升版 v2.27、`applies_to` 去掉已废弃的 mock-service；严格 YAML 复核：39 条规则、无重复 ID、无未知引用。PLAYBOOK 新增 **B029**，血案 27 → **28** 条。
+对照跑框架仓自身（`check-stage4-gate.ps1` 无 `-TargetDir`）= **6 PASS / 3 FAIL，与校准前同数**：R010/R011/R014 会同时扫 `demo-frontend` + `templates` + `starters` 三棵互不相干的树（如 `templates/e2e/seed.ts` 与 starter 的 `seed-dev.ts` 被判成"两种子源"），这是既定事实——这三条门禁的目标是生成的 MVP 应用，不是框架仓。框架仓自身的 R010 命中 `scripts/smoke-test.js` / `scripts/check-e2e-env.js` 里写死的 `admin123`，属真问题，留作后续清理，本轮不动。
 
 ---
 
