@@ -213,6 +213,27 @@ Clean and architectural, prioritizing legibility and light-refraction.
 - **Accents**: Primary accent (Deep Green `#006e2f`) for actions and brand strength; Qoder Green (`#22c55e`) for active states.
 - **Borders**: Consistent Slate-200 / `#bccbb9` (`rgba(109, 123, 108, 0.3)`) to maintain structure.
 
+### Accent Theme Colors (主题色)
+
+主题色是独立于 Dark/Light 的第二维偏好，可在顶栏 Palette 面板或「个人设置 → 外观主题」切换，共 6 套预设：
+
+| 主题色         | `data-theme-color` | Dark `primary` / `bright` | Light `primary` / `bright` |
+| -------------- | ------------------ | ------------------------- | -------------------------- |
+| 翡翠绿（默认） | `green`            | `#22c55e` / `#4be277`     | `#006e2f` / `#22c55e`      |
+| 科技蓝         | `blue`             | `#3b82f6` / `#60a5fa`     | `#1d4ed8` / `#3b82f6`      |
+| 星云紫         | `purple`           | `#8b5cf6` / `#a78bfa`     | `#6d28d9` / `#8b5cf6`      |
+| 极光青         | `cyan`             | `#06b6d4` / `#22d3ee`     | `#0e7490` / `#06b6d4`      |
+| 落日橙         | `orange`           | `#f97316` / `#fb923c`     | `#c2410c` / `#f97316`      |
+| 玫瑰粉         | `rose`             | `#ec4899` / `#f472b6`     | `#be185d` / `#ec4899`      |
+
+Rules:
+
+- **Only the primary family follows the theme color**: `--primary` / `--primary-foreground`, `--accent` / `--accent-foreground`, `--lg-primary-*` (含 `--lg-primary-hover` / `--lg-primary-text`), sidebar primary/accent/ring/active, `--ring`, `chart-1/2`, and primary glow shadows.
+- **Semantic status colors stay fixed**: success/active, error, warning, info, and the `data-*` palette do not follow the theme color. Success states use the fixed `--lg-success-*` family (always green); text on light surfaces uses `--lg-success-text` (deep green for AA), so a blue theme never turns "enabled" badges blue.
+- **Contrast is mandatory**: text placed on a primary surface must reach ≥ 4.5:1 in both modes; `apps/web/src/lib/theme-colors.test.ts` also checks the dedicated `--lg-primary-text` / `--lg-success-text` tokens against base surfaces.
+- **Colors live in CSS**: presets only override the `--theme-*-dark` / `--theme-*-light` seeds in `theme-tokens.css`; components use `var(--theme-swatch-*)` and never hardcode color values.
+- **Geometry does not change**: layout, typography, spacing, and radius remain identical across theme colors.
+
 ---
 
 ## Typography Rules
@@ -287,8 +308,8 @@ Cards are the primary container and must feature:
 
 - Value must use **JetBrains Mono** font.
 - Includes a "Liquid" accent line (2px vertical line to the left of the metric).
-  - _Dark Mode_: Qoder Green (`#22c55e`) line with glow.
-  - _Light Mode_: Deep Green (`#006e2f`) line with glow.
+  - 默认 `accentColor="primary"` 变体：使用 `--lg-primary`，跟随主题色（Dark 下为 `--theme-primary-dark`，Light 下为 `--theme-primary-light`）。
+  - 固定分类色（`green/blue/red/purple/yellow`）与语义成功绿（`--lg-success-*`）不随主题色变化。
 
 ---
 
@@ -303,17 +324,19 @@ Cards are the primary container and must feature:
 
 - **Dialog Titles**: `DialogTitle` **MUST** include visual icons (e.g., `<ShieldCheck className="size-4" style={{ color: "var(--lg-info)" }} />` or `<Pencil className="size-4" style={{ color: "var(--lg-info)" }} />`).
 - **Dialog Forms**: Form fields must use standard glass styling: inputs/selects with `bg-background/40 backdrop-blur-[12px]`, labels with `style={{ color: "var(--lg-text-secondary)" }}`.
+- **Responsive Dialogs**: 带表单/详情的弹窗优先用 [ResponsiveDialog](apps/web/src/components/shared/ResponsiveDialog.tsx)：桌面（≥md）居中 Dialog，移动（<md）自动切换为底部 Sheet（顶部圆角、内容区独立滚动、Footer 吸底）。API 与 Dialog 家族一一对应，存量弹窗可机械替换。
 
 ### Tables & Filtering
 
 - **DataTable Filters**: All page filters, search inputs, and selectors must be nested inside the `toolbar` property of `DataTable` using the [FilterBar](apps/web/src/components/shared/FilterBar.tsx) component.
-- **Date Filtering**: Use the custom [DateRangePicker](apps/web/src/components/ui/date-range-picker.tsx) component for all date range selection fields, never native HTML input date types or separate inputs.
+- **Date Filtering**: Use the custom [DateRangePicker](apps/web/src/components/ui/date-range-picker.tsx) component for all date range selection fields, never native HTML input date types or separate inputs. 组件默认宽 280px 仅适合短占位；需要展示完整「年月日」范围时，在调用侧传 `className="w-fit max-w-full min-w-[260px]"` 让触发器按内容自适应，避免截断。
+- **Mobile Card Mode**: 列表页窄屏（<md）不横向滚动表格，而是通过 `DataTable` 的 `mobileCard` prop 渲染卡片列表，卡片内容用 [MobileCard](apps/web/src/components/shared/MobileCard.tsx) 三段式原语（Header/Body/Footer，轻量场景用 `MobileCardCompact`）组合，不手写卡片布局。
 
 ---
 
 ## Do's and Don'ts (Constraints & Anti-patterns)
 
-- **DO** use CSS theme variables (e.g., `var(--primary)`, `var(--lg-surface)`) or utility classes from `design-utils.css` (e.g., `.glass-card`, `.matte-card`) for all styles.
+- **DO** use CSS theme variables (e.g., `var(--primary)`, `var(--lg-surface)`) or utility classes from `design-utils.css` (e.g., `.glass-card`, `.matte-card`, `.inset-card`) for all styles.
 - **DO** use the dual-font strategy: `Manrope` for headings and `Inter` for body text.
 - **DO** keep card border radius at exactly 12px to maintain geometric consistency.
 - **DON'T** hardcode raw hex or rgba colors (e.g., `#22c55e` or `#ffffff`) directly in React components.
@@ -328,12 +351,12 @@ You are an AI coding assistant. When modifying or creating UI components in this
 
 1. **Read `DESIGN.md` first** to align with the core visual principles of Liquid Glass.
 2. **Import tokens indirectly**: Rely on [theme-tokens.css](theme-tokens.css) or Tailwind CSS v4 variables mapped inside `index.css`.
-3. **Use shared layout classes**: Before writing custom container styles, check if `.glass-card`, `.liquid-card`, `.matte-card`, or `.glass-row` in [design-utils.css](design-utils.css) satisfy the requirements.
+3. **Use shared layout classes**: Before writing custom container styles, check if `.glass-card`, `.liquid-card`, `.matte-card`, `.inset-card`（玻璃表面内部的嵌套子区块卡，弱边框 + 淡底 + 8px 圆角）, or `.glass-row` in [design-utils.css](design-utils.css) satisfy the requirements.
 4. **Enforce typography variables**: Use `font-heading`, `font-body`, and `font-mono` utilities instead of generic sans/serif overrides.
 
 ---
 
-## Responsive Breakpoints
+## Responsive Breakpoints & Implementation Rules
 
 | Token | Min-width | Target                   |
 | ----- | --------- | ------------------------ |
@@ -345,11 +368,19 @@ You are an AI coding assistant. When modifying or creating UI components in this
 
 Layout shifts:
 
-- **< md**: Sidebar collapses to bottom nav or hamburger; cards stack single-column.
+- **< md**: Sidebar collapses to bottom nav or hamburger; DataTable renders card list (via `mobileCard`); dialogs become bottom sheets (via `ResponsiveDialog`); cards stack single-column.
 - **md – lg**: Sidebar overlay mode; 2-column grid.
 - **≥ lg**: Sidebar persistent; 3+ column grid.
 
 Container max-width: `1400px` (centered with auto margins).
+
+### Implementation Rules (mandatory)
+
+1. **Single mobile breakpoint = `md` / 768px.** The only source of truth is `useIsMobile()` in [use-mobile.ts](apps/web/src/hooks/use-mobile.ts). Hand-written CSS media queries related to mobile MUST use `767px` / `768px` (see `--spacing-page` in theme-tokens.css and frozen-column rules in design-utils.css). Never introduce new ad-hoc breakpoints like 640px for mobile detection.
+2. **CSS-first.** Style-only differences (show/hide, stacking, font size) MUST use Tailwind breakpoint classes (`md:flex` etc.), never JS. `window.innerWidth` is banned in pages/components (ESLint `project-rules/no-raw-viewport-check`).
+3. **JS fork only for structural differences.** Use `useIsMobile()` only when the two branches render structurally different trees (table vs card list, Dialog vs Sheet). Render a single tree — never `hidden md:block` double-DOM for large structures like tables.
+4. **Touch is not width.** Touch-related differences (hit area, hover fallback, drag disabling) MUST use `pointer-coarse:` / `@media (pointer: coarse)`, decoupled from width breakpoints. Use the `.touch-hit` utility (design-utils.css) to expand small buttons' hit area to ≥44px — **non-positioned elements only** (its un-layered `position: relative` beats the `absolute` utility); for positioned elements use `after:absolute after:-inset-2 after:content-['']` instead.
+5. **Adaptive primitives.** Dialogs that host forms or rich content use [ResponsiveDialog](apps/web/src/components/shared/ResponsiveDialog.tsx) (desktop centered Dialog / mobile bottom sheet). List pages provide a `mobileCard` render prop to [DataTable](apps/web/src/components/shared/DataTable.tsx) (title + 2-3 key fields + status badge; row tap opens detail). Simple confirm dialogs may stay centered.
 
 ---
 

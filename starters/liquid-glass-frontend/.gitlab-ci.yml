@@ -30,33 +30,94 @@ variables:
   FLOW_WEBHOOK_URL: "http://flow-openapi.aliyun.com/pipeline/webhook/REPLACE_ME"
   IMAG_REG: "registry.cn-beijing.aliyuncs.com/wecode-cloud"
   IMAGE_TAG: "$IMAG_REG/liquid-glass-starter:$CI_COMMIT_SHA"
-  # 内网测试机（SSH 部署）
+  # 内网测试机（SSH 部署）——此处为默认保底值；
+  # 新项目如需换机器，在 GitLab 项目 Settings > CI/CD > Variables 配置同名变量即可覆盖，无需改本文件
   TEST_HOST: "192.168.110.214"
   TEST_PORT: "63022"
   TEST_USER: "wecode"
   TEST_PATH: "/home/wecode/liquid-glass-starter"
 
-# ── Stage 0: 质量门禁（迁移预检 + 架构约束 + 单元测试）──
+# ── Stage .pre: 依赖缓存预热 ──
+# check job 的 node_modules 缓存为 pull-only，由本 job 负责创建/更新
+# 仅在 bun.lock / CI 配置变更时触发；Web 手动触发流水线可无条件重建（缓存丢失时的逃生通道）
+warm-cache:
+  stage: .pre
+  image: registry.cn-beijing.aliyuncs.com/wecode-cloud/bun:1-alpine
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - bun.lock
+        - .gitlab-ci.yml
+    - if: $CI_PIPELINE_SOURCE == "push"
+      changes:
+        - bun.lock
+        - .gitlab-ci.yml
+    - if: $CI_PIPELINE_SOURCE == "web"
+  cache:
+    key:
+      files:
+        - bun.lock
+    paths:
+      - node_modules/
+      - apps/api/node_modules/
+      - apps/web/node_modules/
+      - packages/shared/node_modules/
+    policy: pull-push
+  script:
+    - bun install --frozen-lockfile --ignore-scripts
+
+# ── Stage 0: 质量门禁（ESLint + 迁移预检 + 架构约束 + 单元测试）──
 #
 # 沉淀自实战项目的 CI 趟坑经验：
+#   ▸ lint              ESLint（web + api + shared，与 lint-staged 覆盖范围一致）。
+#                       除通用规则外承载后端架构约束：
+#                       route 默认禁手写 hasPermission（动态授权例外须带理由豁免）/
+#                       modules 禁裸调 writeLog / 直接写审计的 service 函数首参须 OpCtx
+#                       （AST 降低文本匹配的脆弱性，但成员调用、别名与间接审计仍是
+#                       已知盲区；lint 通过不等于权限或审计链路已获完整验证）
 #   ▸ migrate:check     Journal / .sql / snapshot 三方一致 + 内存 SQLite 全量迁移 +
 #                       drizzle-kit 二次 generate 检测 schema.ts 漂移
 #                       （拦截手写迁移、column 冲突、缺失快照等历史事故）
 #   ▸ arch:check        UI 层禁 @/lib/api / axios / sonner 直连 + 页面必须 React.lazy
-#                       （守护 services/toast 抽象层，避免 AI 生成代码时走偏）
-#   ▸ test:ci           前端 Vitest 覆盖率阈值 + 后端 Bun 原生覆盖率阈值
-#                       （引入新 workspace 后需在 root package.json 同步 test:ci 里的 filter）
+#                       （Rule 4 是跨文件不变量——lint 单个 page 时需读 App.tsx 才能判定，
+#                       ESLint 表达不了，这是本脚本继续存在的理由）
+#   ▸ test:ci           ESLint 自定义规则 RuleTester + 前端 Vitest 覆盖率阈值 +
+#                       后端 Bun 原生覆盖率阈值
+#                       （lint 与 test:ci 的分包部分都逐包 filter 串联，引入新 workspace 后必须在
+#                       root package.json 同步补 filter，否则新包只被 lint-staged 在
+#                       commit 时扫到、CI 全绿也覆盖不到它 —— shared 曾因此长期漏网）
 check:
   stage: check
   image: registry.cn-beijing.aliyuncs.com/wecode-cloud/bun:1-alpine
+  # 从 istanbul text 报告抓 Web 端行覆盖率（4 列表格，不会误匹配 Bun 的 2 列表格）
+  # 供 MR widget / 覆盖率徽章 / Repository analytics 趋势图 / Coverage-Check 审批规则消费
+  coverage: '/All files\s*\|\s*[\d.]+\s*\|\s*[\d.]+\s*\|\s*[\d.]+\s*\|\s*([\d.]+)/'
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_PIPELINE_SOURCE == "push"
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_PIPELINE_SOURCE == "web"
+  variables:
+    # 每条 script 命令生成独立耗时 section，便于分析各步耗时
+    FF_SCRIPT_SECTIONS: "true"
+  cache:
+    # 依赖缓存只拉不传（由 warm-cache job 维护），省掉每次数万文件的回传
+    - key:
+        files:
+          - bun.lock
+      paths:
+        - node_modules/
+        - apps/api/node_modules/
+        - apps/web/node_modules/
+        - packages/shared/node_modules/
+      policy: pull
   script:
     - bun install --frozen-lockfile
     - bun run build:shared
+    - echo '▶ 类型检查…'
+    - bun run typecheck
+    - echo '▶ ESLint（含后端架构规则）…'
+    - bun run lint
     - echo '▶ 迁移预检…'
     - bun --filter api migrate:check
     - echo '▶ 架构约束检查…'
@@ -105,6 +166,8 @@ retag:
   stage: build
   image: registry.cn-beijing.aliyuncs.com/wecode-cloud/docker:cli-amd64
   rules:
+    - if: $FLOW_WEBHOOK_URL =~ /REPLACE_ME/
+      when: never
     - if: $CI_COMMIT_BRANCH == "prod"
   script:
     - echo "▶ 复用 main 已构建镜像 $IMAGE_TAG → latest"
@@ -139,6 +202,8 @@ push-registry:
     - job: build
       artifacts: true
   rules:
+    - if: $FLOW_WEBHOOK_URL =~ /REPLACE_ME/
+      when: never
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_PIPELINE_SOURCE == "web"
@@ -173,8 +238,17 @@ deploy-test:
   script:
     - 'echo "▶ 确保测试机部署目录存在"'
     - 'ssh -p $TEST_PORT $TEST_USER@$TEST_HOST "mkdir -p $TEST_PATH"'
-    - 'echo "▶ 同步 compose.test.yml + deploy.sh + 镜像 tar 包到测试机"'
-    - 'scp -P $TEST_PORT compose.test.yml $TEST_USER@$TEST_HOST:$TEST_PATH/compose.yml'
+    - 'echo "▶ 同步 compose + deploy.sh + 镜像 tar 包到测试机"'
+    # 模板仓库带 compose.self.yml（tmpfs 无记忆部署 + DEMO_MODE）；scaffold 生成项目没有该文件，
+    # 回落到 compose.test.yml（./data 持久卷），保证「无记忆」规则不泄漏到新项目。
+    - |
+      if [ -f compose.self.yml ]; then
+        COMPOSE_SRC=compose.self.yml
+      else
+        COMPOSE_SRC=compose.test.yml
+      fi
+      echo "▶ 使用 ${COMPOSE_SRC} 作为测试机 compose.yml"
+      scp -P $TEST_PORT $COMPOSE_SRC $TEST_USER@$TEST_HOST:$TEST_PATH/compose.yml
     - 'scp -P $TEST_PORT deploy.sh $TEST_USER@$TEST_HOST:$TEST_PATH/deploy.sh'
     - 'scp -P $TEST_PORT image.tar.gz $TEST_USER@$TEST_HOST:$TEST_PATH/image.tar.gz'
     - 'echo "▶ 执行部署脚本 (tar 加载模式)"'
@@ -182,7 +256,7 @@ deploy-test:
     - 'echo "✓ Test deploy done: http://$TEST_HOST:11070"'
   environment:
     name: test
-    url: http://192.168.110.214:11070
+    url: http://$TEST_HOST:11070
 
 # ── Stage 2b: 触发阿里云 Flow 部署（prod 分支 / 生产） ──
 deploy-prod:
@@ -191,6 +265,8 @@ deploy-prod:
     - job: check
     - job: retag
   rules:
+    - if: $FLOW_WEBHOOK_URL =~ /REPLACE_ME/
+      when: never
     - if: $CI_COMMIT_BRANCH == "prod"
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_PIPELINE_SOURCE == "web"

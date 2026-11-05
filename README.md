@@ -55,9 +55,9 @@ cp -r /tmp/all-in-mvp/.qoder ./          # 核心产物就是这一个目录
 │   └── references/         ← 按需加载的规则/手册（不进上下文）
 ├── agents/                 ← 子 Agent 18 个（mvp-*，流水线角色）
 ├── rules/                  ← 自动加载的行为规则（质量门禁 / 节能索引）
-├── scripts/                ← 门禁与自检脚本 15 个 .ps1（PostToolUse hook、bootstrap、verify、sync-qoder-homes）
-├── gate-rules.yaml         ← 规则单一真源（R001–R028）
-├── PLAYBOOK.md             ← 血案库（22 条，B002–B023）
+├── scripts/                ← 门禁与自检脚本 16 个 .ps1（11 个 check-*，含 PostToolUse hook、bootstrap、verify、sync-qoder-homes）
+├── gate-rules.yaml         ← 规则单一真源（R001–R034）
+├── PLAYBOOK.md             ← 血案库（25 条，B002–B026）
 └── settings.json           ← 项目配置（模型 + hooks 门禁）
 
 ultra-cost-effective/       ← 极致节能引擎 v2.0（可选，需 Node.js）
@@ -65,8 +65,9 @@ ultra-cost-effective/       ← 极致节能引擎 v2.0（可选，需 Node.js�
 ├── rules/                  ← 节能规则正文（由 .qoder/rules/ultra-cost-effective.md 按需索引）
 └── adapters/qoder/         ← Qoder 适配器（参考模板）
 
-starters/                   ← 前端脚手架模板
-└── liquid-glass-frontend/  ← React 19 + Vite + react-router 7 + Liquid Glass 设计系统
+starters/                   ← 全栈权威脚手架（与内部 liquid-glass-starter 保持同步）
+└── liquid-glass-frontend/  ← Bun monorepo：React 19 + Vite + react-router 7 + Hono + Drizzle + Liquid Glass 设计系统
+                               （同仓共享 Zod schema 即契约，无独立 Mock 真相源）
 ```
 
 ---

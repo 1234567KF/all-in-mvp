@@ -20,7 +20,7 @@ function Switch({
         "aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
         // Unchecked state (glass track)
         "border-[var(--lg-border)] bg-[var(--lg-surface-glass)] backdrop-blur-sm",
-        // Checked state (vibrant green track + glow)
+        // Checked state (theme color track + glow)
         "data-checked:border-[var(--lg-primary-border)] data-checked:bg-[var(--lg-primary)] data-checked:shadow-[0_0_8px_var(--lg-primary-glow)]",
         // Sizes
         "data-[size=default]:h-[18.4px] data-[size=default]:w-[32px] data-[size=sm]:h-[14px] data-[size=sm]:w-[24px]",

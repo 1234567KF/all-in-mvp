@@ -22,14 +22,71 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { Database } from "bun:sqlite"
+import { is, Table } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/bun-sqlite"
 import { migrate } from "drizzle-orm/bun-sqlite/migrator"
+import { getTableConfig } from "drizzle-orm/sqlite-core"
 
 import * as schema from "../src/db/schema.js"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const apiDir = join(__dirname, "..")
 const migrationsFolder = join(apiDir, "drizzle")
+const initSqlPath = join(apiDir, "init.sql")
+
+// ── 双来源守卫：init.sql 与 drizzle/ 只能保留一份 ────────────────────────────
+// 模板仓库只留 init.sql；scaffold 生成项目会删除 init.sql、只留 drizzle/。
+// 两者并存时无法判断哪份是事实源：直接失败，而不是静默按模板模式只检查 init.sql。
+if (
+  existsSync(initSqlPath) &&
+  existsSync(join(migrationsFolder, "meta", "_journal.json"))
+) {
+  console.error(
+    [
+      "❌ 检测到多份数据库结构来源并存：",
+      `  - ${initSqlPath}`,
+      `  - ${migrationsFolder}/`,
+      "只保留一份结构来源（模板留 init.sql，生成项目留 drizzle/）：删除多余的一份后重试。",
+    ].join("\n")
+  )
+  process.exit(1)
+}
+
+// ── 模板模式：单份 init.sql，无迁移链 ────────────────────────────────────────
+// 模板仓库不提交 apps/api/drizzle；schema 变更后必须重新生成 init.sql。
+// 这里做两件事：① 校验 init.sql 与 schema.ts 一致（用 db:init:generate 重生成后 diff）；
+// ② 在内存库执行 init.sql，确保脚本本身可执行。
+if (existsSync(initSqlPath)) {
+  try {
+    const checkProc = Bun.spawnSync(
+      ["bun", "scripts/gen-init-sql.ts", "--check"],
+      { cwd: apiDir, stdout: "pipe", stderr: "pipe" }
+    )
+    if (checkProc.exitCode !== 0) {
+      process.stderr.write(new TextDecoder().decode(checkProc.stdout))
+      process.stderr.write(new TextDecoder().decode(checkProc.stderr))
+      process.exit(1)
+    }
+
+    const db = new Database(":memory:")
+    const sql = readFileSync(initSqlPath, "utf8")
+    const statements = sql
+      .split("--> statement-breakpoint")
+      .map((statement) => statement.trim())
+      .filter(Boolean)
+    for (const statement of statements) db.exec(statement)
+    db.close()
+
+    console.log(
+      "✅ 模板模式：init.sql 与 schema.ts 一致，且能在空库执行（单份初始化脚本，无迁移链）"
+    )
+    console.log("✅ Migration pre-check passed")
+    process.exit(0)
+  } catch (err) {
+    console.error("❌ 模板模式初始化脚本检查 FAILED:", (err as Error).message)
+    process.exit(1)
+  }
+}
 
 // ── Step 0: Journal ↔ SQL 一致性检查 ──────────────────────────────────────────
 try {
@@ -113,13 +170,109 @@ try {
   process.exit(1)
 }
 
-// ── Step 1: 全量迁移预检 ──────────────────────────────────────────────────────
+// ── Step 1: 全量迁移预检 + 迁移结果 vs schema.ts 结构校验 ─────────────────────
+// 只验证「SQL 能执行」不足以证明迁移与 schema.ts 一致（删列/少索引仍会绿），
+// 这里在内存库上执行全部迁移后，用 PRAGMA 反查表/列/索引，与 drizzle schema 对比。
 try {
   const db = new Database(":memory:")
   const drizzleDb = drizzle(db, { schema })
   migrate(drizzleDb, { migrationsFolder })
+
+  const problems: string[] = []
+  const tables = Object.values(schema).filter((value) => is(value, Table))
+
+  for (const table of tables) {
+    const config = getTableConfig(table)
+    const tableName = config.name
+
+    // 列：迁移结果 vs schema.ts（名称/NOT NULL/主键）
+    const columns = db.query(`PRAGMA table_info("${tableName}")`).all() as {
+      name: string
+      notnull: number
+      pk: number
+    }[]
+    const columnNames = new Set(columns.map((c) => c.name))
+    for (const expected of config.columns) {
+      if (!columnNames.has(expected.name)) {
+        problems.push(`${tableName}.${expected.name} 列在迁移结果中缺失`)
+      }
+    }
+    for (const actual of columns) {
+      const expected = config.columns.find((c) => c.name === actual.name)
+      if (!expected) {
+        problems.push(`${tableName}.${actual.name} 列在 schema.ts 中不存在`)
+        continue
+      }
+      if (Boolean(expected.notNull) !== Boolean(actual.notnull)) {
+        problems.push(
+          `${tableName}.${actual.name} NOT NULL 与 schema.ts 不一致`
+        )
+      }
+      if (Boolean(expected.primary) !== Boolean(actual.pk)) {
+        problems.push(`${tableName}.${actual.name} 主键与 schema.ts 不一致`)
+      }
+    }
+
+    // 索引：迁移结果 vs schema.ts（名称 + 列顺序）
+    const indexRows = db.query(`PRAGMA index_list("${tableName}")`).all() as {
+      name: string
+    }[]
+    const actualIndexes = new Set(
+      indexRows
+        .map((index) => index.name)
+        .filter((name) => !name.startsWith("sqlite_autoindex"))
+    )
+    const expectedIndexes = new Map<string, string[]>(
+      config.indexes.map((index) => [
+        index.config.name,
+        index.config.columns.map((column) => column.name),
+      ])
+    )
+    // 列级 .unique() 的索引不在 config.indexes 里，SQLite 生成的命名约定为
+    // `${table}_${column}_unique`，这里补进期望集合并参与双向对比。
+    for (const column of config.columns) {
+      if (column.isUnique) {
+        expectedIndexes.set(`${tableName}_${column.name}_unique`, [column.name])
+      }
+    }
+
+    for (const [indexName, expectedColumns] of expectedIndexes) {
+      if (!actualIndexes.has(indexName)) {
+        problems.push(`${tableName} 索引 ${indexName} 在迁移结果中缺失`)
+        continue
+      }
+      const indexInfo = db.query(`PRAGMA index_info("${indexName}")`).all() as {
+        seqno: number
+        name: string
+      }[]
+      const actualColumns = indexInfo
+        .sort((a, b) => a.seqno - b.seqno)
+        .map((info) => info.name)
+      if (JSON.stringify(actualColumns) !== JSON.stringify(expectedColumns)) {
+        problems.push(
+          `${tableName} 索引 ${indexName} 列不一致（期望 ${expectedColumns.join(",")}，实际 ${actualColumns.join(",")}）`
+        )
+      }
+    }
+    for (const actualIndex of actualIndexes) {
+      if (!expectedIndexes.has(actualIndex)) {
+        problems.push(
+          `${tableName} 迁移结果多出 schema.ts 未定义的索引 ${actualIndex}`
+        )
+      }
+    }
+  }
+
   db.close()
-  console.log("✅ 全量迁移测试执行成功")
+
+  if (problems.length > 0) {
+    console.error("❌ 迁移结果与 schema.ts 结构不一致：")
+    problems.forEach((problem) => console.error(`  - ${problem}`))
+    process.exit(1)
+  }
+  console.log(
+    `✅ 全量迁移执行成功且与 schema.ts 结构一致（${tables.length} 张表，PRAGMA introspection）`
+  )
 } catch (err) {
   console.error("❌ 迁移预检 FAILED:", (err as Error).message)
   process.exit(1)
@@ -134,6 +287,20 @@ const tmpConfigRel = "./.tmp-check/drizzle.check.config.ts"
 const tmpDir = join(apiDir, tmpDirRel)
 const tmpMigrationsDir = join(apiDir, tmpMigrationsRel)
 const tmpConfigPath = join(apiDir, tmpConfigRel)
+
+/**
+ * 清理 drizzle-kit 临时目录。
+ *
+ * 注意 `process.exit()` 不会执行 finally，因此 step2 内的失败分支必须在退出前
+ * 显式调用本函数；finally 只兜底正常路径与抛错路径。
+ */
+function cleanupTmpCheck(): void {
+  try {
+    if (existsSync(tmpDir)) rmSync(tmpDir, { recursive: true })
+  } catch {
+    /* ignore */
+  }
+}
 
 try {
   if (existsSync(tmpDir)) rmSync(tmpDir, { recursive: true })
@@ -158,10 +325,12 @@ try {
   const stdout = await new Response(proc.stdout).text()
   const stderr = await new Response(proc.stderr).text()
   // drizzle-kit 遇错时 exit code 可能仍为 0，需探测 stderr
-  if (exitCode !== 0 || /\bError\b|ENOENT|Cannot/i.test(stderr)) {
+  // （注意包含 SyntaxError：快照/配置 JSON 损坏时 drizzle-kit 只打印堆栈并仍 exit 0）
+  if (exitCode !== 0 || /\bError\b|SyntaxError|ENOENT|Cannot/i.test(stderr)) {
     console.error("❌ drizzle-kit generate failed (exit", exitCode, ")")
     if (stdout.trim()) console.error("── stdout ──\n" + stdout)
     if (stderr.trim()) console.error("── stderr ──\n" + stderr)
+    cleanupTmpCheck()
     process.exit(1)
   }
 
@@ -179,15 +348,16 @@ try {
     console.error(
       "\n请运行 cd apps/api && bunx drizzle-kit generate 提交对应迁移"
     )
+    cleanupTmpCheck()
     process.exit(1)
   }
   console.log(`✅ Schema 一致性校验通过（无待生成迁移）`)
+} catch (err) {
+  console.error("❌ Schema 漂移检测 FAILED:", (err as Error).message)
+  cleanupTmpCheck()
+  process.exit(1)
 } finally {
-  try {
-    if (existsSync(tmpDir)) rmSync(tmpDir, { recursive: true })
-  } catch {
-    /* ignore */
-  }
+  cleanupTmpCheck()
 }
 
 console.log("✅ Migration pre-check passed")

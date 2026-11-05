@@ -29,6 +29,12 @@ export default defineConfig({
             if (/[/]react-hook-form[/]|[/]zod[/]|[/]axios[/]/.test(id)) {
               return "vendor-form"
             }
+            if (/[/]@tanstack[/]react-query[/]/.test(id)) {
+              return "vendor-query"
+            }
+            if (/[/]@dnd-kit[/]/.test(id)) {
+              return "vendor-dnd"
+            }
           }
         },
         entryFileNames: "js/[name].[hash].js",

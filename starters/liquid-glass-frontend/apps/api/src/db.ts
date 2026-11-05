@@ -1,23 +1,22 @@
 import { Database } from "bun:sqlite"
-import { migrate } from "drizzle-orm/bun-sqlite/migrator"
 import { existsSync, mkdirSync } from "fs"
 import path from "path"
 
+import { bootstrapDatabase } from "./db/bootstrap.js"
+import { seedDemoNotifications } from "./db/demo-seed.js"
 import { createDrizzleDb, type DrizzleDB, users } from "./db/index.js"
+import { env } from "./env.js"
 
 // ─── 环境变量约定 ───────────────────────────────────────────────────
-// DATA_DIR         SQLite 数据库文件所在目录。默认 `${cwd}/data`。
-//                  Docker 部署时通过 compose 卷映射 `./data:/app/data`。
-// MIGRATIONS_DIR   Drizzle 迁移目录。默认 `${cwd}/drizzle`。
-//                  `bun build --compile` 出的独立二进制里 `import.meta.dir`
-//                  行为不稳定，必须用相对 CWD 的路径而非源码相对路径。
+// DATA_DIR          SQLite 数据库文件所在目录。默认 `${cwd}/data`。
+//                   Docker 部署时通过 compose 卷映射 `./data:/app/data`。
+// DB_BOOTSTRAP_DIR  数据库结构来源目录（init.sql 或 drizzle/）。
+//                   默认先找 `${cwd}/db-bootstrap`（Docker 镜像内），再回落到 cwd
+//                   （本地开发 = apps/api）。模板用 init.sql，生成项目用 drizzle/。
 const dataDir = process.env.DATA_DIR || path.join(process.cwd(), "data")
 const dbPath = path.join(dataDir, "sqlite.db")
-const migrationsFolder =
-  process.env.MIGRATIONS_DIR || path.join(process.cwd(), "drizzle")
 
-let sqlite: Database
-let drizzleDb: DrizzleDB
+let drizzleDb: DrizzleDB | null = null
 let testDb: DrizzleDB | null = null
 
 /**
@@ -28,28 +27,71 @@ export function _setTestDb(d: DrizzleDB | null) {
   if (d) drizzleDb = d
 }
 
-/** 惰性单例 — 首次调用时创建 DB + 执行迁移 + 种子数据 */
+/** 惰性单例 — 首次调用时创建 DB + 自举结构 + 种子数据 */
 export function getDrizzle(): DrizzleDB {
   if (testDb) return testDb
-  if (!drizzleDb) {
-    if (!existsSync(dataDir)) {
-      mkdirSync(dataDir, { recursive: true })
-    }
-    sqlite = new Database(dbPath)
-    sqlite.exec("PRAGMA journal_mode = WAL")
-    drizzleDb = createDrizzleDb(sqlite)
-    migrate(drizzleDb, { migrationsFolder })
-    console.log(`✅ SQLite migrations applied (${dbPath}).`)
+  if (drizzleDb) return drizzleDb
 
-    // 种子数据：默认 admin 用户
-    const existing = drizzleDb.select().from(users).all()
+  if (!existsSync(dataDir)) {
+    mkdirSync(dataDir, { recursive: true })
+  }
+
+  const sqlite = new Database(dbPath)
+  try {
+    sqlite.exec("PRAGMA journal_mode = WAL")
+    const db = createDrizzleDb(sqlite)
+
+    // 结构自举：模板执行 init.sql，生成项目应用 drizzle 迁移（bootstrap.ts 自动识别）
+    const source = bootstrapDatabase(sqlite, db)
+    console.log(
+      source.kind === "init"
+        ? `✅ SQLite schema initialized from init.sql (${source.path}).`
+        : `✅ SQLite migrations applied from drizzle/ (${source.path}).`
+    )
+
+    // 种子数据：默认 admin 用户。失败与结构自举一样按启动失败处理，
+    // 避免出现“库已建好但账号缺失”的静默坏状态。
+    const existing = db.select().from(users).all()
     if (existing.length === 0) {
-      drizzleDb
-        .insert(users)
+      db.insert(users)
         .values({ email: "admin", name: "Admin", role: "admin" })
         .run()
       console.log("🌱 Seeded admin user into database.")
     }
+
+    // DEMO_MODE：幂等补齐演示通知（仅模板自部署/测试环境；真实业务项目不开启）
+    if (env.DEMO_MODE) {
+      const inserted = seedDemoNotifications(db)
+      if (inserted > 0) {
+        console.log(
+          `🌱 DEMO_MODE: seeded ${inserted} demo notifications (admin inbox).`
+        )
+      }
+    }
+
+    drizzleDb = db
+    console.log(`✅ SQLite ready (${dbPath}).`)
+    return db
+  } catch (err) {
+    // 初始化失败时释放连接，且不缓存半初始化的 DB 句柄：下一次调用会重新尝试，
+    // 而不是返回一个结构不完整的库。
+    try {
+      sqlite.close()
+    } catch {
+      /* 连接可能已失效，忽略关闭异常 */
+    }
+
+    const detail = err instanceof Error ? err.message : String(err)
+    console.error(
+      [
+        `❌ SQLite 初始化失败（${dbPath}）。`,
+        `   原因：${detail.split("\n").join("\n   ")}`,
+        "   模板仓库（结构来源 init.sql）：删除数据目录后重启，或执行 `bun run db:reset` 重建（会清空本地数据）；",
+        "   scaffold 生成项目（结构来源 drizzle/）：检查 apps/api/drizzle 迁移是否完整、是否与存量库匹配；",
+        "   迁移与存量库不匹配时，请先备份数据，再删除数据目录后重启重建。",
+        "   若错误提示“多份结构来源并存”，请只保留 init.sql 或 drizzle/ 其中之一。",
+      ].join("\n")
+    )
+    throw err
   }
-  return drizzleDb
 }

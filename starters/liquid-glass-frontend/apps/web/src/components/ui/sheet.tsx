@@ -50,14 +50,17 @@ function SheetContent({
   children,
   side = "right",
   showCloseButton = true,
+  overlayStyle,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
+  /** 透传给遮罩层（如移动端让出底部 TabBar，避免玻璃 TabBar 透出压暗背景） */
+  overlayStyle?: React.CSSProperties
 }) {
   return (
     <SheetPortal>
-      <SheetOverlay />
+      <SheetOverlay style={overlayStyle} />
       <SheetPrimitive.Content
         data-slot="sheet-content"
         data-side={side}

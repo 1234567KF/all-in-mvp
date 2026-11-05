@@ -135,6 +135,7 @@ export default function DashboardPage() {
           <DateRangePicker
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
+            className="w-fit max-w-full min-w-[260px]"
           />
         </div>
       </div>
@@ -152,7 +153,7 @@ export default function DashboardPage() {
           title="Active Sessions"
           value="1,203"
           icon={Activity}
-          accentColor="green"
+          accentColor="primary"
           trend={{ value: "+8.2%", direction: "up", label: "vs last month" }}
         />
         <KpiCard
@@ -330,14 +331,14 @@ export default function DashboardPage() {
             data={tableData}
             rowKey="name"
             toolbar={
-              <>
+              <div className="flex flex-wrap items-center gap-3">
                 <CardTitle className="section-title !mb-0">
                   Team Members
                 </CardTitle>
-                <Badge variant="success">
+                <Badge variant="success" className="sm:ml-auto">
                   {tableData.filter((r) => r.status === "active").length} Active
                 </Badge>
-              </>
+              </div>
             }
           />
         )

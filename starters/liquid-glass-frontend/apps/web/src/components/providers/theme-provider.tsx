@@ -1,6 +1,13 @@
 /* eslint-disable react-refresh/only-export-components */
 import * as React from "react"
 
+import {
+  DEFAULT_THEME_COLOR,
+  isThemeColor,
+  THEME_COLOR_STORAGE_KEY,
+  type ThemeColorId,
+} from "@/lib/theme-colors"
+
 type Theme = "dark" | "light" | "system"
 type ResolvedTheme = "dark" | "light"
 
@@ -8,12 +15,16 @@ type ThemeProviderProps = {
   children: React.ReactNode
   defaultTheme?: Theme
   storageKey?: string
+  defaultThemeColor?: ThemeColorId
+  themeColorStorageKey?: string
   disableTransitionOnChange?: boolean
 }
 
 type ThemeProviderState = {
   theme: Theme
   setTheme: (theme: Theme) => void
+  themeColor: ThemeColorId
+  setThemeColor: (themeColor: ThemeColorId) => void
 }
 
 const COLOR_SCHEME_QUERY = "(prefers-color-scheme: dark)"
@@ -77,15 +88,34 @@ function isEditableTarget(target: EventTarget | null) {
   return false
 }
 
+/** localStorage 在隐私模式/受限 WebView 下可能抛异常；失败时降级为内存态 */
+function readStoredValue(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+function writeStoredValue(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    // 忽略：偏好仍在当前会话的 React state 中生效
+  }
+}
+
 export function ThemeProvider({
   children,
   defaultTheme = "system",
   storageKey = "theme",
+  defaultThemeColor = DEFAULT_THEME_COLOR,
+  themeColorStorageKey = THEME_COLOR_STORAGE_KEY,
   disableTransitionOnChange = true,
   ...props
 }: ThemeProviderProps) {
   const [theme, setThemeState] = React.useState<Theme>(() => {
-    const storedTheme = localStorage.getItem(storageKey)
+    const storedTheme = readStoredValue(storageKey)
     if (isTheme(storedTheme)) {
       return storedTheme
     }
@@ -93,13 +123,34 @@ export function ThemeProvider({
     return defaultTheme
   })
 
+  const [themeColor, setThemeColorState] = React.useState<ThemeColorId>(() => {
+    const storedThemeColor = readStoredValue(themeColorStorageKey)
+    if (isThemeColor(storedThemeColor)) {
+      return storedThemeColor
+    }
+
+    return defaultThemeColor
+  })
+
   const setTheme = React.useCallback(
     (nextTheme: Theme) => {
-      localStorage.setItem(storageKey, nextTheme)
       setThemeState(nextTheme)
+      writeStoredValue(storageKey, nextTheme)
     },
     [storageKey]
   )
+
+  const setThemeColor = React.useCallback(
+    (nextThemeColor: ThemeColorId) => {
+      setThemeColorState(nextThemeColor)
+      writeStoredValue(themeColorStorageKey, nextThemeColor)
+    },
+    [themeColorStorageKey]
+  )
+
+  const applyThemeColor = React.useCallback((nextThemeColor: ThemeColorId) => {
+    document.documentElement.dataset.themeColor = nextThemeColor
+  }, [])
 
   const applyTheme = React.useCallback(
     (nextTheme: Theme) => {
@@ -140,6 +191,10 @@ export function ThemeProvider({
   }, [theme, applyTheme])
 
   React.useEffect(() => {
+    applyThemeColor(themeColor)
+  }, [themeColor, applyThemeColor])
+
+  React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.repeat) {
         return
@@ -167,7 +222,7 @@ export function ThemeProvider({
                 ? "light"
                 : "dark"
 
-        localStorage.setItem(storageKey, nextTheme)
+        writeStoredValue(storageKey, nextTheme)
         return nextTheme
       })
     }
@@ -185,16 +240,28 @@ export function ThemeProvider({
         return
       }
 
-      if (event.key !== storageKey) {
+      // 另一标签页 localStorage.clear()：两个 key 都回退默认值
+      if (event.key === null) {
+        setThemeState(defaultTheme)
+        setThemeColorState(defaultThemeColor)
         return
       }
 
-      if (isTheme(event.newValue)) {
-        setThemeState(event.newValue)
+      if (event.key === storageKey) {
+        if (isTheme(event.newValue)) {
+          setThemeState(event.newValue)
+          return
+        }
+
+        setThemeState(defaultTheme)
         return
       }
 
-      setThemeState(defaultTheme)
+      if (event.key === themeColorStorageKey) {
+        setThemeColorState(
+          isThemeColor(event.newValue) ? event.newValue : defaultThemeColor
+        )
+      }
     }
 
     window.addEventListener("storage", handleStorageChange)
@@ -202,14 +269,16 @@ export function ThemeProvider({
     return () => {
       window.removeEventListener("storage", handleStorageChange)
     }
-  }, [defaultTheme, storageKey])
+  }, [defaultTheme, defaultThemeColor, storageKey, themeColorStorageKey])
 
   const value = React.useMemo(
     () => ({
       theme,
       setTheme,
+      themeColor,
+      setThemeColor,
     }),
-    [theme, setTheme]
+    [theme, setTheme, themeColor, setThemeColor]
   )
 
   return (

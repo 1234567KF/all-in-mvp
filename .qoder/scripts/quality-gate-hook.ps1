@@ -68,7 +68,8 @@ if ($p -match '(^|/)(src|packages/shared/src|apps/[^/]+/src)/.*\.(ts|tsx|vue|js|
 }
 
 # Gate 2 -- API route / service / shared type changed -> field & enum contract check
-if ($p -match '(^|/)(src/(services|api|routes)|apps/api/src/routes|packages/shared/src)/') {
+# apps/api/src/modules = starter v2.26 布局（.route.ts + .service.ts）；routes 保留兼容历史项目
+if ($p -match '(^|/)(src/(services|api|routes)|apps/api/src/(routes|modules|shared)|packages/shared/src)/') {
     $gates += 'CONTRACT CHECK: run skill "kf-mvp-test-review" to verify front/back field + enum consistency (rules R002, R014).'
 }
 

@@ -12,6 +12,8 @@ import {
   VirtualDataTable,
 } from "@/components/shared/VirtualDataTable"
 import { Badge } from "@/components/ui/badge"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { formatDate } from "@/lib/date-utils"
 
 interface MockRecord {
   id: number
@@ -53,7 +55,7 @@ function generateMockData(count: number): MockRecord[] {
     role: ROLES[i % ROLES.length],
     status: STATUSES[i % STATUSES.length],
     salary: 50000 + Math.floor(Math.random() * 100000),
-    joinDate: new Date(2020, i % 12, (i % 28) + 1).toISOString().split("T")[0],
+    joinDate: formatDate(new Date(2020, i % 12, (i % 28) + 1)),
   }))
 }
 
@@ -90,6 +92,7 @@ const columns: VirtualColumnDef<MockRecord>[] = [
 
 export default function VirtualTableDemoPage() {
   const data = useMemo(() => generateMockData(10000), [])
+  const isMobile = useIsMobile()
 
   return (
     <div className="space-y-6">
@@ -107,13 +110,24 @@ export default function VirtualTableDemoPage() {
           行数据，仅可视区域内的行被真实渲染到 DOM。
         </p>
 
-        <VirtualDataTable
-          data={data}
-          columns={columns}
-          rowHeight={48}
-          maxHeight={600}
-          onRowClick={(row) => console.log("Row clicked:", row)}
-        />
+        {isMobile ? (
+          <div className="glass-card flex flex-col items-center justify-center gap-2 rounded-xl p-8 text-center">
+            <p className="text-sm font-medium text-foreground">
+              虚拟滚动表格适用于大屏场景
+            </p>
+            <p className="text-xs text-[var(--lg-text-secondary)]">
+              请在桌面端浏览器中查看完整表格（≥ 768px）
+            </p>
+          </div>
+        ) : (
+          <VirtualDataTable
+            data={data}
+            columns={columns}
+            rowHeight={48}
+            maxHeight={600}
+            onRowClick={(row) => console.log("Row clicked:", row)}
+          />
+        )}
       </div>
     </div>
   )

@@ -215,37 +215,33 @@ export function SearchInput({ value, defaultValue, onChange }: SearchInputProps)
 ## 8. Hooks 模式
 
 ```tsx
-// 数据获取：错误必须可见（R015）
-export function useAsyncData<T>(fn: () => Promise<T>, deps: unknown[] = []) {
-  const [data, setData] = useState<T | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
+// 服务端数据：一律走 TanStack Query hooks（自写 useAsyncData / 裸 useEffect fetch 已废弃）
+// 约定：queryKey 只从 @/lib/query-keys.ts 取；写操作后失效 domain key，不手工 refetch；
+//       service 层调用只允许出现在 hooks/queries/ 里（no-service-import-in-ui 会拦 pages/components 的直连）。
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { queryKeys } from "@/lib/query-keys"
+import { createCustomer, listCustomers } from "@/services/customers"
 
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    fn()
-      .then((result) => {
-        if (!cancelled) setData(result)
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e : new Error(String(e)))
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps)
+export function useCustomers(params: ListParams) {
+  return useQuery({
+    queryKey: queryKeys.customers.list(params),
+    queryFn: () => listCustomers(params),
+  })
+}
 
-  return { data, loading, error }
+export function useCreateCustomer() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: createCustomer,
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.customers.all }),
+    onError: (e: unknown) => showError(e), // 错误必须可见（R015）
+  })
 }
 ```
 
-> 禁止 `.catch(() => {})`；错误必须 `setError` 或 `showError`。
+> 组件侧消费：`const { data, isPending, error } = useCustomers(params)`，空/加载/错误三态都要渲染出来。
+> 客户端列表分页用 `usePagedList`（过滤 + 排序 + 分页组合），服务端分页走 Query hooks + API 参数。
+> 禁止 `.catch(() => {})`；错误必须进 `onError` 或 `showError`。
 
 ---
 

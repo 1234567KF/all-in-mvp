@@ -1,0 +1,35 @@
+services:
+  liquid-glass-starter:
+    image: registry.cn-beijing.aliyuncs.com/wecode-cloud/liquid-glass-starter:test-latest
+    container_name: liquid-glass-starter-test
+    restart: unless-stopped
+    ports:
+      # 模板自身测试端口 11070（self-deploy 保留）；scaffold 出的新项目由 skill 自动分配 11081+ 写死至此
+      - "${WEB_PORT:-11070}:3000"
+    env_file:
+      - .env
+    environment:
+      # 模板 self-deploy 固定演示模式：空库启动时幂等种 7 条演示消息，
+      # 并开放 POST /notifications/dev/{push,reset}。
+      # 该文件不会被 scaffold 复制到生成项目；真实项目用 compose.test.yml（无此覆盖）。
+      DEMO_MODE: "true"
+    # 模板部署级别无记忆：/app/data 用 tmpfs，容器重建即空库。
+    # 生成项目用 compose.test.yml 的 ./data 绑定卷，数据持久（含迁移链）。
+    tmpfs:
+      # 必须显式 mode=1777：docker --tmpfs 默认 0755 root-owned，非 root 的 appuser 无法写 SQLite
+      - /app/data:rw,mode=1777
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      # 打触达 DB 的 /api/health：/app/data 的 tmpfs 权限或 init.sql 失败会让容器
+      # 直接 unhealthy，deploy.sh 不必等业务请求才发现数据库起不来。
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    # tar 加载模式下，本地已有镜像就不再拉取（无需访问阿里云 Registry）
+    pull_policy: missing

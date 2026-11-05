@@ -51,8 +51,9 @@ foreach ($file in $serviceFiles) {
     $content = Get-Content $file.FullName -Raw -ErrorAction SilentlyContinue
     if (-not $content) { continue }
 
-    $matches = [regex]::Matches($content, $pattern)
-    foreach ($m in $matches) {
+    # 禁用 $matches：它是 -match 运算符会覆写的自动变量（大小写不敏感）
+    $regexMatches = [regex]::Matches($content, $pattern)
+    foreach ($m in $regexMatches) {
         $path = $m.Groups[1].Value
         if ($path -match ':\w+' -or $path -match '\$\{') { continue }
         if (-not $contractPaths.ContainsKey($path)) {

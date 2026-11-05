@@ -2,8 +2,11 @@ import type { Context } from "hono"
 import type { ContentfulStatusCode } from "hono/utils/http-status"
 import type { ApiResponse as BaseApiResponse } from "shared"
 
-/** 带 code 的响应类型（扩展 shared 基础类型） */
-type ApiResponse<T = unknown> = BaseApiResponse<T> & { code?: string }
+/** 带 code / requestId 的响应类型（扩展 shared 基础类型） */
+type ApiResponse<T = unknown> = BaseApiResponse<T> & {
+  code?: string
+  requestId?: string
+}
 
 /** 成功响应 */
 export function ok<T>(
@@ -16,6 +19,7 @@ export function ok<T>(
   return c.json(
     {
       success: true,
+      requestId: c.get("requestId"),
       ...(code && { code }),
       message,
       data,
@@ -46,6 +50,7 @@ export function fail(
   return c.json(
     {
       success: false,
+      requestId: c.get("requestId"),
       code,
       ...(message && { message }),
       ...(errors && { errors }),

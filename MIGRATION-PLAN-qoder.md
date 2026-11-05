@@ -286,6 +286,113 @@ CODE REVIEW: dispatch subagent "mvp-code-reviewer" (skill kf-mvp-code-review) fo
 - Playwright 二进制本轮已在（`ms-playwright\chromium-1248`，`verify-all` 由 FAIL 转 PASS），但**一次真实 E2E 运行仍未执行**（遗留项 #9）。
 
 
+## 10. 第四轮执行（v2.26）— 全量同步权威 starter + 门禁被真实代码反向校准 + 锁定"去前后端分离"
+
+> 输入：内网 GitLab `192.168.110.2/starters/liquid-glass-starter`，HEAD `167d77c`（上一轮基线是 `167e561`）。
+> 你的指令：「不必前后端了。但要达到前置可交互检查正常分支和异常分支；从权威 starter 拉最新版本，我现在优势的地方保留。」
+> 本轮只做"拉最新 + 保留优势"，方向改造（#19）另起增量，不与同步混在一个提交里。
+
+### 10.1 同步做法：按文件三方比对，不是盲覆盖也不是盲挑选
+
+我们 starter 的真相对方是**导入快照** `04d5279b`（2026-07-16 同源），因此每个同名文件按三方判定：
+
+| 判定 | 处理 |
+|------|------|
+| 对方改、我们没改 | 取对方（新版为准） |
+| 我们改、对方没改 | 保留我们（优势不丢） |
+| 双方都改 | 逐文件人工合并（如 `DESIGN.md`：拿对方新版，再重贴我们的 `(Qoder subagents such as mvp-frontend-dev…)` 措辞） |
+| 只有对方有 | 新增（除非属明确排除项，见 10.3） |
+| 只有我们有 | 核对是否已被对方以别的形式取代，取代则删 |
+
+落点规模（`starters/liquid-glass-frontend/`）：**96 新增 / 10 删除 / 86 修改**。删除的都是被取代物：`apps/api/{src/routes,data,drizzle,sqlite.db}`（对方迁到 `src/modules` + 单份 `init.sql`）、`apps/web/src/hooks/useAsyncData.ts`（对方已标 Breaking 移除，被 TanStack Query 取代）、3 个 `src/**/__tests__/` 目录（对方改为测试同目录 colocation）。
+
+### 10.2 需要更正的自我判断：我们上轮宣称"领先"的 4 项，有 3 项对方已独立采纳
+
+`no-toisostring-slice`、`no-tailwind-raw-colors`（基础版）、`no-raw-viewport-check` 这 3 条规则，对方在同一时间窗内自己写了，实现基本一致。上一轮 §9.6 把它们记为"我们领先、无需回搬"是错的判断——真实差集只剩下面 4 项（都保住了）：
+
+| 真实优势 | 证据 |
+|----------|------|
+| `scripts/arch-check.ts` Windows 路径修复 | 对方仍是 `URL.pathname` + 反斜杠 `relative()`，在 Windows 上 Rule 1/2/4 会 ENOENT/静默不触发；本轮重贴我们的 `fileURLToPath` + `toPosix` |
+| `no-tailwind-raw-colors` 全量上报 | 对方用 `RAW_COLOR_RE.exec` → 一行多个违规只报 1 条；我们用 `matchAll` 报全部。对方的规则测试恰好把这条"静默漏报"测出来（期望 2 得 1）→ 保留我们版本，36/36 通过 |
+| 4 条规则的 `Known blind spots` JSDoc | 对方实现相同但注释较薄；保留我们的盲区说明，作为 R032/R033/R034 的声明依据 |
+| 规则测试覆盖 | 本轮补 `no-service-import-in-ui.test.js` → `eslint-rules/` 5 个规则文件全部有测试，49 用例 |
+
+结论写成教训：**"我们领先"必须逐文件比对后才可声称**，凭上轮记忆声称会带出错误决策（同族见 B025）。
+
+### 10.3 有意不带回来的东西（不是遗漏）
+
+`skills/wecode-project-scaffolder/`（16 文件 / 2092 行）——我们在 `526d4da2` 主动删除过，本轮同步时继续保持排除。对方那侧同期把 `scripts/scaffold.ts` 扩了 +291 行并加了 Go/Kotlin/Taskfile 模板；要不要重新引入是你的决策，见 10.7。
+
+### 10.4 反向校准：真实代码把我们的门禁打出了 4 次误报（血案 B026）
+
+同步后 Stage3/Stage4 回归 FAIL，根因不是业务代码，而是 R015 把对方的资源拆除惯用法 `body?.cancel().catch(() => {})` 当"静默吞错误"。处理方式：修门禁，不改业务；给拆除类调用一条**具名**白名单（`cancel|abort|close|destroy|releaseLock|return`），并用 4 行探针证明校准（业务行仍在 :2 命中 FAIL，两行拆除惯用法被豁免）。
+
+同时把 R015 从"整文件一次 `if` + 只报首行"改成逐行扫描（一处违规一行报告）。教训登记 `PLAYBOOK.md` B026：**只在自家代码上验证过的门禁等于没验证过**。
+
+### 10.5 另一条血案：假"已清零"活了两个回合（B025）
+
+上轮我声称"全仓 `$matches`/自动变量遮蔽已清零"，实际扫描正则大小写敏感，而 PowerShell 变量名大小写不敏感 → 3 处小写写法（`check-api-endpoints.ps1:24/49`、`check-api-path-source.ps1:54`）漏网。本轮：全部改为 `$regexMatches`；扫描改成大小写不敏感并**升级为 `verify-all-in-mvp.ps1` 的可执行行**，不再靠口头声称；`check-silent-catch.ps1` 里的死变量 `$lineNum` 与恒等于第一条分支的第二个 `if` 一并清掉。教训：**"现在不报错" ≠ "没踩自动变量"**；清洁性声明必须是门禁，不是 grep 结果。
+
+### 10.6 本轮新增/接入的门禁（`gate-rules.yaml` 31 → 34 条）
+
+| 规则 | 级别 | 拦什么 | 来源 |
+|------|------|--------|------|
+| R032 | HIGH | UI 层禁止 value 导入 `services/`（`no-service-import-in-ui`），服务端状态必须走 `hooks/queries/*`；4 条盲区已在测试里钉为 valid | 对方新规则 + 我们补的测试 |
+| R033 | BLOCKER | 导出函数首参调审计必须 `OpCtx`（`no-audit-fn-without-opctx`）；对应真实事故 `requestId: ""` | 对方新规则+测试 |
+| R034 | BLOCKER | `no-restricted-syntax` 禁绕过注册表直调 `writeLog`/`hasPermission`（盲区按实际 esquery selector 写） | 对方配置 |
+
+三条都追加进 `gates.stage3 / stage4 / fix`。框架侧脚本同步适配新布局：`quality-gate-hook.ps1` Gate 2 路径新增 `apps/api/src/(routes|modules|shared)` + `packages/shared/src/`（`routes` 保留以兼容历史项目）；`verify-all-in-mvp.ps1` 新增两行**实际执行**——R022–R026 风格门禁以 `-TargetDir starters\liquid-glass-frontend` 跑（输出含 SKIPPED 记 WARN），以及上面的自动变量遮蔽扫描。
+
+### 10.7 框架知识对齐 starter（避免技能教出旧写法）
+
+`kf-mvp-frontend-dev/SKILL.md`：测试布局从 `src/__tests__/{components,pages,e2e}` 改为同目录 colocation（`DataTable.test.tsx`、`vi.mock("@/lib/api")`），仅 FT3 保留在 `e2e/`。`kf-mvp-react-components/SKILL.md` §8：删掉 30 行 `useAsyncData` 自研 hook（对方已 Breaking 移除），换成 `useCustomers`（`useQuery` + `queryKeys.customers.list(params)`）与 `useCreateCustomer`（`useMutation` + `invalidateQueries` + `onError: showError`），并补消费方式/分页/R015 说明。R028 设计 token 镜像重新同步（`DESIGN.md` + 3 个 css）。
+
+### 10.8 验证（全部真实执行，退出码取自文件）
+
+- Starter：`arch:check` rc=0（扫描 125 文件）、`lint` rc=0（0 error / 19 条存量 jsx-a11y warning，三包）、`test:eslint` rc=0（49/49，5 文件）、`test:web` rc=0（270 用例 / 32 文件）、`test:api` rc=0（195 pass / 0 fail）、`typecheck` rc=0。
+- 框架：`check-token-sync.ps1` PASS（比对 4 文件）、`check-skill-frontmatter.ps1` PASS（46 文件）、R022–R026 风格门禁对 starter PASS（125 文件）、Stage3 **rc=0**（5 PASS / 0 FAIL）、Stage4 6 PASS / 3 FAIL —— 三条 FAIL 是 R010（框架仓无 `seeds/`）、R011（框架仓无 `.env`，且 `templates/e2e/playwright.config.ts` 的示例端口）、R014（拿框架仓的 `api-contract.yaml` 去校验 starter 前端服务层），都是"门禁跑在错的对象上"，不是代码缺陷；`verify-all-in-mvp.ps1` **22 PASS / 0 WARN / 0 FAIL** rc=0。
+- 未验证项照旧：真实 Playwright E2E 一次运行仍未执行（#9）。
+
+### 10.9 待你决策（已在推送前停住，未动手）
+
+1. **内部引用清洗**：`192.168.110.2` git URL、测试机 `192.168.110.214:11070`、`wecode-cloud` registry、`~/.claude`/`.gemini` 路径。证据：这些在**本轮同步之前就已存在**（同步前 starter README 10 处、`.gitlab-ci.yml` 9 处），但本轮把它们放大了（新增 `ci-tools/`、`compose.self.yml`、`deploy.sh` 等）。GitHub 是公开仓，推送前需要你定清洗边界还是只推框架层。
+2. `skills/wecode-project-scaffolder/` 是否重新引入（见 10.3）。
+3. 同步带入的 `change-password` 缺陷怎么处理（见 10.11）。
+4. 方向改造 #19：见下。
+
+### 10.10 锁定的方向（下一增量，本轮未改流水线）
+
+你已定：**不做前后端分离**。理由是 Mock 不是技术必需，而是"前后端分派"这一调度形态的产物；分离真正不可替代的是「并行分派 + 可门禁的显式契约」，而契约可以由 `packages/shared` 的 Zod schema 单一定义承担（同仓类型贯通），从而消掉第二真相源。原型确认这一收益不丢，改由对方已上线的机制承担：`DEMO_MODE` + 幂等 `demo-seed` + dev-only 造数/重置端点（`POST /notifications/dev/push`、`POST /notifications/dev/reset`，非 development/test/DEMO_MODE 一律 404）——这正好是"前置可交互检查异常分支"的落点，且对方 starter 里没有任何独立 mock 层（只有测试内 `vi.mock`），与我们要走的形状一致。
+
+落到流水线的改动（#19）：Stage2 的 `api-contract.yaml + mock` 收敛为 `packages/shared` Zod + `init.sql` + `demo-seed` 单定义；Stage3 前后端两个 agent 合并为按模块的纵向切片（模块间仍并行）；Stage4/MSVP 升级为**正常分支 + 异常分支双清单**的前置可交互硬门禁。涉及 `all-in-mvp/SKILL.md`（Stage2/3/4/MSVP 段落）、`kf-mvp-mock-service`、`mvp-mock-service.md`、`mvp-verifier.md`，以及依赖契约文件的 R002/R012/R014。
+
+本轮拿到一条支持该方向的实证：R014（前端调用路径必须在 `api-contract.yaml` 里存在）对同步后的 starter 报了 6 条违规。逐条核对后 **5 条是假阳性、1 条是真 bug**：`/auth/login`、`/users/me`、`/notifications`、`/notifications/unread-count`、`/notifications/read-all` 都是 starter 后端真实存在且有测试覆盖的路由（`/auth`、`/users`、`/notifications` 三个 route 挂在 `apps/api/src/index.ts:90-92`），只是因为框架仓的 `api-contract.yaml` 是我们自己 demo 的契约，才被判成"Agent 自创端点"。也就是说：契约一旦作为独立文件存在，它就开始与代码漂移，而门禁只能把漂移读成违规。把契约定义收进 `packages/shared` 的 Zod schema（类型即契约、门禁读同一份）是这类假阳性的根因修复，不只是少一个文件。
+
+第 6 条 `/api/auth/change-password` 是真问题，见 10.11。
+
+
+### 10.11 同步带入的一个真实缺陷（未擅自修改，等你定）
+
+`apps/web/src/services/auth.ts:24` 的 `changePassword()` 是对方新增的（`ProfileSettingsPage` 的"修改密码"入口调用它）。两个独立错误叠在一起：
+
+1. **路径重复前缀**：`api` 实例的 baseURL 已是 `/api`（`apps/web/src/lib/api.ts:13`），这里又写了 `/api/auth/change-password` → dev 下实际请求 `/api/api/auth/change-password`，Vite 代理剥掉一层后打到后端的 `/api/auth/change-password`。同文件里 `login()` 写的是 `/auth/login`，两种写法并存。
+2. **后端根本没有这个路由**：`apps/api/src/modules` 下只有 auth（`/login`、`/refresh`）、user（`/me`）、notification 三个模块，全量枚举注册路径没有任何 `change-password`。
+
+真实运行验证（起 `bun run src/index.ts`，端口 3000，curl 实测，非静态推断）：
+
+| 请求 | 状态码 |
+|------|--------|
+| `POST /auth/change-password` | **404** |
+| `POST /api/auth/change-password` | **404** |
+| `POST /auth/login`（对照组） | 400 `VALIDATION_ERROR`（路由存在，进到了 Zod 校验） |
+
+而 `bun run test:web` 的 270 个用例全绿，包括 `apps/web/src/services/auth.test.ts:41`「changePassword 调用正确的 API 路径」—— 它 mock 掉 axios，断言的是 `toHaveBeenCalledWith("/api/auth/change-password", input)`，把错误字面量钉死当"正确路径"。这是 AGENTS.md 规则 9 的教科书写法：**测试验的是 WHAT（传了什么字符串），不是 WHY（后端接不接）**。
+
+对 #19 的直接含义：这个缺陷 Mock 层永远抓不到 —— mock 是按前端期望写的，前端要 `/api/auth/change-password`，mock 就给 `/api/auth/change-password`，双向自洽、皆大欢喜，真接口上线才炸。能抓住它的只有"前置到真实后端跑异常分支"。所以它既是同步的产出，也是新方向的第 0 个测试用例。
+
+处理方式（需要你选，我没有擅自改）：a) 只报对方，我们保持与权威 starter 一致；b) 我们侧先修（把路径改对需要后端补路由，属于新增业务功能，不是改一行）；c) 我们侧至少把这个错误字面量的测试改成会失败的断言，避免技能/Agent 抄到错误范式。默认建议 a + c 的轻量版：不改业务功能，只在门禁层拦"前端调用路径必须能在后端路由枚举里找到"。
+
+
 ## 附录 A — 关键证据
 - `file .qoder/skills/all-in-mvp/SKILL.md` → "UTF-8 (with BOM), CRLF"；`kf-mvp-api-contract/SKILL.md`（正常）→ 无 BOM。
 - `ls .claude` → 不存在；`grep ".claude/workflows" .qoder/skills` → 仅 `all-in-mvp/SKILL.md`。

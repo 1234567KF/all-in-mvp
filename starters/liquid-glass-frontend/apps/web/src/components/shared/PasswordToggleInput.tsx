@@ -1,5 +1,6 @@
-// 提取自 frontend/src/pages/Login.tsx 密码切换逻辑
-
+/**
+ * 密码可见性切换输入框
+ */
 import { Eye, EyeOff } from "lucide-react"
 import { useState } from "react"
 

@@ -21,8 +21,9 @@ Get-ChildItem -Path $TargetDir -Recurse -Include "*.ts","*.tsx" -ErrorAction Sil
         $content = Get-Content $_.FullName -Raw -ErrorAction SilentlyContinue
         if (-not $content) { return }
 
-        $matches = [regex]::Matches($content, $pattern)
-        foreach ($m in $matches) {
+        # 禁用 $matches：它是 -match 运算符会覆写的自动变量（大小写不敏感）
+        $regexMatches = [regex]::Matches($content, $pattern)
+        foreach ($m in $regexMatches) {
             $path = $m.Groups[1].Value
             if (-not $apiCalls.ContainsKey($path)) {
                 $apiCalls[$path] = @()
@@ -46,8 +47,8 @@ if (Test-Path (Join-Path $TargetDir $ContractFile)) {
     $contractContent = Get-Content (Join-Path $TargetDir $ContractFile) -Raw -ErrorAction SilentlyContinue
     # 从 YAML 中提取路径 (以 / 开头的键)
     $pathPattern = '^\s*(/\S+):\s*$'
-    $matches = [regex]::Matches($contractContent, $pathPattern, [System.Text.RegularExpressions.RegexOptions]::Multiline)
-    foreach ($m in $matches) {
+    $regexMatches = [regex]::Matches($contractContent, $pathPattern, [System.Text.RegularExpressions.RegexOptions]::Multiline)
+    foreach ($m in $regexMatches) {
         $contractPaths[$m.Groups[1].Value] = $true
     }
 }

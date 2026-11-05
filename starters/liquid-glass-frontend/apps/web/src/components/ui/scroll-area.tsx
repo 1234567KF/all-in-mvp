@@ -3,11 +3,24 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+interface ScrollAreaProps extends React.ComponentProps<
+  typeof ScrollAreaPrimitive.Root
+> {
+  /**
+   * 传给内部 Viewport 的 class。
+   * 高度/宽度约束请放这里：Radix 会在 Viewport 上写入 style（overflow 等），
+   * 直接给 Viewport 传 style 会被覆盖；Root 的高度约束又无法让 `size-full`
+   * 的 Viewport 解析百分比高度。
+   */
+  viewportClassName?: string
+}
+
 function ScrollArea({
   className,
   children,
+  viewportClassName,
   ...props
-}: React.ComponentProps<typeof ScrollAreaPrimitive.Root>) {
+}: ScrollAreaProps) {
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
@@ -16,7 +29,10 @@ function ScrollArea({
     >
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
-        className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
+        className={cn(
+          "size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1",
+          viewportClassName
+        )}
       >
         {children}
       </ScrollAreaPrimitive.Viewport>

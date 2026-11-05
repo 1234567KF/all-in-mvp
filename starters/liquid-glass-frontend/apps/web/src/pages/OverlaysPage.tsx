@@ -17,13 +17,25 @@ import {
   Shield,
   ShieldAlert,
   Sparkles,
+  Trash2,
   User,
 } from "lucide-react"
 import { useState } from "react"
 
 import { PageHeader } from "@/components/layout/PageHeader"
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { DangerZone } from "@/components/shared/DangerZone"
 import { FilterBar } from "@/components/shared/FilterBar"
+import {
+  ResponsiveDialog,
+  ResponsiveDialogClose,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogTrigger,
+} from "@/components/shared/ResponsiveDialog"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   AlertDialog,
@@ -96,6 +108,7 @@ import {
 } from "@/components/ui/sheet"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { type TreeDataItem, TreeView } from "@/components/ui/tree-view"
+import { formatDate } from "@/lib/date-utils"
 import { showError, showInfo, showSuccess } from "@/lib/toast"
 import { CodeLabel, Section } from "@/pages/sections/shared"
 
@@ -472,6 +485,60 @@ export default function OverlaysPage() {
         </Card>
       </Section>
 
+      {/* =================== ResponsiveDialog =================== */}
+      <Section title="ResponsiveDialog (响应式弹窗)">
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle className="text-base">
+              桌面 Dialog / 移动底部 Sheet
+            </CardTitle>
+            <CardDescription>
+              API 与 Dialog 家族一一对应；窄屏（&lt;md）自动切换为底部抽屉，
+              内容区独立滚动、Footer 吸底。缩小窗口到移动尺寸体验分叉效果。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 pt-0">
+            <ResponsiveDialog>
+              <ResponsiveDialogTrigger asChild>
+                <Button variant="outline">打开响应式弹窗</Button>
+              </ResponsiveDialogTrigger>
+              <ResponsiveDialogContent className="sm:max-w-md">
+                <ResponsiveDialogHeader>
+                  <ResponsiveDialogTitle>编辑成员信息</ResponsiveDialogTitle>
+                  <ResponsiveDialogDescription>
+                    桌面居中 Dialog，移动端自动变为底部 Sheet。
+                  </ResponsiveDialogDescription>
+                </ResponsiveDialogHeader>
+                <div className="space-y-4 py-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-on-surface-variant">姓名</Label>
+                    <Input placeholder="请输入姓名" defaultValue="Alice Chen" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-on-surface-variant">邮箱</Label>
+                    <Input
+                      placeholder="请输入邮箱"
+                      defaultValue="alice@example.com"
+                    />
+                  </div>
+                </div>
+                <ResponsiveDialogFooter>
+                  <ResponsiveDialogClose asChild>
+                    <Button variant="outline">取消</Button>
+                  </ResponsiveDialogClose>
+                  <Button onClick={() => showSuccess("已保存")}>保存</Button>
+                </ResponsiveDialogFooter>
+              </ResponsiveDialogContent>
+            </ResponsiveDialog>
+            <p className="mt-3 text-xs text-outline">
+              存量弹窗可机械替换：
+              <CodeLabel text="Dialog → ResponsiveDialog" />，
+              其余子组件同名对应。
+            </p>
+          </CardContent>
+        </Card>
+      </Section>
+
       {/* =================== FilterBar =================== */}
       <Section title="FilterBar">
         <Card className="glass-card">
@@ -637,9 +704,9 @@ export default function OverlaysPage() {
                 </AlertDescription>
               </Alert>
 
-              <Alert className="border-[var(--lg-primary-border)] bg-[var(--lg-primary-dim)] text-[var(--lg-primary-light)]">
-                <Sparkles className="size-4 shrink-0 text-[var(--lg-primary-light)]" />
-                <AlertTitle className="text-[var(--lg-primary-light)]">
+              <Alert className="border-[var(--lg-success-border)] bg-[var(--lg-success-dim)] text-[var(--lg-success-text)]">
+                <Sparkles className="size-4 shrink-0 text-[var(--lg-success-text)]" />
+                <AlertTitle className="text-[var(--lg-success-text)]">
                   合规通过
                 </AlertTitle>
                 <AlertDescription className="text-[var(--lg-text-secondary)]">
@@ -885,7 +952,7 @@ export default function OverlaysPage() {
                       {
                         role: "custom-admin",
                         permissions: Array.from(checkedIds),
-                        updatedAt: new Date().toISOString().split("T")[0],
+                        updatedAt: formatDate(new Date()),
                       },
                       null,
                       2
@@ -906,6 +973,38 @@ export default function OverlaysPage() {
               </Button>
             </CardFooter>
           </Card>
+        </div>
+      </Section>
+
+      {/* =================== ConfirmDialog =================== */}
+      <Section title="ConfirmDialog (确认对话框)">
+        <p className="mb-4 text-sm text-on-surface-variant">
+          基于 <CodeLabel text="AlertDialog" /> 封装的确认弹窗，支持受控 /
+          非受控两种模式，
+          <CodeLabel text='variant="destructive"' />
+          用于危险操作确认。
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <ConfirmDialog
+            title="确认提交？"
+            description="提交后将进入审批流程，期间不可编辑。"
+            confirmLabel="提交"
+            onConfirm={() => alert("已提交")}
+            trigger={<Button variant="outline">普通确认</Button>}
+          />
+          <ConfirmDialog
+            title="删除此记录？"
+            description="此操作不可撤销，关联数据将一并清除。"
+            confirmLabel="删除"
+            variant="destructive"
+            onConfirm={() => alert("已删除")}
+            trigger={
+              <Button variant="destructive">
+                <Trash2 className="mr-1.5 size-4" />
+                危险操作
+              </Button>
+            }
+          />
         </div>
       </Section>
     </div>

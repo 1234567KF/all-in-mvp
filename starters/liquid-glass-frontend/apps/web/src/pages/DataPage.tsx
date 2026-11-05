@@ -11,7 +11,13 @@ import { useState } from "react"
 
 import { PageHeader } from "@/components/layout/PageHeader"
 import { type ColumnDef, DataTable } from "@/components/shared/DataTable"
+import {
+  MobileCard,
+  MobileCardBody,
+  MobileCardHeader,
+} from "@/components/shared/MobileCard"
 import { SmartPagination } from "@/components/shared/SmartPagination"
+import { StatusBadge } from "@/components/shared/StatusBadge"
 import { TableEmptyState } from "@/components/shared/TableEmptyState"
 import { TableSkeleton } from "@/components/shared/TableSkeleton"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -63,7 +69,7 @@ export default function DataPage() {
             title="Monthly Revenue"
             value="$42.5K"
             icon={DollarSign}
-            accentColor="green"
+            accentColor="primary"
             trend={{ value: "+12.5%", direction: "up", label: "环比上月" }}
           />
           <KpiCard
@@ -257,21 +263,37 @@ export default function DataPage() {
               data={rows}
               rowKey="id"
               total={mockRows.length}
+              mobileCard={(row) => (
+                <MobileCard>
+                  <MobileCardHeader
+                    title={row.name}
+                    extra={
+                      <StatusBadge active={row.status === "active"}>
+                        {row.status}
+                      </StatusBadge>
+                    }
+                  />
+                  <MobileCardBody>
+                    <div>部门：{row.dept}</div>
+                    <div>用量：{row.usage}%</div>
+                  </MobileCardBody>
+                </MobileCard>
+              )}
               pagination={{
                 currentPage: page,
                 totalPages,
                 onPageChange: setPage,
               }}
               toolbar={
-                <>
-                  <div className="relative w-64">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="relative w-full sm:w-64">
                     <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-outline" />
                     <Input
                       placeholder="Search members..."
                       className="border-border bg-[var(--glass-input-bg)] pl-9"
                     />
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 sm:ml-auto">
                     <Button size="sm" variant="secondary">
                       <Plus data-icon="inline-start" />
                       <span>Add</span>
@@ -286,16 +308,38 @@ export default function DataPage() {
                       </span>
                     </span>
                   </div>
-                </>
+                </div>
               }
             />
             <p className="mt-3 text-xs text-outline">
               Built with <CodeLabel text="DataTable" /> +{" "}
-              <CodeLabel text="SmartPagination" />.
+              <CodeLabel text="SmartPagination" />
+              。窄屏（&lt;md）自动切换为 <CodeLabel text="mobileCard" />{" "}
+              卡片列表（MobileCard 三段式原语）。
             </p>
           </Section>
         )
       })()}
+
+      {/* =================== StatusBadge =================== */}
+      <Section title="StatusBadge (启用/停用徽章)">
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle className="text-base">状态徽章</CardTitle>
+            <CardDescription>
+              收敛{" "}
+              <CodeLabel text='active ? "badge-active" : "badge-inactive"' />{" "}
+              三元重复；文案由调用方通过 children 传入。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-center gap-3 p-6 pt-0">
+            <StatusBadge active>启用</StatusBadge>
+            <StatusBadge active={false}>停用</StatusBadge>
+            <StatusBadge active>active</StatusBadge>
+            <StatusBadge active={false}>inactive</StatusBadge>
+          </CardContent>
+        </Card>
+      </Section>
 
       {/* =================== Empty & Loading States =================== */}
       <Section title="Empty & Loading States (缺省与加载状态)">

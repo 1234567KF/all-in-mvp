@@ -27,8 +27,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@workspace/shared": path.resolve(__dirname, "./src"),
-      zod: path.resolve(__dirname, "node_modules/zod/index.js"),
+      "@workspace/shared": path.resolve(import.meta.dirname, "./src"),
+      zod: path.resolve(import.meta.dirname, "node_modules/zod/index.js"),
     },
   },
   ssr: {

@@ -5,12 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 
 export type KpiColor =
-  | "green"
-  | "blue"
-  | "red"
-  | "purple"
-  | "yellow"
-  | "default"
+  "primary" | "green" | "blue" | "red" | "purple" | "yellow" | "default"
 
 export interface KpiCardProps {
   title: string
@@ -27,14 +22,23 @@ export interface KpiCardProps {
 }
 
 const colorConfig = {
-  green: {
+  /** 品牌主色：跟随主题色切换（装饰性 KPI 强调色用这个） */
+  primary: {
     hoverBorder: "hover:border-[var(--lg-primary-border)]",
     blobBg:
       "bg-[var(--lg-primary-dim)]/40 group-hover:bg-[var(--lg-primary-dim)]/80",
     barBg: "bg-[var(--lg-primary)] shadow-[0_0_8px_var(--lg-primary-glow)]",
-    trendColor: "text-[var(--lg-primary-light)]",
     iconColor: "text-[var(--lg-primary-light)]",
     iconBg: "bg-[var(--lg-primary-dim)]",
+  },
+  /** 固定绿色：语义成功色，不随主题色切换 */
+  green: {
+    hoverBorder: "hover:border-[var(--lg-success-border)]",
+    blobBg:
+      "bg-[var(--lg-success-dim)]/40 group-hover:bg-[var(--lg-success-dim)]/80",
+    barBg: "bg-[var(--lg-success)] shadow-[0_0_8px_var(--lg-success-glow)]",
+    iconColor: "text-[var(--lg-success-text)]",
+    iconBg: "bg-[var(--lg-success-dim)]",
   },
   blue: {
     hoverBorder: "hover:border-[var(--lg-accent-blue-border)]",
@@ -42,7 +46,6 @@ const colorConfig = {
       "bg-[var(--lg-accent-blue-dim)]/40 group-hover:bg-[var(--lg-accent-blue-dim)]/80",
     barBg:
       "bg-[var(--lg-accent-blue)] shadow-[0_0_8px_var(--lg-accent-blue-glow)]",
-    trendColor: "text-[var(--lg-accent-blue-light)]",
     iconColor: "text-[var(--lg-accent-blue-light)]",
     iconBg: "bg-[var(--lg-accent-blue-dim)]",
   },
@@ -52,7 +55,6 @@ const colorConfig = {
       "bg-[var(--lg-accent-red-dim)]/40 group-hover:bg-[var(--lg-accent-red-dim)]/80",
     barBg:
       "bg-[var(--lg-accent-red)] shadow-[0_0_8px_var(--lg-accent-red-glow)]",
-    trendColor: "text-[var(--lg-accent-red-light)]",
     iconColor: "text-[var(--lg-accent-red-light)]",
     iconBg: "bg-[var(--lg-accent-red-dim)]",
   },
@@ -62,7 +64,6 @@ const colorConfig = {
       "bg-[var(--lg-accent-purple-dim)]/40 group-hover:bg-[var(--lg-accent-purple-dim)]/80",
     barBg:
       "bg-[var(--lg-accent-purple)] shadow-[0_0_8px_var(--lg-accent-purple-glow)]",
-    trendColor: "text-[var(--lg-accent-purple-light)]",
     iconColor: "text-[var(--lg-accent-purple-light)]",
     iconBg: "bg-[var(--lg-accent-purple-dim)]",
   },
@@ -72,7 +73,6 @@ const colorConfig = {
       "bg-[var(--lg-accent-yellow-dim)]/40 group-hover:bg-[var(--lg-accent-yellow-dim)]/80",
     barBg:
       "bg-[var(--lg-accent-yellow)] shadow-[0_0_8px_var(--lg-accent-yellow-glow)]",
-    trendColor: "text-[var(--lg-accent-yellow-light)]",
     iconColor: "text-[var(--lg-accent-yellow-light)]",
     iconBg: "bg-[var(--lg-accent-yellow-dim)]",
   },
@@ -80,7 +80,6 @@ const colorConfig = {
     hoverBorder: "hover:border-[var(--lg-border)]",
     blobBg: "bg-transparent",
     barBg: "bg-[var(--lg-border)]",
-    trendColor: "text-muted-foreground",
     iconColor: "text-muted-foreground",
     iconBg: "bg-[var(--lg-border-subtle)]",
   },
@@ -157,8 +156,8 @@ export function KpiCard({
           <div
             className={cn(
               "relative z-10 mt-4 flex items-center gap-1 font-mono text-[11px]",
-              trend.direction === "up" && "text-[var(--data-success)]",
-              trend.direction === "down" && "text-destructive",
+              trend.direction === "up" && "text-[var(--lg-success-text)]",
+              trend.direction === "down" && "text-[var(--lg-danger)]",
               trend.direction === "flat" && "text-muted-foreground"
             )}
           >

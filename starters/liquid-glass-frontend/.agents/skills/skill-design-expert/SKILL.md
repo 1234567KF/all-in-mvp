@@ -16,7 +16,7 @@ Your core tenet: **A Skill is not a config file — it is the process of encapsu
 
 # Five Design Patterns
 
-> Core insight: Specifications solve *how to package* a Skill, but what makes a Skill effective is **content design** — clear execution logic, whether it injects knowledge or constrains workflow, whether it helps generate or review, whether the Agent jumps into action or interviews first.
+> Core insight: Specifications solve _how to package_ a Skill, but what makes a Skill effective is **content design** — clear execution logic, whether it injects knowledge or constrains workflow, whether it helps generate or review, whether the Agent jumps into action or interviews first.
 >
 > Key mechanism: The Skill system follows three-layer Progressive Disclosure — L1: Agent loads all Skill name+description on startup (minimal token cost) → L2: Agent loads full SKILL.md body when activating a Skill (recommended <5000 tokens) → L3: During execution, loads specific files from references/assets/scripts on demand. The Agent only consumes context tokens matching the actual pattern needed.
 >
@@ -24,13 +24,13 @@ Your core tenet: **A Skill is not a config file — it is the process of encapsu
 
 Full pattern definitions, design points, and YAML examples in [references/design-patterns.md](references/design-patterns.md). Load on demand when selecting a pattern or designing Skill execution logic.
 
-| Pattern | Core Concept | One-Line Test |
-|---------|-------------|---------------|
-| **Tool Wrapper** | Knowledge on-demand | Does the Agent need specialized knowledge of a library/framework? |
-| **Generator** | Template-driven stable output | Must the output maintain the same structure every time? |
-| **Reviewer** | Pluggable rule checking | Is the task fundamentally about checking/reviewing rather than generating? |
-| **Inversion** | Structured interview before action | Must you collect significant information from the user before building? |
-| **Pipeline** | Constrained workflow execution | Does the task contain multiple phases that must execute in order without skipping? |
+| Pattern          | Core Concept                       | One-Line Test                                                                      |
+| ---------------- | ---------------------------------- | ---------------------------------------------------------------------------------- |
+| **Tool Wrapper** | Knowledge on-demand                | Does the Agent need specialized knowledge of a library/framework?                  |
+| **Generator**    | Template-driven stable output      | Must the output maintain the same structure every time?                            |
+| **Reviewer**     | Pluggable rule checking            | Is the task fundamentally about checking/reviewing rather than generating?         |
+| **Inversion**    | Structured interview before action | Must you collect significant information from the user before building?            |
+| **Pipeline**     | Constrained workflow execution     | Does the task contain multiple phases that must execute in order without skipping? |
 
 ---
 
@@ -61,6 +61,7 @@ When the user requests Skill creation or optimization, follow this workflow stri
 ## Step 2 — Pattern Selection & Rationale
 
 Explain to the user clearly:
+
 - The recommended design pattern(s) and why
 - The core value of the chosen pattern
 - Possible pattern combinations (e.g., Generator + Reviewer, Inversion + Pipeline)
@@ -86,6 +87,7 @@ Based on the selected pattern, design the complete Skill file through the follow
 ## Step 4 — Quality Self-Check
 
 Review the designed Skill against this checklist:
+
 - [ ] Does it have clear execution logic rather than vague "help me do X"?
 - [ ] Is the design pattern correctly applied?
 - [ ] Do instructions describe actions in natural language rather than explicitly referencing tool names?
@@ -100,6 +102,7 @@ Review the designed Skill against this checklist:
 - [ ] Does the description focus on user intent rather than implementation details?
 - [ ] Is the description within 1-1024 characters?
 - [ ] Is the description concise (recommended < 500 chars), limited to the WHAT + WHEN needed for triggering?
+- [ ] Does the whole frontmatter load with a STRICT YAML parser (no `": "` inside unquoted scalars)? — see file-engineering-spec.md § YAML Scalar Safety
 - [ ] Is SKILL.md body ≤ 500 lines? (Content beyond this must be moved to references/)
 - [ ] Has the "can this be scripted instead?" check been done? (validation, format conversion, template filling, etc.)
 - [ ] Is a default approach provided rather than a menu of options? (When multiple tools exist, give one default + escape path)
@@ -125,12 +128,14 @@ Write the completed Skill file to the specified directory and provide usage reco
 - `metadata` is the only legal container for custom extensions. Non-standard fields such as `pattern`, `required-rules` MUST go inside `metadata`, never at the frontmatter top level.
 - Progressive disclosure ≠ "split as finely as possible" — simple Skills (< 200 lines) are more efficient with all content in SKILL.md. The deciding criterion is content volume (> 500 lines / > 5000 tokens), not "it looks like it should be split."
 - When combining patterns: Pipeline naturally includes Reviewer steps (self-checks). Do NOT create a separate Reviewer Skill for the same review logic.
+- A malformed frontmatter fails **silently**: the app's Skills list drops the Skill entirely (no error, no greyed-out row), while the agent-side loader tolerates it and still activates the Skill. "The agent can call it" is NOT proof the Skill is registered — verify with a strict YAML parser and confirm it appears in the Skills list.
 
 ---
 
 # Constraints
 
 **MUST DO:**
+
 - MUST perform pattern selection analysis before creating any Skill.
 - MUST explain to the user why the chosen pattern was selected.
 - MUST perform quality self-check on the generated Skill.
@@ -148,12 +153,14 @@ Write the completed Skill file to the specified directory and provide usage reco
 - Domain knowledge (business rules, internal terminology, regulatory text) MUST be preserved in original language — never forcibly translate.
 
 **MUST NOT DO:**
+
 - MUST NOT skip requirement diagnosis and directly generate a Skill.
 - MUST NOT cram too many unrelated responsibilities into a single Skill.
 - MUST NOT explicitly reference tool names in system prompts (e.g., "use the Read tool").
 - MUST NOT ignore phase gate design (for Inversion/Pipeline patterns).
 - MUST NOT generate Reviewer-type Skills that lack constraint conditions.
 - MUST NOT use non-standard fields at the frontmatter top level (e.g., `tools`, `required_rules`); custom fields MUST go inside `metadata`.
+- MUST NOT leave `": "` (colon + space) inside an unquoted frontmatter scalar — an inline section title reference such as `see "Scope: security" below` breaks strict YAML parsing and makes the Skill disappear from the Skills list. Use a `>-` folded block or single-quote the value (double-quoting still breaks when the value contains raw double quotes).
 - MUST NOT write Skill identity statements in description (e.g., "XX expert", "proficient in XX").
 - MUST NOT inline > 200 lines of reference knowledge in SKILL.md without considering a split.
 - MUST NOT offer > 3 unprioritized optional tools for the same task (must give default approach + escape path).

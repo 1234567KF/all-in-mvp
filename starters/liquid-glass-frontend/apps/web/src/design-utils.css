@@ -5,6 +5,9 @@
    依赖 theme-tokens.css 中的 CSS 变量。
    =========================== */
 
+@reference "tailwindcss";
+@reference "./theme-tokens.css";
+
 /* ===========================
    Base Layer
    =========================== */
@@ -24,6 +27,8 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     line-height: 1.6;
+    /* 阻断滚动链穿透：内部容器到达边界后不再拉扯整页（橡皮筋效果） */
+    overscroll-behavior: none;
     background-image: radial-gradient(
       circle at 50% -20%,
       var(--lg-primary-dim) 0%,
@@ -34,6 +39,18 @@
 
   html {
     @apply font-body;
+    overscroll-behavior: none;
+  }
+
+  /* Hide native browser spin buttons for type="number" */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
   }
 }
 
@@ -50,7 +67,8 @@
   border-spacing: 0;
 }
 
-@media (min-width: 640px) {
+/* 768px 与全局移动断点 (md/768, use-mobile.ts) 对齐：<md 表格走卡片模式，无需冻结列 */
+@media (min-width: 768px) {
   /* --- Left frozen --- */
   [data-slot="table-container"][data-scrollable] [data-frozen="left"] {
     position: sticky;
@@ -231,6 +249,15 @@
   border-radius: var(--radius-glass-md);
 }
 
+/* Inset-card: 玻璃表面内部的嵌套子区块卡（弹窗/面板里的信息分组、提示块）。
+   与页面级 .matte-card 区分：弱边框 + 极淡底色 + 8px 圆角、无 blur/阴影。
+   放在 components 层，调用点的 Tailwind utilities（hover:bg-muted/15 等）仍可覆盖。 */
+@layer components {
+  .inset-card {
+    @apply rounded-lg border border-border/30 bg-muted/10;
+  }
+}
+
 /* ===========================
    Glass Row (Tables)
    =========================== */
@@ -303,11 +330,11 @@
 /* ===========================
    Status Badges
    =========================== */
-/* 激活徽章：绿色，表示激活/在线/已启用 */
+/* 激活徽章：绿色，表示激活/在线/已启用（语义成功色，不随主题色切换） */
 .badge-active {
-  background: var(--lg-primary-dim);
-  color: var(--lg-primary-light);
-  border: 1px solid var(--lg-primary-border);
+  background: var(--lg-success-dim);
+  color: var(--lg-success-text);
+  border: 1px solid var(--lg-success-border);
   border-radius: 9999px;
   padding: 2px 10px;
   font-size: 12px;
@@ -339,11 +366,11 @@
   border: 1px solid var(--lg-border);
 }
 
-/* 绿色标签：成功/已添加 */
+/* 绿色标签：成功/已添加（语义成功色，不随主题色切换） */
 .tag-green {
-  background: var(--lg-primary-dim);
-  color: var(--lg-primary-light);
-  border-color: var(--lg-primary-border);
+  background: var(--lg-success-dim);
+  color: var(--lg-success-text);
+  border-color: var(--lg-success-border);
 }
 
 /* 蓝色标签：信息/链接 */
@@ -648,4 +675,27 @@
 [data-search-highlight="true"] {
   animation: search-highlight-pulse 2.4s ease-out forwards;
   border-radius: 8px;
+}
+
+/* ===========================
+   Touch Hit Area — pointer-coarse 下将小按钮命中区扩展到 ≥44px
+   用法：给 icon-sm 等视觉尺寸 <44px 的可点击元素加 .touch-hit；
+   不改变视觉尺寸，仅通过 ::after 扩大可点击范围。
+   触摸差异一律用 (pointer: coarse) 判定，与宽度断点解耦。
+   ⚠️ 仅限非定位元素：本类无 @layer 声明，position:relative 恒胜
+   utilities 层的 absolute/fixed；定位元素请用 after:absolute after:-inset-2。
+   =========================== */
+@media (pointer: coarse) {
+  .touch-hit {
+    position: relative;
+  }
+  .touch-hit::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
 }

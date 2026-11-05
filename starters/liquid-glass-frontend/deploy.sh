@@ -22,7 +22,7 @@ set -e
 #     ├── compose.yml
 #     ├── .env          ← 密钥和配置（不入库）
 #     ├── deploy.sh
-#     └── data/         ← SQLite 数据库持久化卷
+#     └── data/         ← SQLite 持久卷（仅生成项目；模板 tmpfs 模式不创建）
 
 DEPLOY_DIR="$(cd "$(dirname "$0")" && pwd)"
 IMAGE_REGISTRY="registry.cn-beijing.aliyuncs.com/wecode-cloud"
@@ -38,8 +38,23 @@ if [ -n "${FROM_TAR}" ]; then
   echo "Source: local tar (${FROM_TAR})"
 fi
 
-# 1. 确保部署目录存在
-mkdir -p "${DEPLOY_DIR}/data"
+# 0. 识别部署形态：compose.yml 含 tmpfs = 模板的无记忆 self-deploy
+#    （/app/data 是容器内 tmpfs，宿主 ./data 不参与持久化）；
+#    否则 = 生成项目的 ./data 绑定卷持久化。
+MEMORYLESS=0
+if [ -f "${DEPLOY_DIR}/compose.yml" ] && grep -q 'tmpfs' "${DEPLOY_DIR}/compose.yml" 2>/dev/null; then
+  MEMORYLESS=1
+fi
+if [ "${MEMORYLESS}" -eq 1 ]; then
+  echo "Data mode: memoryless (tmpfs，容器重建即空库)"
+else
+  echo "Data mode: persistent (./data 绑定卷)"
+fi
+
+# 1. 持久卷模式才需要宿主 data 目录（模板 tmpfs 模式不用，避免留下无意义的旧数据目录）
+if [ "${MEMORYLESS}" -eq 0 ]; then
+  mkdir -p "${DEPLOY_DIR}/data"
+fi
 
 # 2. bootstrap .env（首次部署兜底：仅用于模板 self-deploy）
 #    真实项目应通过 GitLab CI/CD 变量或手工写入真实密钥，
@@ -58,9 +73,17 @@ ENVEOF
   echo "✓ .env 已生成，JWT_SECRET 已随机化"
 fi
 
+# 2.1 旧模板部署目录的 .env 可能残留 DEMO_MODE=true；持久卷模式（真实项目）
+#     默认应为关闭，这里只提示不擅自改用户配置。
+if [ "${MEMORYLESS}" -eq 0 ] && [ -f "${DEPLOY_DIR}/.env" ] && grep -q '^DEMO_MODE=true' "${DEPLOY_DIR}/.env"; then
+  echo "⚠  .env 中存在 DEMO_MODE=true：真实项目应删除该行（演示模式会种演示通知并开放 /notifications/dev/* 端点）"
+fi
+
 # 3. 修正 data 目录权限与容器内 appuser (uid=1001) 一致
 #    非 root 用户环境（如测试机 wecode）无权限时静默跳过
-chown -R 1001:1001 "${DEPLOY_DIR}/data" 2>/dev/null || true
+if [ "${MEMORYLESS}" -eq 0 ]; then
+  chown -R 1001:1001 "${DEPLOY_DIR}/data" 2>/dev/null || true
+fi
 
 # 4. 加载镜像（tar 模式 or Registry 模式）
 if [ -n "${FROM_TAR}" ]; then

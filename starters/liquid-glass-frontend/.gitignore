@@ -67,3 +67,8 @@ Thumbs.db
 
 # uploaded files（业务附件、知识库）
 uploads/
+# 模板 self-deploy 无状态部署产物
+db-bootstrap/
+# 数据库结构生成/迁移校验脚本的临时目录（失败路径也必须清理，这里是兜底）
+.tmp-init-gen/
+apps/api/.tmp-check/

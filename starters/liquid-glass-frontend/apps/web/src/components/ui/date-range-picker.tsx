@@ -24,6 +24,13 @@ interface DateRangePickerProps {
   disabledDates?: (date: Date) => boolean
 }
 
+/**
+ * 日期范围选择器。
+ *
+ * 默认宽度 280px 只适合占位/紧凑场景；需要完整展示中文双日期时，在调用侧传
+ * `className="w-fit max-w-full min-w-[260px]"`，让触发器按内容宽度自适应，
+ * 避免「YYYY年MM月DD日 — …」被截断。
+ */
 export function DateRangePicker({
   dateRange,
   onDateRangeChange,
@@ -42,7 +49,7 @@ export function DateRangePicker({
             id="date"
             variant={"outline"}
             className={cn(
-              "h-9 justify-start gap-2 px-3 text-left font-normal",
+              "h-8 justify-start gap-2 px-2.5 text-left font-normal",
               "w-full min-w-0 border-[var(--glass-border)] bg-[var(--glass-input-bg)] text-foreground backdrop-blur-[12px] transition-all hover:bg-[var(--glass-input-bg-hover)]",
               !dateRange && "text-muted-foreground"
             )}
@@ -63,17 +70,24 @@ export function DateRangePicker({
               )}
             </div>
             {dateRange && (
-              <button
-                type="button"
+              <span
+                role="button"
+                tabIndex={0}
                 aria-label="清除日期"
-                className="shrink-0 rounded-sm p-0.5 transition-colors hover:bg-muted/50"
+                className="shrink-0 cursor-pointer rounded-sm p-0.5 transition-colors hover:bg-muted/50"
                 onClick={(e) => {
                   e.stopPropagation()
                   onDateRangeChange(undefined)
                 }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.stopPropagation()
+                    onDateRangeChange(undefined)
+                  }
+                }}
               >
                 <X className="size-3.5 text-muted-foreground/60 hover:text-foreground" />
-              </button>
+              </span>
             )}
           </Button>
         </PopoverTrigger>

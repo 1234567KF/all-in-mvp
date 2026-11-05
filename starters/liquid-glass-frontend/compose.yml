@@ -17,7 +17,9 @@ services:
         max-size: "10m"
         max-file: "3"
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/hello || exit 1"]
+      # 打触达 DB 的 /api/health：迁移失败或数据目录权限问题会让容器直接
+      # unhealthy，避免数据库起不来但部署仍报健康。
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3

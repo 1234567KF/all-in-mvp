@@ -17,25 +17,22 @@ Get-ChildItem -Path $TargetDir -Recurse -Include "*.ts","*.tsx" -ErrorAction Sil
         if (-not $content) { return }
 
         # 检测 .catch(() => {}) — 空箭头函数体
-        if ($content -match '\.catch\s*\(\s*\(\s*\)\s*=>\s*\{\s*\}\s*\)') {
-            $lineNum = 1
-            $lines = $content -split "`n"
-            for ($i = 0; $i -lt $lines.Count; $i++) {
-                if ($lines[$i] -match '\.catch\s*\(\s*\(\s*\)\s*=>\s*\{\s*\}\s*\)') {
-                    $violations += [PSCustomObject]@{
-                        File = $_.FullName
-                        Line = $i + 1
-                        Rule = "R015"
-                        Message = ".catch(() => {}) 空回调反模式 — MUST 至少 console.warn(err) 或友好提示"
-                    }
+        # 例外（teardown 语义）：紧跟 cancel()/abort()/close()/destroy()/releaseLock()/return()
+        # 的空 catch 表达的是"释放资源时失败无所谓"，不是"业务失败被静默"。
+        # R015 的血案是后者（保存失败无提示），所以只对点名的收尾调用放行，不给通配豁免。
+        $lines = $content -split "`n"
+        for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match '\.catch\s*\(\s*\(\s*\)\s*=>\s*\{\s*\}\s*\)') {
+                if ($lines[$i] -match '\.(cancel|abort|close|destroy|releaseLock|return)\s*\(\s*\)(\s*\?\.)?\s*\.catch') {
+                    continue
+                }
+                $violations += [PSCustomObject]@{
+                    File = $_.FullName
+                    Line = $i + 1
+                    Rule = "R015"
+                    Message = ".catch(() => {}) 空回调反模式 — MUST 至少 console.warn(err) 或友好提示"
                 }
             }
-        }
-
-        # 检测 .catch(() => { }) — 带空格
-        if ($content -match '\.catch\s*\(\s*\(\s*\)\s*=>\s*\{\s*\}\s*\)' -and
-            $content -match '\.catch\s*\(\s*\(\s*\)\s*=>\s*\{\s+\}\s*\)') {
-            # already caught above pattern
         }
     }
 

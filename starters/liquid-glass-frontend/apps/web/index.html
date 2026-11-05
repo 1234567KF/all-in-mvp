@@ -5,6 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Liquid Glass Design System — Demo</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      // 首屏前置应用主题，避免刷新时先闪默认色。
+      // key 与 src/components/providers/theme-provider.tsx、src/lib/theme-colors.ts 保持一致。
+      ;(function () {
+        try {
+          var theme = localStorage.getItem("theme")
+          var resolvedTheme =
+            theme === "light" || theme === "dark"
+              ? theme
+              : window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light"
+          document.documentElement.classList.add(resolvedTheme)
+
+          var themeColor = localStorage.getItem("theme-color")
+          document.documentElement.dataset.themeColor = themeColor || "green"
+        } catch (_) {
+          // localStorage 不可用（隐私模式等）时交给 ThemeProvider 处理
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

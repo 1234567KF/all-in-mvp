@@ -10,24 +10,30 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --cache --cache-strategy content",
     "lint:fix": "eslint . --fix",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:generate": "bun scripts/db-generate.ts",
+    "db:migrate": "bun scripts/db-migrate.ts",
+    "db:reset": "bun scripts/reset-db.ts",
+    "db:seed-dev": "bun scripts/seed-dev.ts",
     "migrate:check": "bun run scripts/migrate-check.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "db:init:generate": "bun scripts/gen-init-sql.ts",
+    "db:init:check": "bun scripts/gen-init-sql.ts --check"
   },
   "dependencies": {
-    "drizzle-orm": "^0.45.2",
-    "hono": "^4.6.14",
-    "jsonwebtoken": "^9.0.0",
+    "bcryptjs": "^3.0.3",
+    "drizzle-orm": "^0.45.4",
+    "hono": "^4.13.16",
+    "jsonwebtoken": "^9.0.3",
+    "pino": "^10.4.0",
     "shared": "*",
-    "zod": "^4.4.3"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@types/jsonwebtoken": "^9.0.0",
-    "@types/node": "^24.13.2",
-    "bun-types": "^1.3.14",
-    "drizzle-kit": "^0.31.10",
-    "tsx": "^4.19.2",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^26.6.6",
+    "bun-types": "^1.4.4",
+    "drizzle-kit": "^0.31.11",
+    "tsx": "^4.23.15",
     "typescript": "~6.0.3"
   }
 }

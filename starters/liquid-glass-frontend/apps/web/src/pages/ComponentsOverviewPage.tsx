@@ -1,4 +1,11 @@
-import { ArrowRight, BarChart3, FormInput, Layers, Palette } from "lucide-react"
+import {
+  ArrowRight,
+  BarChart3,
+  Bell,
+  FormInput,
+  Layers,
+  Palette,
+} from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { PageHeader } from "@/components/layout/PageHeader"
@@ -28,6 +35,12 @@ const categories = [
     name: "浮层与导航",
     description: "Tabs, Dialog, Sheet, Alerts, Toast",
     path: "/components/overlays",
+  },
+  {
+    icon: Bell,
+    name: "消息通知",
+    description: "Bell, NotificationPanel, NotificationCenter",
+    path: "/components/notifications",
   },
 ]
 

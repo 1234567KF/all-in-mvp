@@ -19,10 +19,10 @@ skill-name/
 
 **存放位置**：
 
-| 类型 | 路径 | 作用域 |
-|------|------|--------|
-| 个人 | `~/.qoder/skills/skill-name/` | 跨项目可用 |
-| 项目 | `.qoder/skills/skill-name/` | 仅当前仓库 |
+| 类型 | 路径                                                                                                                                              | 作用域     |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| 个人 | `~/.qoder/skills/skill-name/` — use `~/.qoder-cn/skills/skill-name/` when Qoder CN is the running app                                             | 跨项目可用 |
+| 项目 | Repo already has `.agents/` → `.agents/skills/skill-name/`; otherwise `.qoder/skills/skill-name/` (`.qoder-cn/skills/skill-name/` under Qoder CN) | 仅当前仓库 |
 
 ---
 
@@ -30,16 +30,16 @@ skill-name/
 
 ```yaml
 ---
-name: your-skill-name          # Required, 1-64 chars, lowercase letters/digits/hyphens
+name: your-skill-name # Required, 1-64 chars, lowercase letters/digits/hyphens
 description: What this Skill does + when to trigger. Use imperative mood ("Use when..."), focus on user intent.
-license: Apache-2.0             # Optional, license name or LICENSE file reference
-compatibility: >-               # Optional, 1-500 chars, environment requirements
+license: Apache-2.0 # Optional, license name or LICENSE file reference
+compatibility: >- # Optional, 1-500 chars, environment requirements
   Requires Python 3.10+ and git
-metadata:                       # Optional, custom extension fields (string→string / string→list)
+metadata: # Optional, custom extension fields (string→string / string→list)
   pattern: generator
   required-rules: "global-rules, java-kotlin-rules"
-  agents:                       #   Optional, list of sub-agent files owned by this Skill
-    - my-subagent.md            #     Declares agent→skill mapping for reverse contribution (kb-contribute)
+  agents: #   Optional, list of sub-agent files owned by this Skill
+    - my-subagent.md #     Declares agent→skill mapping for reverse contribution (kb-contribute)
 allowed-tools: Bash(git:*) Read # Optional (experimental), space-separated pre-approved tools
 ---
 ```
@@ -70,6 +70,35 @@ When a Skill dispatches work to sub-agents (via `Agent` tool with `subagent_type
 - **包含场景关键词**：确保关键场景词出现在 description 中
 - **简洁**：几句话到一小段，≤ 1024 字符
 
+### YAML Scalar Safety (Silent Failure Zone)
+
+frontmatter is strict YAML. Any of the following inside an **unquoted plain scalar** makes the **entire frontmatter fail to parse**:
+
+- **`": "` (colon + space)** — the most frequent cause, typically an inline section title reference such as `see "Scope: security" below`
+- A value that starts with a YAML indicator (`-` `[` `{` `#` `|` `>` `&` `*` `!` `%` `@` or a backtick) — semantics change, or the parser errors
+- A space followed by `#` — everything after it is swallowed as an inline comment
+
+Quoting makes an inner colon safe, but a double-quoted scalar that still contains raw double quotes fails the same way.
+
+**Fix**: prefer a `>-` folded block; for a single line, wrap the value in single quotes. All four forms below were verified with js-yaml.
+
+```yaml
+# ❌ plain scalar contains "Scope: " → bad indentation of a mapping entry
+description: Review code changes (see "Scope: security" below).
+
+# ❌ double-quoted, but the value still holds raw double quotes → same error
+description: "Review code changes (see "Scope: security" below)."
+
+# ✅ folded block — colon safe, inner double quotes preserved
+description: >-
+  Review code changes (see "Scope: security" below).
+
+# ✅ single-quoted — inner double quotes need no escaping
+description: 'Review code changes (see "Scope: security" below).'
+```
+
+**The failure is silent**: the app's Skills list skips an unparseable Skill entirely (no error, no greyed-out row, not even counted), while the agent-side loader tolerates it and still activates the Skill. **"The agent can call it" is not proof the Skill is registered** — validate with a strict parser (see §7).
+
 ---
 
 ## 3. 核心编写原则
@@ -80,9 +109,11 @@ Agent 本身很聪明。对每段内容问：「Agent 没有这条指令会做�
 
 ```markdown
 <!-- ❌ 多余 — Agent 本身就知道 PDF 是什么 -->
+
 PDF (Portable Document Format) 是一种常见文件格式...
 
 <!-- ✅ 直接给 Agent 不知道的 -->
+
 Use pdfplumber for text extraction. For scanned documents,
 fall back to pdf2image with pytesseract.
 ```
@@ -95,17 +126,19 @@ fall back to pdf2image with pytesseract.
 
 三层加载策略（官方规范）：
 
-| 层级 | 加载时机 | Token 预算 |
-|------|---------|------------|
-| L1 Metadata | Agent 启动时加载所有 Skill 的 name+description | ~100 tokens/skill |
-| L2 Instructions | Skill 被激活后加载完整 SKILL.md | < 5000 tokens |
-| L3 Resources | 执行过程中按需加载 references/assets/scripts | 按需 |
+| 层级            | 加载时机                                       | Token 预算        |
+| --------------- | ---------------------------------------------- | ----------------- |
+| L1 Metadata     | Agent 启动时加载所有 Skill 的 name+description | ~100 tokens/skill |
+| L2 Instructions | Skill 被激活后加载完整 SKILL.md                | < 5000 tokens     |
+| L3 Resources    | 执行过程中按需加载 references/assets/scripts   | 按需              |
 
 ```markdown
 ## 快速指引
+
 [核心指令放这里]
 
 ## 详细参考
+
 - 完整 API 规范见 [reference.md](references/reference.md)
 - 示例见 [examples.md](references/examples.md)
 ```
@@ -116,11 +149,11 @@ fall back to pdf2image with pytesseract.
 
 同一个 Skill 中不同部分可以有不同的控制粒度。**按脆弱性校准**：
 
-| 自由度 | 适用场景 | 示例 |
-|--------|---------|------|
-| 高（文字指令） | 多种正确方式，容错度高 | 代码审查指南 |
-| 中（伪代码/模板） | 有偏好但可变通 | 报告生成 |
-| 低（具体脚本） | 操作脆弱、一致性关键 | 数据库迁移 |
+| 自由度            | 适用场景               | 示例         |
+| ----------------- | ---------------------- | ------------ |
+| 高（文字指令）    | 多种正确方式，容错度高 | 代码审查指南 |
+| 中（伪代码/模板） | 有偏好但可变通         | 报告生成     |
+| 低（具体脚本）    | 操作脆弱、一致性关键   | 数据库迁移   |
 
 高自由度时解释 **WHY**（目的）比写死 HOW 更有效。低自由度时直接给出精确命令，禁止修改。
 
@@ -130,9 +163,11 @@ Skill 应教 Agent **如何处理一类问题**，而非给出特定实例的答
 
 ```markdown
 <!-- ❌ 声明式 — 只能用于这一个查询 -->
+
 Join orders to customers on customer_id, filter region='EMEA', sum amount.
 
 <!-- ✅ 过程式 — 适用于任何分析查询 -->
+
 1. Read schema from references/schema.yaml to find relevant tables
 2. Join tables using the _id foreign key convention
 3. Apply user's filters as WHERE clauses
@@ -145,9 +180,11 @@ Join orders to customers on customer_id, filter region='EMEA', sum amount.
 
 ```markdown
 <!-- ❌ 菜单式 — Agent 不知道选哪个 -->
+
 You can use pypdf, pdfplumber, PyMuPDF, or pdf2image...
 
 <!-- ✅ 默认方案 + 逃逸路径 -->
+
 Use pdfplumber for text extraction.
 For scanned PDFs requiring OCR, use pdf2image with pytesseract instead.
 ```
@@ -158,18 +195,20 @@ For scanned PDFs requiring OCR, use pdf2image with pytesseract instead.
 
 Skill 内容按受众分层选择语言，不可混用：
 
-| 内容层 | 受众 | 语言 | 理由 |
-|--------|------|------|------|
-| AI 执行指令（流程/约束/条件分支/Gotchas） | AI 读取 | **英文** | token 效率高，LLM 执行一致性优于中文 |
-| 面向用户输出（回复模板/生成文档/错误提示） | 用户阅读 | **用户首选语言** | 减少沟通摩擦 |
-| 领域知识（业务规则/内部术语/法规） | AI 理解 | **保持原文** | 强行翻译损失精度 |
-| description (L1 metadata) | AI 匹配 | **英文祈使句** | 英文省 token，执行一致性高 |
+| 内容层                                     | 受众     | 语言             | 理由                                 |
+| ------------------------------------------ | -------- | ---------------- | ------------------------------------ |
+| AI 执行指令（流程/约束/条件分支/Gotchas）  | AI 读取  | **英文**         | token 效率高，LLM 执行一致性优于中文 |
+| 面向用户输出（回复模板/生成文档/错误提示） | 用户阅读 | **用户首选语言** | 减少沟通摩擦                         |
+| 领域知识（业务规则/内部术语/法规）         | AI 理解  | **保持原文**     | 强行翻译损失精度                     |
+| description (L1 metadata)                  | AI 匹配  | **英文祈使句**   | 英文省 token，执行一致性高           |
 
 ```markdown
 <!-- ❌ 混用 — AI 指令用中文降低执行稳定性 -->
+
 当用户提供代码时，先检查是否包含 SQL 注入漏洞。如果发现问题，用中文告诉用户。
 
 <!-- ✅ 分层清晰 — AI 指令英文，用户输出中文 -->
+
 When the user provides code, check for SQL injection vulnerabilities.
 If issues found, explain each vulnerability to the user in Chinese.
 ```
@@ -185,13 +224,13 @@ description: Generate Java CRUD modules from entity definitions — producing Co
 
 ## 4. 常用编写模式
 
-| 模式 | 用途 | 关键点 |
-|------|------|--------|
-| **模板模式** | 统一输出格式 | 提供完整模板，每个 section 必须出现 |
-| **示例模式** | 质量依赖参照 | 提供 2-3 个输入→输出示例 |
-| **工作流模式** | 多步骤任务 | 用 checklist 跟踪进度 |
-| **条件分支模式** | 决策点 | 明确分支条件和各分支流程 |
-| **反馈循环模式** | 质量关键任务 | 执行→验证→修复→重新验证 |
+| 模式             | 用途              | 关键点                               |
+| ---------------- | ----------------- | ------------------------------------ |
+| **模板模式**     | 统一输出格式      | 提供完整模板，每个 section 必须出现  |
+| **示例模式**     | 质量依赖参照      | 提供 2-3 个输入→输出示例             |
+| **工作流模式**   | 多步骤任务        | 用 checklist 跟踪进度                |
+| **条件分支模式** | 决策点            | 明确分支条件和各分支流程             |
+| **反馈循环模式** | 质量关键任务      | 执行→验证→修复→重新验证              |
 | **Gotchas 模式** | 环境/项目特有陷阱 | 高价值：Agent 没有就会犯错的具体事实 |
 
 ### Gotchas 章节示例
@@ -215,13 +254,14 @@ description: Generate Java CRUD modules from entity definitions — producing Co
 
 ## 5. 反模式清单
 
-| 反模式 | 正确做法 |
-|--------|---------|
-| Windows 路径 `scripts\helper.py` | Unix 路径 `scripts/helper.py` |
-| 列举多个可选工具让 Agent 困惑 | 给一个默认方案 + 特殊场景备选 |
-| 时间敏感信息（「如果在 2025 年之前...」） | 用 current/deprecated 分区 |
-| 术语不一致（混用 API endpoint/URL/route） | 全篇统一用一个术语 |
-| 模糊命名（helper、utils、tools） | 具体命名（processing-pdfs、analyzing-spreadsheets） |
+| 反模式                                                                                                          | 正确做法                                                                     |
+| --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Windows 路径 `scripts\helper.py`                                                                                | Unix 路径 `scripts/helper.py`                                                |
+| 列举多个可选工具让 Agent 困惑                                                                                   | 给一个默认方案 + 特殊场景备选                                                |
+| 时间敏感信息（「如果在 2025 年之前...」）                                                                       | 用 current/deprecated 分区                                                   |
+| 术语不一致（混用 API endpoint/URL/route）                                                                       | 全篇统一用一个术语                                                           |
+| 模糊命名（helper、utils、tools）                                                                                | 具体命名（processing-pdfs、analyzing-spreadsheets）                          |
+| Bare `": "` inside a frontmatter plain scalar — whole block fails to parse, Skill vanishes from the Skills list | Use a `>-` folded block or single-quote the value; see §2 YAML Scalar Safety |
 
 ---
 
@@ -240,6 +280,7 @@ description: Generate Java CRUD modules from entity definitions — producing Co
 ### 6.2 execute-then-revise 迭代验证
 
 首版 Skill 通常需要打磨。对真实任务执行后：
+
 1. 阅读 Agent **执行轨迹**（不只是最终输出）
 2. 问：哪些触发了误判？哪些被遗漏？哪些可以删？
 3. 如果 Agent 在无效步骤上浪费时间 → 指令太模糊 / 不相关指令太多 / 缺少默认方案
@@ -251,6 +292,7 @@ description: Generate Java CRUD modules from entity definitions — producing Co
 ## 7. 交付检查清单
 
 ### 核心质量
+
 - [ ] SKILL.md ≤ 500 行 / < 5000 tokens
 - [ ] 术语全篇一致
 - [ ] 示例具体而非抽象
@@ -260,17 +302,22 @@ description: Generate Java CRUD modules from entity definitions — producing Co
 - [ ] 面向用户输出使用目标受众语言
 
 ### 结构
+
 - [ ] 引用文件保持一层深度（SKILL.md → reference，不嵌套）
 - [ ] 渐进式披露合理使用
 - [ ] 工作流步骤清晰
 - [ ] 无时间敏感信息
 
 ### 脚本（如有）
+
 - [ ] 依赖包已文档化
 - [ ] 错误处理明确
 - [ ] 无 Windows 路径
 
 ### 验证
+
 - [ ] 使用 `skills-ref validate ./skill-name` 校验 frontmatter 合规性（[官方工具](https://github.com/agentskills/agentskills/tree/main/skills-ref)）
+- [ ] frontmatter loads with a **strict YAML parser** (without the `skills-ref` CLI, load the first `---` block via `js-yaml` / `yaml` — any throw means non-compliant)
+- [ ] After installing into the Skills directory, the Skill is **visible in the app's Skills list** (agent-side activation does not prove registration — see §2)
 - [ ] name 与父目录名一致
 - [ ] 无连续连字符

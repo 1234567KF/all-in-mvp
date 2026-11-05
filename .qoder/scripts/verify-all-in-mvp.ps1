@@ -61,6 +61,27 @@ if (Test-Path $fmScript) {
 } else {
     Add-Row "workspace" "R029 frontmatter YAML" "FAIL" "check-skill-frontmatter.ps1 缺失 -> 技能注册无门禁"
 }
+# R022-R026 必须指向权威脚手架执行：默认 TargetDir=. 时它只会 SKIPPED，等于没查
+$styleScript = Join-Path ".qoder\scripts" "check-liquid-glass-style.ps1"
+if (Test-Path $styleScript) {
+    $stOut = @(& powershell -NoProfile -ExecutionPolicy Bypass -File $styleScript -TargetDir "starters\liquid-glass-frontend" 2>&1 | ForEach-Object { "$_" }) -join " "
+    $stStatus = if ($LASTEXITCODE -eq 0) { "PASS" } elseif ($LASTEXITCODE -eq 1) { "FAIL" } else { "WARN" }
+    if ($stOut -match "SKIPPED") { $stStatus = "WARN" }
+    Add-Row "workspace" "R022-R026 风格门禁" $stStatus ("@starter " + ($stOut -replace "\s+", " "))
+} else {
+    Add-Row "workspace" "R022-R026 风格门禁" "FAIL" "check-liquid-glass-style.ps1 缺失"
+}
+# PS 自动变量撞名扫描（大小写不敏感）。血案 B022/B024 的同类缺陷曾因
+# grep 用了大小写敏感模式而漏掉 3 处小写 $matches，故把这条判据固化成门禁。
+$autoVarHit = @(Get-ChildItem -Path "." -Recurse -Filter "*.ps1" -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -notmatch "node_modules" } |
+        Select-String -Pattern '^\s*\$(Matches|Home|Host|Input|Error|PSItem|Args|Pid|True|False)\s*(=|\+=)[^=]' |
+        ForEach-Object { ($_.Path -replace [regex]::Escape((Get-Location).Path + "\"), "") + ":" + $_.LineNumber })
+if ($autoVarHit.Count -eq 0) {
+    Add-Row "workspace" "PS 自动变量撞名" "PASS" '全仓 *.ps1 无 Matches/Home/Input/PSItem 等自动变量赋值'
+} else {
+    Add-Row "workspace" "PS 自动变量撞名" "FAIL" ("命中 " + $autoVarHit.Count + " 处：" + ($autoVarHit -join ", "))
+}
 $rules = @(Get-ChildItem -Path ".qoder\rules" -Filter "*.md" -ErrorAction SilentlyContinue).Count
 Add-Row "workspace" "rules/*.md" $(if ($rules -gt 0) { "PASS" } else { "WARN" }) "$rules 个（自动加载进上下文）"
 

@@ -14,14 +14,15 @@
  *   })
  */
 import { Database } from "bun:sqlite"
-import { migrate } from "drizzle-orm/bun-sqlite/migrator"
 import type { Hono } from "hono"
 import path from "path"
 
 import { _setTestDb } from "./db.js"
+import { bootstrapDatabase } from "./db/bootstrap.js"
 import { createDrizzleDb, type DrizzleDB } from "./db/index.js"
 
-const migrationsFolder = path.resolve(import.meta.dir, "../drizzle")
+/** apps/api 根目录：模板模式读 init.sql，生成项目模式读 drizzle/ */
+const apiRoot = path.resolve(import.meta.dir, "..")
 
 // ─── 内存 DB 初始化 ──────────────────────────────────────────────────────────
 
@@ -30,7 +31,7 @@ export function setupTestDb(): DrizzleDB {
   const sqlite = new Database(":memory:")
   sqlite.exec("PRAGMA journal_mode = WAL")
   const d = createDrizzleDb(sqlite)
-  migrate(d, { migrationsFolder })
+  bootstrapDatabase(sqlite, d, { baseDir: apiRoot })
   _setTestDb(d)
   return d
 }

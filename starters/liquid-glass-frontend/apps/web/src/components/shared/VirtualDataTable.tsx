@@ -130,7 +130,7 @@ function VirtualDataTableInner<T>(
       {/* 表体容器 (支持滚动) */}
       <div
         ref={scrollContainerRef}
-        className="overflow-x-auto overflow-y-scroll"
+        className="overflow-x-auto overflow-y-scroll overscroll-contain"
         style={{ maxHeight: `${maxHeight}px` }}
         onScroll={handleScroll}
       >

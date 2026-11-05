@@ -402,13 +402,64 @@ rules:
         3) apps/api 无 @/ 别名，date-utils 仅存在于 apps/web —— api 侧需传完整 ISO 或下沉到 packages/shared。
       前两类由 code-review 与 date-utils 的时区不变量测试兜底。
 
+  # ---- v2.26 规则（同步权威 starter 167d77c 后新增：契约/审计不变量由 starter ESLint 承担，本文件只登记 + 声明盲区）----
+  - id: R032
+    version: v2.26
+    name: UI 层禁止值导入 services 层
+    severity: HIGH
+    stage: [stage3, stage4, fix]
+    check_script: null  # 由 starter ESLint 承担：project-rules/no-service-import-in-ui（pages/components = error）
+    applies_to: [frontend-dev]
+    description: |
+      服务端数据必须经 TanStack Query hooks（apps/web/src/hooks/queries/，queryKey 来自 lib/query-keys.ts）。
+      pages/components 里 import 具体 service 函数会绕过缓存、失效与统一错误处理，重新引入散落的 fetch useEffect。
+      type-only 导入允许（不产生运行时依赖）。
+      已声明盲区（lint 绿 ≠ 服务层隔离已满足）：
+        1) 只访问 ImportDeclaration —— `export { x } from "@/services/x"` 转承与 `await import()` 动态导入拦不到；
+        2) 别名前缀带尾斜杠：`import s from "@/services"`（barrel 目录）与其它别名（~/services）不匹配；
+        3) require() 形式不覆盖（本仓 ESM，风险低）；
+        4) 作用域仅 pages/**.tsx 与 components/**.tsx，写在 hooks/ 下的取值逻辑不在范围。
+      上述 4 类已作为 valid 用例钉在 eslint-rules/no-service-import-in-ui.test.js，规则收紧时会变红。
+
+  - id: R033
+    version: v2.26
+    name: 写审计的导出 service 函数首参必须为 OpCtx
+    severity: BLOCKER
+    stage: [stage3, stage4, fix]
+    check_script: null  # 由 starter ESLint 承担：project-rules/no-audit-fn-without-opctx（modules/**/*.service.ts = error，排除 *.test.ts）
+    applies_to: [backend-tdd, code-reviewer]
+    description: |
+      OpCtx（operatorId/operator/operatorAccount/operatorRole/ipAddress/userAgent/requestId）是审计身份的唯一载体。
+      未认证入口（登录/注册/改密）也必须拿 OpCtx：只挂 opCtxMiddleware 不挂 authMiddleware 取空壳，再覆盖身份字段。
+      身份取值按"可解析优先"：能解析出真实用户就用真实值，只有解析不出（登录失败/未知账号/限流锁定）才回退到声明值。
+      审计调用必须整体展开 `{ ...ctx }`，禁止逐字段手工拼装 ip/ua/requestId ——
+      真实事故是 refresh 路径手搓出 requestId: ""，令牌复用的安全事件再也关联不回发起请求。
+      已声明盲区：只检查直接调用 auditor 的**导出**函数签名；把 auditor 包进本地闭包再调、
+      非导出辅助函数写审计、以及"身份字段填得对不对"都不在 lint 范围，由类型设计 + code-review 兜底。
+
+  - id: R034
+    version: v2.26
+    name: 禁裸调 writeLog，handler 默认禁手写 hasPermission
+    severity: BLOCKER
+    stage: [stage3, stage4, fix]
+    check_script: null  # 由 starter ESLint 内置 no-restricted-syntax 承担（两个 esquery 选择器）
+    applies_to: [backend-tdd, code-reviewer]
+    description: |
+      写日志只能走 auditedInsert/Update/Delete 或 createAuditor(module)；
+      路由鉴权默认走 requirePermission/requireRole/requireAdmin，资源级/字段级/依赖业务状态的授权下沉到 service 领域方法。
+      handler 里确需手写 hasPermission 的例外必须 eslint-disable-next-line 并附理由
+      （reportUnusedDisableDirectives = error 保证豁免修好后必须删，不留僵尸豁免）。
+      已声明盲区：选择器是 CallExpression[callee.name="writeLog"/"hasPermission"]，
+      因此 logger.writeLog(...) 成员调用、`import { writeLog as log }` 别名转承、
+      以及 const w = writeLog 后的间接调用都不在拦截范围；权限语义正确性由 mvp-code-reviewer 审查。
+
 # ============================================================
 # Stage 门禁映射（供聚合脚本使用）
 # ============================================================
 gates:
   stage3:
     description: "Stage 3 入口门禁 — 开发前必须通过的规则"
-    rules: [R002, R004, R012, R015, R018, R019, R021, R022, R023, R024, R025, R026, R027, R028, R029, R030, R031]
+    rules: [R002, R004, R012, R015, R018, R019, R021, R022, R023, R024, R025, R026, R027, R028, R029, R030, R031, R032, R033, R034]
     aggregate_script: scripts/check-stage3-gate.ps1
 
   stage3.5:
@@ -418,10 +469,10 @@ gates:
 
   stage4:
     description: "Stage 4 入口门禁 — 集成验收前必须通过的规则"
-    rules: [R001, R003, R005, R006, R007, R008, R009, R010, R012, R013, R014, R015, R016, R017, R018, R019, R021, R022, R023, R024, R025, R026, R027, R028, R029, R030, R031]
+    rules: [R001, R003, R005, R006, R007, R008, R009, R010, R012, R013, R014, R015, R016, R017, R018, R019, R021, R022, R023, R024, R025, R026, R027, R028, R029, R030, R031, R032, R033, R034]
     aggregate_script: scripts/check-stage4-gate.ps1
 
   fix:
     description: "修复模式门禁 — 任何 Bug 修复必须通过的最小审查（v2.17）"
-    rules: [R020, R021, R022, R023, R024, R025, R026, R027, R029, R030, R031]
+    rules: [R020, R021, R022, R023, R024, R025, R026, R027, R029, R030, R031, R032, R033, R034]
     aggregate_script: null  # 修复模式不能脚本化；由 quality-gate.md（行为真源）+ settings.json hooks.PostToolUse → scripts/quality-gate-hook.ps1（路径命中即派发审查/冒烟）联合驱动

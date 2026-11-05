@@ -3,6 +3,7 @@ import { useState } from "react"
 import { type DateRange } from "react-day-picker"
 
 import { PageHeader } from "@/components/layout/PageHeader"
+import { FileUpload } from "@/components/shared/FileUpload"
 import { PasswordToggleInput } from "@/components/shared/PasswordToggleInput"
 import { Button } from "@/components/ui/button"
 import { Calendar as UiCalendar } from "@/components/ui/calendar"
@@ -332,7 +333,7 @@ export default function FormsPage() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-7 px-2.5 text-xs font-medium text-primary hover:bg-primary/10 hover:text-primary/90"
+                      className="h-7 px-2.5 text-xs font-medium text-primary-text hover:bg-primary/10 hover:text-primary-text"
                       onClick={() => alert("Verifying...")}
                     >
                       Verify
@@ -410,7 +411,7 @@ export default function FormsPage() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-7 px-2.5 text-xs font-medium text-primary hover:bg-primary/10 hover:text-primary/90"
+                      className="h-7 px-2.5 text-xs font-medium text-primary-text hover:bg-primary/10 hover:text-primary-text"
                       onClick={() => alert("Verifying...")}
                     >
                       Verify
@@ -524,6 +525,35 @@ export default function FormsPage() {
               已选人员 ID 列表:{" "}
               {multipleMembers.length > 0 ? multipleMembers.join(", ") : "全部"}
             </CardFooter>
+          </Card>
+        </div>
+      </Section>
+
+      {/* =================== FileUpload =================== */}
+      <Section title="FileUpload (文件上传)">
+        <p className="mb-4 text-sm text-on-surface-variant">
+          拖拽 / 点击上传，支持 <CodeLabel text="accept" /> 格式限制、
+          <CodeLabel text="maxSize" /> 大小校验、
+          <CodeLabel text="multiple" /> 多选模式。
+        </p>
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>单文件（图片，≤ 2MB）</CardTitle>
+              <CardDescription>accept="image/*" maxSize=2MB</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FileUpload accept="image/*" maxSize={2 * 1024 * 1024} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>多文件（任意格式，≤ 10MB）</CardTitle>
+              <CardDescription>multiple maxSize=10MB</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FileUpload multiple maxSize={10 * 1024 * 1024} />
+            </CardContent>
           </Card>
         </div>
       </Section>

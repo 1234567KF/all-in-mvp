@@ -18,9 +18,9 @@ const badgeVariants = cva(
           "border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
         ghost:
           "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
-        link: "text-primary underline-offset-4 hover:underline",
+        link: "text-primary-text underline-offset-4 hover:underline",
         success:
-          "border-[var(--lg-primary-border)] bg-[var(--lg-primary-dim)] px-2.5 py-0.5 text-[var(--lg-primary-light)]",
+          "border-[var(--lg-success-border)] bg-[var(--lg-success-dim)] px-2.5 py-0.5 text-[var(--lg-success-text)]",
         danger:
           "border-[var(--data-deleted-border)] bg-[var(--data-deleted-bg)] px-2.5 py-0.5 text-[var(--lg-danger)]",
         warning:

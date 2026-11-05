@@ -170,7 +170,7 @@ function FileUpload({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="size-6"
+                className="size-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                 onClick={(e) => {
                   e.stopPropagation()
                   removeFile(index)

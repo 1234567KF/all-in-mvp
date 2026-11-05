@@ -1,8 +1,10 @@
 /* ===========================
    Liquid Glass Theme Tokens
    ===========================
-   所有颜色通过 CSS 变量定义，修改主题色只需改此文件。
-   当前默认主色：绿色系 #22c55e / #4be277
+   所有颜色通过 CSS 变量定义；改默认主色只需改本文件的 --theme-* 种子。
+   新增主题色预设还需同步 apps/web/src/lib/theme-colors.ts 与 --theme-swatch-*。
+   默认主色：翡翠绿 #22c55e / #4be277。
+   运行时主题色切换：见文件末尾的 [data-theme-color] 预设块与 --theme-* 种子。
    =========================== */
 
 @custom-variant dark (&:is(.dark *));
@@ -30,6 +32,7 @@
   --color-outline: var(--lg-text-muted);
   --color-outline-variant: var(--lg-outline-variant);
   --color-primary-accent: var(--lg-primary-light);
+  --color-primary-text: var(--lg-primary-text);
   --color-primary-container: var(--lg-primary-container);
   --color-on-primary: var(--lg-on-primary);
   --color-on-primary-container: var(--lg-on-primary-container);
@@ -44,7 +47,8 @@
 
   /* Semantic Data Colors */
   --color-data-link: var(--lg-info);
-  --color-data-added: var(--lg-primary-light);
+  --color-data-added: var(--lg-success-light);
+  --color-success-text: var(--lg-success-text);
   --color-data-deleted: var(--lg-danger);
   --color-data-ai: var(--lg-data-ai);
   --color-data-link-bg: var(--data-link-bg);
@@ -55,6 +59,15 @@
   --color-data-added-border: var(--data-added-border);
   --color-data-deleted-border: var(--data-deleted-border);
   --color-data-ai-border: var(--data-ai-border);
+  --color-data-orange: var(--lg-data-orange);
+  --color-data-cyan: var(--lg-data-cyan);
+  --color-data-indigo: var(--lg-data-indigo);
+  --color-data-orange-bg: var(--data-orange-bg);
+  --color-data-cyan-bg: var(--data-cyan-bg);
+  --color-data-indigo-bg: var(--data-indigo-bg);
+  --color-data-orange-border: var(--data-orange-border);
+  --color-data-cyan-border: var(--data-cyan-border);
+  --color-data-indigo-border: var(--data-indigo-border);
 
   /* shadcn mapped colors：直接映射 shadcn/ui 组件内部使用的语义变量，自定义代码应优先使用 lg-* 变量 */
   --color-sidebar-ring: var(--sidebar-ring);
@@ -103,6 +116,36 @@
    Dark Theme (Default)
    =========================== */
 :root {
+  /* ── 主题色种子（Dark / Light 双家族）──
+     默认值 = 翡翠绿。文件末尾的 `[data-theme-color]` 预设块只覆盖这些种子，
+     下方 --primary / --lg-primary-* / sidebar 等 token 均由它们派生。
+     - Dark 家族：供 :root（<html class="dark">）使用
+     - Light 家族：供 .light 使用
+     - dark 的 hover 复用 bright；light 需要独立的 --theme-primary-hover-light
+     - primary-foreground 是全局常量（#000/#fff），不在 preset 中重复
+     透明度派生统一用 color-mix(in srgb, <seed> N%, transparent)，与原来的 rgba 等价。 */
+  --theme-primary-dark: #22c55e;
+  --theme-bright-dark: #4be277;
+  --theme-primary-foreground-dark: #000000;
+  --theme-on-primary-dark: #003915;
+  --theme-on-primary-container-dark: #004b1e;
+
+  --theme-primary-light: #006e2f;
+  --theme-bright-light: #22c55e;
+  --theme-primary-foreground-light: #ffffff;
+  --theme-on-primary-light: #ffffff;
+  --theme-on-primary-container-light: #004b1e;
+  --theme-primary-hover-light: #16a34a;
+
+  /* 色板预览色：ThemeColorPicker 的 swatch，不随明暗模式变化 */
+  --theme-swatch-green: #22c55e;
+  --theme-swatch-blue: #3b82f6;
+  --theme-swatch-purple: #8b5cf6;
+  --theme-swatch-cyan: #06b6d4;
+  --theme-swatch-orange: #f97316;
+  --theme-swatch-rose: #ec4899;
+  --theme-swatch-check: #0e0e11;
+
   /* ── shadcn semantic tokens ── */
   /* 基础色：页面背景与前景文字、卡片、浮层 */
   --background: #0e0e11;
@@ -112,25 +155,25 @@
   --popover: rgba(27, 27, 30, 0.95);
   --popover-foreground: #e4e1e6;
 
-  /* ★★★ 主色 — 改这里切换主题色 ★★★ */
-  --primary: #22c55e;
-  --primary-foreground: #000000;
+  /* ★★★ 主色 — 由主题色种子派生，切换主题色请改文件末尾的预设块 ★★★ */
+  --primary: var(--theme-primary-dark);
+  --primary-foreground: var(--theme-primary-foreground-dark);
   --secondary: #571bc1;
   --secondary-foreground: #d0bcff;
   /* 中性/弱化色：次要文字、禁用态背景 */
   --muted: #1f1f22;
   --muted-foreground: #bccbb9;
   /* 交互状态色：强调背景、强调文字、危险操作、边框、输入框、聚焦环 */
-  --accent: rgba(34, 197, 94, 0.1);
-  --accent-foreground: #4be277;
+  --accent: color-mix(in srgb, var(--theme-primary-dark) 10%, transparent);
+  --accent-foreground: var(--theme-bright-dark);
   --destructive: #ffb4ab;
   --border: rgba(61, 74, 61, 0.4);
   --input: rgba(61, 74, 61, 0.4);
-  --ring: rgba(75, 226, 119, 0.5);
+  --ring: color-mix(in srgb, var(--theme-bright-dark) 50%, transparent);
 
   /* Chart palette */
-  --chart-1: #4be277;
-  --chart-2: #22c55e;
+  --chart-1: var(--theme-bright-dark);
+  --chart-2: var(--theme-primary-dark);
   --chart-3: #d0bcff;
   --chart-4: #8bcfff;
   --chart-5: #facc15;
@@ -139,14 +182,36 @@
   /* Sidebar */
   --sidebar: rgba(19, 19, 22, 0.8);
   --sidebar-foreground: #e4e1e6;
-  --sidebar-primary: #4be277;
-  --sidebar-primary-foreground: #003915;
-  --sidebar-accent: rgba(34, 197, 94, 0.1);
-  --sidebar-accent-foreground: #4be277;
+  --sidebar-primary: var(--theme-bright-dark);
+  --sidebar-primary-foreground: var(--theme-on-primary-dark);
+  --sidebar-accent: color-mix(
+    in srgb,
+    var(--theme-primary-dark) 10%,
+    transparent
+  );
+  --sidebar-accent-foreground: var(--theme-bright-dark);
   --sidebar-border: rgba(61, 74, 61, 0.2);
-  --sidebar-ring: rgba(75, 226, 119, 0.5);
-  --sidebar-active-hover-bg: rgba(34, 197, 94, 0.22);
-  --sidebar-active-hover-border: rgba(34, 197, 94, 0.24);
+  --sidebar-ring: color-mix(in srgb, var(--theme-bright-dark) 50%, transparent);
+  --sidebar-active-border: color-mix(
+    in srgb,
+    var(--theme-primary-dark) 12%,
+    transparent
+  );
+  --sidebar-active-shadow: color-mix(
+    in srgb,
+    var(--theme-primary-dark) 8%,
+    transparent
+  );
+  --sidebar-active-hover-bg: color-mix(
+    in srgb,
+    var(--theme-primary-dark) 22%,
+    transparent
+  );
+  --sidebar-active-hover-border: color-mix(
+    in srgb,
+    var(--theme-primary-dark) 24%,
+    transparent
+  );
 
   /* ── Liquid Glass tokens ── */
   --lg-background: #0e0e11;
@@ -160,21 +225,60 @@
   --lg-surface-highest: #353438;
   --lg-outline-variant: #3d4a3d;
 
-  /* ★★★ 主色系 Liquid Glass — 改这里 ★★★ */
+  /* ★★★ 主色系 Liquid Glass — 由主题色种子派生 ★★★ */
   /* 主色系变体：base/light(浅化)/dim(暗化)/glow(发光效果)/border(边框)/hover(悬停)/highlight(高亮选中) */
-  --lg-primary: #22c55e;
-  --lg-primary-light: #4be277;
-  --lg-primary-dim: rgba(34, 197, 94, 0.15);
-  --lg-primary-glow: rgba(34, 197, 94, 0.4);
-  --lg-primary-border: rgba(34, 197, 94, 0.3);
-  --lg-primary-hover: var(--lg-primary-light);
-  --lg-primary-highlight: rgba(34, 197, 94, 0.28);
-  --lg-primary-highlight-glow: rgba(34, 197, 94, 0.45);
-  --lg-primary-highlight-pulse: rgba(34, 197, 94, 0.16);
-  --lg-primary-highlight-pulse-glow: rgba(34, 197, 94, 0.25);
-  --lg-primary-container: #22c55e;
-  --lg-on-primary: #003915;
-  --lg-on-primary-container: #004b1e;
+  --lg-primary: var(--theme-primary-dark);
+  --lg-primary-light: var(--theme-bright-dark);
+  /* 主色文字（落在表面/玻璃底上）：dark 用亮色阶，light 用深色阶，保证 AA */
+  --lg-primary-text: var(--theme-bright-dark);
+  --lg-primary-dim: color-mix(
+    in srgb,
+    var(--theme-primary-dark) 15%,
+    transparent
+  );
+  --lg-primary-glow: color-mix(
+    in srgb,
+    var(--theme-primary-dark) 40%,
+    transparent
+  );
+  --lg-primary-border: color-mix(
+    in srgb,
+    var(--theme-primary-dark) 30%,
+    transparent
+  );
+  --lg-primary-hover: var(--theme-bright-dark);
+  --lg-primary-highlight: color-mix(
+    in srgb,
+    var(--theme-primary-dark) 28%,
+    transparent
+  );
+  --lg-primary-highlight-glow: color-mix(
+    in srgb,
+    var(--theme-primary-dark) 45%,
+    transparent
+  );
+  --lg-primary-highlight-pulse: color-mix(
+    in srgb,
+    var(--theme-primary-dark) 16%,
+    transparent
+  );
+  --lg-primary-highlight-pulse-glow: color-mix(
+    in srgb,
+    var(--theme-primary-dark) 25%,
+    transparent
+  );
+  --lg-primary-container: var(--theme-primary-dark);
+  --lg-on-primary: var(--theme-on-primary-dark);
+  --lg-on-primary-container: var(--theme-on-primary-container-dark);
+
+  /* 语义成功色：固定绿色，不随主题色切换（badge-active / Badge success / KpiCard green） */
+  --lg-success: #22c55e;
+  --lg-success-light: #4be277;
+  /* 成功文字：固定绿色，不随主题色切换；light 用深绿保证 12px 文字 AA */
+  --lg-success-text: #4be277;
+  --lg-success-dim: rgba(34, 197, 94, 0.15);
+  --lg-success-border: rgba(34, 197, 94, 0.3);
+  --lg-success-glow: rgba(34, 197, 94, 0.4);
 
   /* Secondary / Tertiary / Error / Warning / Info：次要色/第三色/错误/警告/信息等语义强调色 */
   --lg-secondary-accent: #d0bcff;
@@ -188,6 +292,18 @@
   --lg-warning-accent: #facc15;
   --lg-info-accent: #89ceff;
   --lg-data-ai: #d0bcff;
+
+  /* ── 小字号/实体 chip 的可读前景（模式感知；语义状态色不跟随主题色）──
+     accent 系列表达「色调」，不保证 11px 文字落在表面/玻璃底上达到 AA（4.5:1）。
+     这里为 warning 文案与实体 chip 单独提供可读前景 token；组件只引用这些 token，
+     不要把 accent 直接当小字号前景。浅色模式在 .light 块覆盖为深色阶。 */
+  /* warning 语气文字（emphasis 高亮）：深色沿用亮黄 #facc15 */
+  --lg-warning-text: #facc15;
+  /* 主色小字号前景（通知 chip / 强调词）：dark 用亮色阶 */
+  --lg-primary-emphasis-text: var(--lg-primary-text);
+  /* 实体 chip 前景：深色沿用对应 accent 的亮色阶 */
+  --lg-chip-yellow-text: var(--lg-accent-yellow-light);
+  --lg-chip-tertiary-text: var(--lg-tertiary-accent);
 
   /* Accent Blue：链接/信息类元素 */
   --lg-accent-blue: #36b6fb;
@@ -230,7 +346,7 @@
   /* Semantic solid colors for progress bars, indicators etc. */
   --data-danger: var(--lg-danger);
   --data-warning: var(--lg-warning);
-  --data-success: var(--lg-primary-light);
+  --data-success: var(--lg-success-light);
 
   /* Info glow (matching error/warning/info accent glow pattern) */
   --lg-info-glow: rgba(137, 206, 255, 0.3);
@@ -251,6 +367,17 @@
   --data-deleted-rgb: 255, 180, 171;
   --data-warning-rgb: 250, 204, 21;
   --data-ai-rgb: 208, 188, 255;
+
+  /* Tag 调色盘：扩展分类标签色板（图表/数据可视化可复用） */
+  --lg-data-orange: #fb923c;
+  --lg-data-cyan: #22d3ee;
+  --lg-data-indigo: #818cf8;
+  --data-orange-bg: rgba(251, 146, 60, 0.15);
+  --data-cyan-bg: rgba(34, 211, 238, 0.15);
+  --data-indigo-bg: rgba(129, 140, 248, 0.15);
+  --data-orange-border: rgba(251, 146, 60, 0.3);
+  --data-cyan-border: rgba(34, 211, 238, 0.3);
+  --data-indigo-border: rgba(129, 140, 248, 0.3);
 
   /* Typography */
   --font-heading: "Manrope", sans-serif;
@@ -273,8 +400,10 @@
   --glass-blur: 12px; /* 普通卡片/面板的常规模糊 */
   --glass-blur-heavy: 20px; /* 全屏遮罩/弹层等重度模糊场景 */
   --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3); /* 卡片默认投影，营造层级 */
-  --shadow-glow-primary: 0 0 8px rgba(34, 197, 94, 0.4); /* 主色发光，用于强调/激活元素 */
-  --shadow-glow-soft: 0 0 20px rgba(34, 197, 94, 0.1); /* 主色柔和光晕，用于氛围点缀 */
+  --shadow-glow-primary: 0 0 8px
+    color-mix(in srgb, var(--theme-primary-dark) 40%, transparent); /* 主色发光，用于强调/激活元素 */
+  --shadow-glow-soft: 0 0 20px
+    color-mix(in srgb, var(--theme-primary-dark) 10%, transparent); /* 主色柔和光晕，用于氛围点缀 */
   --glass-gradient-top: rgba(255, 255, 255, 0.03);
   --btn-secondary-bg: rgba(27, 27, 30, 0.5);
   --btn-secondary-hover-bg: rgba(27, 27, 30, 0.8);
@@ -289,10 +418,12 @@
   /* Layout */
   --sidebar-width: 256px;
   --topbar-height: 64px;
+  /* 移动端底部 Tab 栏高度（不含 safe-area，底部抽屉/遮罩让位与内容垫底共用） */
+  --tabbar-height: 56px;
 }
 
-/* Responsive spacing */
-@media (max-width: 640px) {
+/* Responsive spacing — 767px 与全局移动断点 (md/768, use-mobile.ts) 对齐 */
+@media (max-width: 767px) {
   :root {
     --spacing-page: 16px;
   }
@@ -301,40 +432,10 @@
   }
 }
 
-/* .dark 块与 :root 变量完全一致，此处保留是为了支持局部/嵌套暗色主题（例如在浅色页面中强制渲染暗色卡片或侧边栏）。 */
-.dark {
-  --background: #0e0e11;
-  --foreground: #e4e1e6;
-  --card: rgba(27, 27, 30, 0.7);
-  --card-foreground: #e4e1e6;
-  --popover: rgba(27, 27, 30, 0.95);
-  --popover-foreground: #e4e1e6;
-  --primary: #22c55e;
-  --primary-foreground: #000000;
-  --secondary: #571bc1;
-  --secondary-foreground: #d0bcff;
-  --muted: #1f1f22;
-  --muted-foreground: #bccbb9;
-  --accent: rgba(34, 197, 94, 0.1);
-  --accent-foreground: #4be277;
-  --destructive: #ffb4ab;
-  --border: rgba(61, 74, 61, 0.4);
-  --input: rgba(61, 74, 61, 0.4);
-  --ring: rgba(75, 226, 119, 0.5);
-  --chart-1: #4be277;
-  --chart-2: #22c55e;
-  --chart-3: #d0bcff;
-  --chart-4: #8bcfff;
-  --chart-5: #facc15;
-  --sidebar: rgba(19, 19, 22, 0.8);
-  --sidebar-foreground: #e4e1e6;
-  --sidebar-primary: #4be277;
-  --sidebar-primary-foreground: #003915;
-  --sidebar-accent: rgba(34, 197, 94, 0.1);
-  --sidebar-accent-foreground: #4be277;
-  --sidebar-border: rgba(61, 74, 61, 0.2);
-  --sidebar-ring: rgba(75, 226, 119, 0.5);
-}
+/* 注意：这里不再提供局部/嵌套暗色 token 覆盖。
+   暗色主题由 <html class="dark"> + :root 变量提供；`dark:` 变体只依赖该 class。
+   如需在浅色页面中放一个暗色卡片/侧边栏，请在容器上按需完整重声明 token，
+   避免维护一份必然与 :root 漂移的半套变量。 */
 
 /* ===========================
    Light Theme
@@ -347,36 +448,62 @@
   --popover: rgba(255, 255, 255, 0.95);
   --popover-foreground: #191c1e;
 
-  /* ★★★ Light 主色 — 改这里 ★★★ */
-  --primary: #006e2f;
-  --primary-foreground: #ffffff;
+  /* ★★★ Light 主色 — 由主题色种子派生 ★★★ */
+  --primary: var(--theme-primary-light);
+  --primary-foreground: var(--theme-primary-foreground-light);
   --secondary: #565e74;
   --secondary-foreground: #ffffff;
   --muted: #f2f4f6;
   --muted-foreground: #6d7b6c;
-  --accent: rgba(34, 197, 94, 0.1);
-  --accent-foreground: #006e2f;
+  --accent: color-mix(in srgb, var(--theme-bright-light) 10%, transparent);
+  --accent-foreground: var(--theme-primary-light);
   --destructive: #ba1a1a;
   --border: rgba(109, 123, 108, 0.3);
   --input: rgba(109, 123, 108, 0.3);
-  --ring: rgba(0, 110, 47, 0.5);
+  --ring: color-mix(in srgb, var(--theme-primary-light) 50%, transparent);
 
-  --chart-1: #22c55e;
-  --chart-2: #006e2f;
+  --chart-1: var(--theme-bright-light);
+  --chart-2: var(--theme-primary-light);
   --chart-3: #dae2fd;
   --chart-4: #82abff;
   --chart-5: #eab308;
 
   --sidebar: rgba(247, 249, 251, 0.8);
   --sidebar-foreground: #191c1e;
-  --sidebar-primary: #006e2f;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(34, 197, 94, 0.06);
-  --sidebar-accent-foreground: #006e2f;
+  --sidebar-primary: var(--theme-primary-light);
+  --sidebar-primary-foreground: var(--theme-on-primary-light);
+  --sidebar-accent: color-mix(
+    in srgb,
+    var(--theme-bright-light) 6%,
+    transparent
+  );
+  --sidebar-accent-foreground: var(--theme-primary-light);
   --sidebar-border: rgba(109, 123, 108, 0.2);
-  --sidebar-ring: rgba(0, 110, 47, 0.5);
-  --sidebar-active-hover-bg: rgba(34, 197, 94, 0.12);
-  --sidebar-active-hover-border: rgba(34, 197, 94, 0.18);
+  --sidebar-ring: color-mix(
+    in srgb,
+    var(--theme-primary-light) 50%,
+    transparent
+  );
+  --sidebar-active-border: color-mix(
+    in srgb,
+    var(--theme-bright-light) 12%,
+    transparent
+  );
+  --sidebar-active-shadow: color-mix(
+    in srgb,
+    var(--theme-bright-light) 8%,
+    transparent
+  );
+  --sidebar-active-hover-bg: color-mix(
+    in srgb,
+    var(--theme-bright-light) 12%,
+    transparent
+  );
+  --sidebar-active-hover-border: color-mix(
+    in srgb,
+    var(--theme-bright-light) 18%,
+    transparent
+  );
 
   /* Liquid Glass — Light */
   --lg-background: #ffffff;
@@ -390,19 +517,58 @@
   --lg-surface-highest: #e0e3e5;
   --lg-outline-variant: #bccbb9;
 
-  --lg-primary: #006e2f;
-  --lg-primary-light: #22c55e;
-  --lg-primary-dim: rgba(34, 197, 94, 0.08);
-  --lg-primary-glow: rgba(0, 110, 47, 0.3);
-  --lg-primary-border: rgba(0, 110, 47, 0.2);
-  --lg-primary-hover: #16a34a;
-  --lg-primary-highlight: rgba(0, 110, 47, 0.15);
-  --lg-primary-highlight-glow: rgba(0, 110, 47, 0.3);
-  --lg-primary-highlight-pulse: rgba(0, 110, 47, 0.08);
-  --lg-primary-highlight-pulse-glow: rgba(0, 110, 47, 0.15);
-  --lg-primary-container: #22c55e;
-  --lg-on-primary: #ffffff;
-  --lg-on-primary-container: #004b1e;
+  --lg-primary: var(--theme-primary-light);
+  --lg-primary-light: var(--theme-bright-light);
+  /* 主色文字（落在表面/玻璃底上）：light 模式用深色 primary，避免亮绿/亮青文字对比度不足 */
+  --lg-primary-text: var(--theme-primary-light);
+  --lg-primary-dim: color-mix(
+    in srgb,
+    var(--theme-bright-light) 8%,
+    transparent
+  );
+  --lg-primary-glow: color-mix(
+    in srgb,
+    var(--theme-primary-light) 30%,
+    transparent
+  );
+  --lg-primary-border: color-mix(
+    in srgb,
+    var(--theme-primary-light) 20%,
+    transparent
+  );
+  --lg-primary-hover: var(--theme-primary-hover-light);
+  --lg-primary-highlight: color-mix(
+    in srgb,
+    var(--theme-primary-light) 15%,
+    transparent
+  );
+  --lg-primary-highlight-glow: color-mix(
+    in srgb,
+    var(--theme-primary-light) 30%,
+    transparent
+  );
+  --lg-primary-highlight-pulse: color-mix(
+    in srgb,
+    var(--theme-primary-light) 8%,
+    transparent
+  );
+  --lg-primary-highlight-pulse-glow: color-mix(
+    in srgb,
+    var(--theme-primary-light) 15%,
+    transparent
+  );
+  --lg-primary-container: var(--theme-bright-light);
+  --lg-on-primary: var(--theme-on-primary-light);
+  --lg-on-primary-container: var(--theme-on-primary-container-light);
+
+  /* 语义成功色：固定绿色，不随主题色切换 */
+  --lg-success: #006e2f;
+  --lg-success-light: #22c55e;
+  /* 浅底上的成功文字：深绿，避免亮绿 12px 文字对比度不足 */
+  --lg-success-text: #006e2f;
+  --lg-success-dim: rgba(34, 197, 94, 0.08);
+  --lg-success-border: rgba(0, 110, 47, 0.2);
+  --lg-success-glow: rgba(0, 110, 47, 0.3);
 
   --lg-secondary-accent: #dae2fd;
   --lg-secondary-container: #dae2fd;
@@ -415,6 +581,21 @@
   --lg-warning-accent: #eab308;
   --lg-info-accent: #005ac2;
   --lg-data-ai: #565e74;
+
+  /* 小字号/实体 chip 的可读前景（深色值见 :root）：浅色表面必须用深色阶才达 AA；
+     语义状态色不跟随主题色。 */
+  /* warning 语气文字：浅色用深琥珀 #7a5c00（#eab308 在 #f7f9fb 上仅 1.82:1） */
+  --lg-warning-text: #7a5c00;
+  /* 主色小字号前景：light 下主色亮阶在未读/悬停行上不足 4.5:1，
+     按 70% 主色 + 30% 正文深色混合，保证 11px chip / 强调词可读 */
+  --lg-primary-emphasis-text: color-mix(
+    in srgb,
+    var(--theme-primary-light) 70%,
+    var(--lg-text-primary)
+  );
+  /* 实体 chip 前景：chip 背景是 accent 的 dim 混合色，浅色必须用深色阶 */
+  --lg-chip-yellow-text: #7a5c00;
+  --lg-chip-tertiary-text: #005ac2;
 
   /* Accent Blue */
   --lg-accent-blue: #005ac2;
@@ -454,7 +635,7 @@
 
   --data-danger: var(--lg-danger);
   --data-warning: var(--lg-warning);
-  --data-success: var(--lg-primary-light);
+  --data-success: var(--lg-success-light);
 
   --lg-info-glow: rgba(0, 90, 194, 0.3);
 
@@ -474,9 +655,22 @@
   --data-warning-rgb: 234, 179, 8;
   --data-ai-rgb: 86, 94, 116;
 
+  /* Tag 调色盘：与暗色主题同值，保持现有视觉不变 */
+  --lg-data-orange: #fb923c;
+  --lg-data-cyan: #22d3ee;
+  --lg-data-indigo: #818cf8;
+  --data-orange-bg: rgba(251, 146, 60, 0.15);
+  --data-cyan-bg: rgba(34, 211, 238, 0.15);
+  --data-indigo-bg: rgba(129, 140, 248, 0.15);
+  --data-orange-border: rgba(251, 146, 60, 0.3);
+  --data-cyan-border: rgba(34, 211, 238, 0.3);
+  --data-indigo-border: rgba(129, 140, 248, 0.3);
+
   --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.06);
-  --shadow-glow-primary: 0 0 8px rgba(0, 110, 47, 0.3);
-  --shadow-glow-soft: 0 0 20px rgba(0, 110, 47, 0.08);
+  --shadow-glow-primary: 0 0 8px
+    color-mix(in srgb, var(--theme-primary-light) 30%, transparent);
+  --shadow-glow-soft: 0 0 20px
+    color-mix(in srgb, var(--theme-primary-light) 8%, transparent);
   --glass-gradient-top: rgba(0, 0, 0, 0.03);
   --btn-secondary-bg: rgba(255, 255, 255, 0.5);
   --btn-secondary-hover-bg: rgba(255, 255, 255, 0.8);
@@ -487,4 +681,77 @@
   --glass-row-hover-bg: rgba(0, 0, 0, 0.04);
   --skeleton-from: rgba(230, 232, 234, 0.6);
   --skeleton-mid: rgba(226, 227, 229, 0.6);
+}
+
+/* ===========================
+   Theme Color Presets（主题色预设）
+   ===========================
+   只覆盖种子，不直接改派生 token；默认绿色不建块（回落到 :root 默认值）。
+   新增预设：在 apps/web/src/lib/theme-colors.ts 注册 id/label，再在此补一个块
+   （9 个 preset 种子；primary-foreground 两个常量已全局定义），
+   并补 --theme-swatch-<id>，最后跑 bun run test:web（会校验种子齐全与对比度）。
+   =========================== */
+:root[data-theme-color="blue"] {
+  --theme-primary-dark: #3b82f6;
+  --theme-bright-dark: #60a5fa;
+  --theme-on-primary-dark: #001a3d;
+  --theme-on-primary-container-dark: #00173d;
+
+  --theme-primary-light: #1d4ed8;
+  --theme-bright-light: #3b82f6;
+  --theme-on-primary-light: #ffffff;
+  --theme-on-primary-container-light: #00173d;
+  --theme-primary-hover-light: #1e40af;
+}
+
+:root[data-theme-color="purple"] {
+  --theme-primary-dark: #8b5cf6;
+  --theme-bright-dark: #a78bfa;
+  --theme-on-primary-dark: #120029;
+  --theme-on-primary-container-dark: #120029;
+
+  --theme-primary-light: #6d28d9;
+  --theme-bright-light: #8b5cf6;
+  --theme-on-primary-light: #ffffff;
+  --theme-on-primary-container-light: #120029;
+  --theme-primary-hover-light: #5b21b6;
+}
+
+:root[data-theme-color="cyan"] {
+  --theme-primary-dark: #06b6d4;
+  --theme-bright-dark: #22d3ee;
+  --theme-on-primary-dark: #00161c;
+  --theme-on-primary-container-dark: #00161c;
+
+  --theme-primary-light: #0e7490;
+  --theme-bright-light: #06b6d4;
+  --theme-on-primary-light: #ffffff;
+  --theme-on-primary-container-light: #00161c;
+  --theme-primary-hover-light: #155e75;
+}
+
+:root[data-theme-color="orange"] {
+  --theme-primary-dark: #f97316;
+  --theme-bright-dark: #fb923c;
+  --theme-on-primary-dark: #1a0a00;
+  --theme-on-primary-container-dark: #1a0a00;
+
+  --theme-primary-light: #c2410c;
+  --theme-bright-light: #f97316;
+  --theme-on-primary-light: #ffffff;
+  --theme-on-primary-container-light: #1a0a00;
+  --theme-primary-hover-light: #9a3412;
+}
+
+:root[data-theme-color="rose"] {
+  --theme-primary-dark: #ec4899;
+  --theme-bright-dark: #f472b6;
+  --theme-on-primary-dark: #2a0016;
+  --theme-on-primary-container-dark: #2a0016;
+
+  --theme-primary-light: #be185d;
+  --theme-bright-light: #ec4899;
+  --theme-on-primary-light: #ffffff;
+  --theme-on-primary-container-light: #2a0016;
+  --theme-primary-hover-light: #9d174d;
 }

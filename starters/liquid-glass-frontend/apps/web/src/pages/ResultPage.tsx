@@ -236,7 +236,7 @@ export default function ResultPage() {
       label: "成功反馈",
       icon: Check,
       activeClass:
-        "border-[var(--lg-primary-border)] bg-[var(--lg-primary-dim)] text-[var(--lg-primary-light)]",
+        "border-[var(--lg-success-border)] bg-[var(--lg-success-dim)] text-[var(--lg-success-text)]",
     },
     {
       id: "error",

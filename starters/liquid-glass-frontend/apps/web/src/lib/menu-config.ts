@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Bell,
   CheckCircle2,
   CloudLightning,
   Cog,
@@ -94,6 +95,14 @@ export const menuGroups: MenuGroup[] = [
         keywords:
           "浮层与导航 overlays tabs dialog sheet alerts toast treeview 弹出层",
         englishSub: "Overlays",
+      },
+      {
+        title: "消息通知",
+        path: "/components/notifications",
+        icon: Bell,
+        keywords:
+          "消息通知 notification bell unread badge 消息中心 notification center",
+        englishSub: "Notifications",
       },
       {
         title: "虚拟滚动表格",

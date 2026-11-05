@@ -15,6 +15,7 @@ const DashboardPage = lazy(() => import("@/pages/DashboardPage"))
 const ComponentsOverviewPage = lazy(
   () => import("@/pages/ComponentsOverviewPage")
 )
+const NotificationsPage = lazy(() => import("@/pages/NotificationsPage"))
 const FoundationsPage = lazy(() => import("@/pages/FoundationsPage"))
 const FormsPage = lazy(() => import("@/pages/FormsPage"))
 const DataPage = lazy(() => import("@/pages/DataPage"))
@@ -117,6 +118,14 @@ export default function App() {
                 element={
                   <Suspense fallback={<PageSkeleton />}>
                     <OverlaysPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/components/notifications"
+                element={
+                  <Suspense fallback={<PageSkeleton />}>
+                    <NotificationsPage />
                   </Suspense>
                 }
               />

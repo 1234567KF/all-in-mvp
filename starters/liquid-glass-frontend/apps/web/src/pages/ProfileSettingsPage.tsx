@@ -1,7 +1,6 @@
-import { Lock, Moon, Palette, Save, Sun, SunMoon } from "lucide-react"
+import { Lock, Save, User } from "lucide-react"
 import { useState } from "react"
 
-import { useTheme } from "@/components/providers/theme-provider"
 import { PasswordToggleInput } from "@/components/shared/PasswordToggleInput"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,22 +10,40 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { useCurrentUser, useUpdateCurrentUser } from "@/hooks/queries/useUsers"
 import { showError, showSuccess } from "@/lib/toast"
-import { cn } from "@/lib/utils"
+import { AppearanceSettingsCard } from "@/pages/profile-settings/components/AppearanceSettingsCard"
 import { changePassword } from "@/services/auth"
 import { useAuthStore } from "@/stores/auth"
-import { type LayoutWidth, useLayoutStore } from "@/stores/layoutStore"
 
 export default function ProfileSettingsPage() {
-  const { theme, setTheme } = useTheme()
-  const { layoutWidth, setLayoutWidth } = useLayoutStore()
   const [changingPassword, setChangingPassword] = useState(false)
   const [oldPassword, setOldPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+
+  // ─── 个人资料（TanStack Query 活教材：页面 → hook → service → API）───────
+  const { data: currentUser, isLoading: userLoading } = useCurrentUser()
+  const updateCurrentUser = useUpdateCurrentUser()
+  // “脏标记”模式：未编辑时展示服务端值，编辑后跟踪本地值，避免 useEffect 同步
+  const [nameDraft, setNameDraft] = useState<string | null>(null)
+  const displayName = nameDraft ?? currentUser?.name ?? ""
+
+  const handleSaveProfile = () => {
+    updateCurrentUser.mutate(
+      { name: displayName },
+      {
+        onSuccess: () => {
+          showSuccess("个人资料已更新")
+          setNameDraft(null) // 重置脏标记，后续展示服务端新值
+        },
+        onError: () => showError("更新失败，请重试"),
+      }
+    )
+  }
 
   const handleChangePassword = async () => {
     setChangingPassword(true)
@@ -69,164 +86,73 @@ export default function ProfileSettingsPage() {
           个人设置
         </h1>
         <p className="mt-2 text-sm text-[var(--lg-text-secondary)]">
-          管理你的外观偏好和登录密码
+          管理你的个人资料、外观偏好和登录密码
         </p>
       </div>
 
+      {/* 个人资料 — TanStack Query 端到端示例（useCurrentUser / useUpdateCurrentUser） */}
+      <Card className="glass-card py-0">
+        <CardHeader className="px-6 pt-6 pb-0">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <User className="size-5 text-[var(--lg-primary-light)]" />
+            个人资料
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4 p-6">
+          {userLoading ? (
+            <div className="flex items-center gap-2 text-sm text-[var(--lg-text-secondary)]">
+              <Spinner data-icon="inline-start" />
+              加载中...
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+              <div className="flex-1">
+                <FieldLabel htmlFor="displayName">显示名称</FieldLabel>
+                <Input
+                  id="displayName"
+                  value={displayName}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  placeholder="请输入显示名称"
+                  className="h-10"
+                />
+              </div>
+              <div className="flex-1">
+                <FieldLabel>邮箱</FieldLabel>
+                <Input
+                  value={currentUser?.email ?? ""}
+                  disabled
+                  className="h-10 opacity-60"
+                />
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                disabled={
+                  updateCurrentUser.isPending ||
+                  !displayName.trim() ||
+                  displayName === currentUser?.name
+                }
+                onClick={handleSaveProfile}
+              >
+                {updateCurrentUser.isPending ? (
+                  <>
+                    <Spinner data-icon="inline-start" />
+                    保存中...
+                  </>
+                ) : (
+                  <>
+                    <Save data-icon="inline-start" />
+                    保存
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        {/* 外观主题 */}
-        <Card className="glass-card py-0">
-          <CardHeader className="px-6 pt-6 pb-0">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Palette className="size-5 text-[var(--lg-primary-light)]" />
-              外观主题
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-5 p-6">
-            <div>
-              <div className="mb-2 block text-sm font-medium text-foreground">
-                选择主题
-              </div>
-              <ToggleGroup
-                type="single"
-                value={theme}
-                onValueChange={(value) => {
-                  if (value) setTheme(value as "dark" | "light" | "system")
-                }}
-                className="flex w-full gap-2 sm:gap-3"
-              >
-                <ToggleGroupItem
-                  value="dark"
-                  className={cn(
-                    "h-auto flex-1 cursor-pointer flex-col items-center justify-center gap-0 rounded-lg border bg-[var(--lg-surface-glass)] px-1 py-3 text-center transition-all sm:p-4",
-                    theme === "dark"
-                      ? "border-[var(--lg-primary-light)] bg-accent/20 shadow-[0_0_12px_var(--lg-primary-glow)]"
-                      : "border-[var(--lg-border)] hover:border-[var(--lg-primary-light)]/40"
-                  )}
-                >
-                  <Moon className="mx-auto mb-1.5 size-6 text-foreground sm:size-8" />
-                  <div className="text-xs font-semibold text-foreground sm:text-sm">
-                    深色主题
-                  </div>
-                  <div className="mt-0.5 text-[10px] font-normal whitespace-nowrap text-[var(--lg-text-secondary)] sm:text-xs">
-                    默认
-                  </div>
-                </ToggleGroupItem>
-                <ToggleGroupItem
-                  value="light"
-                  className={cn(
-                    "h-auto flex-1 cursor-pointer flex-col items-center justify-center gap-0 rounded-lg border bg-[var(--lg-surface-glass)] px-1 py-3 text-center transition-all sm:p-4",
-                    theme === "light"
-                      ? "border-[var(--lg-primary-light)] bg-accent/20 shadow-[0_0_12px_var(--lg-primary-glow)]"
-                      : "border-[var(--lg-border)] hover:border-[var(--lg-primary-light)]/40"
-                  )}
-                >
-                  <Sun className="mx-auto mb-1.5 size-6 text-foreground sm:size-8" />
-                  <div className="text-xs font-semibold text-foreground sm:text-sm">
-                    浅色主题
-                  </div>
-                  <div className="mt-0.5 text-[10px] font-normal whitespace-nowrap text-[var(--lg-text-secondary)] sm:text-xs">
-                    实验性
-                  </div>
-                </ToggleGroupItem>
-                <ToggleGroupItem
-                  value="system"
-                  className={cn(
-                    "h-auto flex-1 cursor-pointer flex-col items-center justify-center gap-0 rounded-lg border bg-[var(--lg-surface-glass)] px-1 py-3 text-center transition-all sm:p-4",
-                    theme === "system"
-                      ? "border-[var(--lg-primary-light)] bg-accent/20 shadow-[0_0_12px_var(--lg-primary-glow)]"
-                      : "border-[var(--lg-border)] hover:border-[var(--lg-primary-light)]/40"
-                  )}
-                >
-                  <SunMoon className="mx-auto mb-1.5 size-6 text-foreground sm:size-8" />
-                  <div className="text-xs font-semibold text-foreground sm:text-sm">
-                    跟随系统
-                  </div>
-                  <div className="mt-0.5 text-[10px] font-normal whitespace-nowrap text-[var(--lg-text-secondary)] sm:text-xs">
-                    自动切换
-                  </div>
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-
-            <Separator className="bg-[var(--lg-border-subtle)]" />
-
-            <div>
-              <div className="mb-2 block text-sm font-medium text-foreground">
-                页面布局宽度
-              </div>
-              <ToggleGroup
-                type="single"
-                value={layoutWidth}
-                onValueChange={(value) => {
-                  if (value) setLayoutWidth(value as LayoutWidth)
-                }}
-                className="flex w-full gap-2 sm:gap-3"
-              >
-                <ToggleGroupItem
-                  value="standard"
-                  className={cn(
-                    "h-auto flex-1 cursor-pointer flex-col items-center justify-center gap-0 rounded-lg border bg-[var(--lg-surface-glass)] px-1 py-3 text-center transition-all sm:p-4",
-                    layoutWidth === "standard"
-                      ? "border-[var(--lg-primary-light)] bg-accent/20 shadow-[0_0_12px_var(--lg-primary-glow)]"
-                      : "border-[var(--lg-border)] hover:border-[var(--lg-primary-light)]/40"
-                  )}
-                >
-                  <div className="text-xs font-semibold text-foreground sm:text-sm">
-                    标准
-                  </div>
-                  <div className="mt-0.5 text-[10px] font-normal whitespace-nowrap text-[var(--lg-text-secondary)] sm:text-xs">
-                    1280px 居中
-                  </div>
-                </ToggleGroupItem>
-                <ToggleGroupItem
-                  value="wide"
-                  className={cn(
-                    "h-auto flex-1 cursor-pointer flex-col items-center justify-center gap-0 rounded-lg border bg-[var(--lg-surface-glass)] px-1 py-3 text-center transition-all sm:p-4",
-                    layoutWidth === "wide"
-                      ? "border-[var(--lg-primary-light)] bg-accent/20 shadow-[0_0_12px_var(--lg-primary-glow)]"
-                      : "border-[var(--lg-border)] hover:border-[var(--lg-primary-light)]/40"
-                  )}
-                >
-                  <div className="text-xs font-semibold text-foreground sm:text-sm">
-                    宽屏
-                  </div>
-                  <div className="mt-0.5 text-[10px] font-normal whitespace-nowrap text-[var(--lg-text-secondary)] sm:text-xs">
-                    1600px (默认)
-                  </div>
-                </ToggleGroupItem>
-                <ToggleGroupItem
-                  value="fluid"
-                  className={cn(
-                    "h-auto flex-1 cursor-pointer flex-col items-center justify-center gap-0 rounded-lg border bg-[var(--lg-surface-glass)] px-1 py-3 text-center transition-all sm:p-4",
-                    layoutWidth === "fluid"
-                      ? "border-[var(--lg-primary-light)] bg-accent/20 shadow-[0_0_12px_var(--lg-primary-glow)]"
-                      : "border-[var(--lg-border)] hover:border-[var(--lg-primary-light)]/40"
-                  )}
-                >
-                  <div className="text-xs font-semibold text-foreground sm:text-sm">
-                    撑满
-                  </div>
-                  <div className="mt-0.5 text-[10px] font-normal whitespace-nowrap text-[var(--lg-text-secondary)] sm:text-xs">
-                    100% 宽度
-                  </div>
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-
-            <Separator className="bg-[var(--lg-border-subtle)]" />
-
-            <div>
-              <div className="mb-1 block text-sm font-medium text-foreground">
-                偏好设置
-              </div>
-              <p className="text-xs text-[var(--lg-text-secondary)]">
-                外观与布局偏好将保存在浏览器本地，下次访问时自动应用
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
+        <AppearanceSettingsCard />
         {/* 修改登录密码 */}
         <Card className="glass-card py-0">
           <CardHeader className="px-6 pt-6 pb-0">

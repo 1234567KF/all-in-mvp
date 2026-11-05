@@ -15,6 +15,8 @@
     "build:web": "bun --filter web build",
     "build:api": "bun --filter api build",
     "build": "bun run build:shared && bun run build:api && bun run build:web",
+    "db:reset": "bun --filter api db:reset",
+    "db:seed-dev": "bun --filter api db:seed-dev",
     "typecheck": "bun --filter web typecheck && bun --filter api typecheck",
     "lint": "bun --filter web lint && bun --filter api lint && bun --filter shared lint",
     "lint:fix": "bun --filter web lint:fix && bun --filter api lint:fix && bun --filter shared lint:fix",
@@ -31,18 +33,18 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "concurrently": "^10.0.3",
-    "eslint": "^10.5.0",
+    "concurrently": "^10.0.6",
+    "eslint": "^10.14.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "eslint-plugin-simple-import-sort": "^13.0.0",
-    "globals": "^17.7.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "eslint-plugin-simple-import-sort": "^14.0.0",
+    "globals": "^17.14.0",
     "husky": "^9.1.7",
-    "lint-staged": "^17.0.8",
-    "prettier": "^3.8.1",
-    "prettier-plugin-tailwindcss": "^0.8.0",
-    "typescript-eslint": "^8.57.1"
+    "lint-staged": "^17.6.0",
+    "prettier": "^3.9.10",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "typescript-eslint": "^8.72.1"
   },
   "lint-staged": {
     "packages/shared/src/**/*.ts": [

@@ -680,10 +680,14 @@ describe("[Module]FormDialog", () => {
 | **FT3** | 端到端流程测试 | Playwright | 完整用户旅程、跨页面、真实浏览器 |
 
 ```text
-src/__tests__/
-├── components/      # FT1
-├── pages/           # FT2
-└── e2e/             # FT3
+# 测试文件与被测源码同目录就近放置（权威脚手架 v2.26 起统一此约定）
+apps/web/src/
+├── components/shared/DataTable.tsx
+├── components/shared/DataTable.test.tsx     # FT1
+├── lib/format.ts
+├── lib/format.test.ts                       # FT1
+└── services/auth.ts / auth.test.ts          # FT2（vi.mock("@/lib/api")）
+# FT3 端到端另置 e2e/（Playwright，见 kf-mvp-test-e2e）
 ```
 
 ---

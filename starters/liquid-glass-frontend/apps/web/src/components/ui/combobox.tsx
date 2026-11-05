@@ -128,8 +128,8 @@ export function Combobox({
           className={cn(
             "relative min-w-[140px] justify-start gap-2 truncate px-3 text-left font-normal",
             variant === "glass"
-              ? "h-9 border-[var(--glass-border)] bg-[var(--glass-input-bg)] text-foreground backdrop-blur-[12px] transition-all hover:bg-[var(--glass-input-bg-hover)]"
-              : "h-9",
+              ? "h-8 border-[var(--glass-border)] bg-[var(--glass-input-bg)] text-foreground backdrop-blur-[12px] transition-all hover:bg-[var(--glass-input-bg-hover)]"
+              : "h-8",
             hasSelected && "border-primary/50",
             className
           )}
