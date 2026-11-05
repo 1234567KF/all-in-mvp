@@ -9,6 +9,7 @@
     "start": "bun src/index.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --cache --cache-strategy content",
+    "lint:nocache": "eslint . --no-cache",
     "lint:fix": "eslint . --fix",
     "db:generate": "bun scripts/db-generate.ts",
     "db:migrate": "bun scripts/db-migrate.ts",
@@ -20,6 +21,7 @@
     "db:init:check": "bun scripts/gen-init-sql.ts --check"
   },
   "dependencies": {
+    "ali-oss": "^6.23.0",
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.13.16",
@@ -29,6 +31,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@types/ali-oss": "^6.23.4",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.6.6",
     "bun-types": "^1.4.4",

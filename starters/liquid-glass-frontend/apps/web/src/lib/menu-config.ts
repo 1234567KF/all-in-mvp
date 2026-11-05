@@ -12,8 +12,10 @@ import {
   Palette,
   Settings,
   ShieldAlert,
+  ShieldCheck,
   TableProperties,
 } from "lucide-react"
+import { type PermissionCode, PERMISSIONS } from "shared"
 
 export interface MenuItem {
   title: string
@@ -21,6 +23,12 @@ export interface MenuItem {
   icon: LucideIcon
   keywords?: string // 用于全局 CommandDialog 搜索匹配的关键词
   englishSub?: string // 英文辅助标签，如 "Dashboard"
+  /**
+   * 可选权限码（PERMISSIONS.* 常量，禁止散落字符串字面量）：
+   * 不填默认全员可见；填了由侧边栏与 ⌘K 通过 usePermission().can() 自动过滤。
+   * 只控制导航可见性，页面/接口鉴权仍由后端路由中间件负责。
+   */
+  permission?: PermissionCode
 }
 
 export interface MenuGroup {
@@ -114,6 +122,19 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    label: "Admin",
+    items: [
+      {
+        title: "审计日志",
+        path: "/audit-log",
+        icon: ShieldCheck,
+        keywords: "审计日志 audit logs 操作记录 安全审计 变更明细 登录历史",
+        englishSub: "Audit Log",
+        permission: PERMISSIONS.AUDIT_VIEW,
+      },
+    ],
+  },
+  {
     label: "Templates",
     items: [
       {
@@ -147,12 +168,85 @@ export const menuGroups: MenuGroup[] = [
       },
     ],
   },
+  // [gen:module:menu-groups] 由 bun run gen:module 追加业务模块菜单分组（勿手改本行）
 ]
 
-// 扁平化的菜单列表，便于搜索和直接查询
+// 扁平化的全量菜单列表（未过滤）；⌘K 使用前须经 filterMenuItems 按权限过滤
 export const allMenuItems: MenuItem[] = menuGroups.flatMap((g) => g.items)
 
+// ─── 权限过滤（纯函数，与 auth store 解耦）────────────────────────────────────
+
+/**
+ * 按权限过滤菜单项：item.permission 缺省视为全员可见
+ *
+ * can 由 usePermission().can 提供；纯函数便于单测，也让「过滤规则」与
+ * 「权限来源」解耦（store / DB / 后端预计算均可注入）。
+ * 仅控制导航可见性，不代替页面与接口鉴权。
+ */
+export function filterMenuItems(
+  items: MenuItem[],
+  can: (code: PermissionCode) => boolean
+): MenuItem[] {
+  return items.filter((item) => !item.permission || can(item.permission))
+}
+
+/** 按权限过滤分组，并把因此清空的分组整组移除 */
+export function filterMenuGroups(
+  groups: MenuGroup[],
+  can: (code: PermissionCode) => boolean
+): MenuGroup[] {
+  return groups
+    .map((group) => ({ ...group, items: filterMenuItems(group.items, can) }))
+    .filter((group) => group.items.length > 0)
+}
+
+// ─── 面包屑派生（纯路径，与权限解耦）──────────────────────────────────────────
+
+/** 面包屑节点：title 必填；path 仅可跳转的上级节点携带 */
+export interface BreadcrumbItem {
+  title: string
+  path?: string
+}
+
+/**
+ * 从菜单分组派生「路径 → 面包屑」映射（导航标题单一事实源）
+ *
+ * - 同路径多菜单项时以首个为准
+ * - 单级：分组名与菜单标题同名时只显示页面
+ * - 两级：[分组, 页面]；分组是纯标签，不带 path
+ * - 不按权限过滤：面包屑描述路径在导航树中的位置，与菜单可见性解耦
+ */
+export function deriveBreadcrumbMap(
+  groups: MenuGroup[]
+): Map<string, BreadcrumbItem[]> {
+  const map = new Map<string, BreadcrumbItem[]>()
+  for (const group of groups) {
+    for (const item of group.items) {
+      if (map.has(item.path)) continue
+      map.set(
+        item.path,
+        group.label === item.title
+          ? [{ title: item.title }]
+          : [{ title: group.label }, { title: item.title }]
+      )
+    }
+  }
+  return map
+}
+
+const BREADCRUMB_MAP = deriveBreadcrumbMap(menuGroups)
+
+/**
+ * 取路径对应的面包屑（未知路径回退品牌名，与页面标题兜底一致）
+ *
+ * 供页面头部 / 详情页按需消费；TopBar 当前只展示末级标题（getPageTitle）。
+ */
+export function getBreadcrumbs(pathname: string): BreadcrumbItem[] {
+  return BREADCRUMB_MAP.get(pathname) ?? [{ title: "Liquid Glass" }]
+}
+
+/** 页面标题 = 面包屑末级标题（消除导航标题与页面标题双写） */
 export function getPageTitle(pathname: string): string {
-  const item = allMenuItems.find((menu) => menu.path === pathname)
-  return item?.title ?? "Liquid Glass"
+  const breadcrumbs = getBreadcrumbs(pathname)
+  return breadcrumbs[breadcrumbs.length - 1].title
 }

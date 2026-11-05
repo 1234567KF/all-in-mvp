@@ -2,7 +2,8 @@
  * modules/auth 集成测试（route + service + 登录审计）
  *
  * 覆盖：POST /auth/login（DB 用户 / 不存在拒绝 / 校验失败）、
- * POST /auth/refresh（旋转 / 失效）响应形状与迁移前 routes/auth.ts 一致，
+ * POST /auth/refresh（旋转 / 失效）响应形状与迁移前 routes/auth.ts 一致
+ * （B3 起 login 的 user 向后兼容地新增 permissions），
  * 以及登录成功/失败审计断言（result / severity）。
  *
  * 运行方式：bun test src/modules/auth/auth.route.test.ts
@@ -10,6 +11,7 @@
 import { beforeAll, describe, expect, it } from "bun:test"
 import { Hono } from "hono"
 import jwt from "jsonwebtoken"
+import { ALL_PERMISSIONS, DEFAULT_ROLE, ROLE_PERMISSIONS } from "shared"
 
 import { getDrizzle } from "../../db.js"
 import { auditLogs, users } from "../../db/schema.js"
@@ -54,11 +56,22 @@ describe("POST /auth/login", () => {
     const data = body.data as {
       accessToken: string
       refreshToken: string
-      user: { name: string; email: string; role: string }
+      user: {
+        name: string
+        email: string
+        role: string
+        permissions: string[]
+      }
     }
     expect(data.accessToken).toBeTruthy()
     expect(data.refreshToken).toBeTruthy()
-    expect(data.user).toEqual({ name: "Admin", email: "admin", role: "admin" })
+    // permissions 由 role 解析后随 user 下发（前端权限门控只消费该数组）
+    expect(data.user).toEqual({
+      name: "Admin",
+      email: "admin",
+      role: "admin",
+      permissions: ALL_PERMISSIONS,
+    })
 
     // accessToken 可用 JWT_SECRET 验签，sub 为邮箱
     const payload = jwt.verify(data.accessToken, JWT_SECRET) as { sub: string }
@@ -71,6 +84,32 @@ describe("POST /auth/login", () => {
     expect(log!.result).toBe("success")
     expect(log!.severity).toBe("info")
     expect(log!.target).toBe("Admin")
+  })
+
+  it("DB role 为 NULL → permissions 与 JWT 角色同源（默认角色），不出现前后端分裂", async () => {
+    const noRole = {
+      email: "norole-login@example.com",
+      name: "无角色",
+      role: null,
+    }
+    getDrizzle().insert(users).values(noRole).run()
+
+    const { status, body } = await postJson(app, "/auth/login", {
+      email: noRole.email,
+      password: "admin123",
+    })
+    expect(status).toBe(200)
+
+    const data = body.data as {
+      accessToken: string
+      user: { role: string | null; permissions: string[] }
+    }
+    expect(data.user.role).toBeNull()
+    expect(data.user.permissions).toEqual(ROLE_PERMISSIONS[DEFAULT_ROLE])
+
+    // token 内的兜底角色必须与响应 permissions 同源（hasPermission 按 JWT role 判权）
+    const payload = jwt.verify(data.accessToken, JWT_SECRET) as { role: string }
+    expect(payload.role).toBe(DEFAULT_ROLE)
   })
 
   it("库中无此邮箱 → 401 拒绝登录，写失败审计", async () => {

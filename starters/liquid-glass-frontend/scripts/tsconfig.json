@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": ["bun-types", "node"],
+    "typeRoots": ["../apps/api/node_modules", "../apps/api/node_modules/@types"]
+  },
+  "include": ["gen-module.ts", "gen-module.test.ts"]
+}

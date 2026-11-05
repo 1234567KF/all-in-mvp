@@ -17,7 +17,9 @@ import {
   AUDIT_EVENT_TYPES,
   AUDIT_MODULES,
   AUDIT_RESULT,
+  DEFAULT_ROLE,
   type LoginInput,
+  permissionsForRole,
 } from "shared"
 
 import { getDrizzle } from "../../db.js"
@@ -49,7 +51,13 @@ export class RefreshTokenInvalidError extends ServiceError {
 // ─── Token Helpers ────────────────────────────────────────────────────────────
 
 // 种子项目：使用内存 Map 关联 refreshToken 与用户账号（带 TTL 惰性清理）
-type SessionUser = { name: string | null; email: string; role: string | null }
+// permissions 由 role 在登录时解析一次随 user 下发（前端只消费该数组）
+type SessionUser = {
+  name: string | null
+  email: string
+  role: string | null
+  permissions: string[]
+}
 const REFRESH_TTL_MS = 7 * 24 * 3600_000 // 7 天
 const refreshTokenStore = new Map<
   string,
@@ -69,7 +77,7 @@ function issueTokens(user: SessionUser) {
     {
       sub: user.email,
       username: user.name ?? user.email,
-      role: user.role ?? "user",
+      role: user.role ?? DEFAULT_ROLE,
     },
     JWT_SECRET,
     { expiresIn: "1h" }
@@ -84,7 +92,12 @@ function issueTokens(user: SessionUser) {
 
 // ─── Service 方法 ─────────────────────────────────────────────────────────────
 
-/** 登录 + 成功审计 */
+/**
+ * 登录 + 成功审计
+ *
+ * user.permissions 由 role 解析后随响应下发：前端权限门控（usePermission /
+ * PermissionGate / 菜单过滤）只读这个数组，不自行推导角色 → 权限。
+ */
 export function login(ctx: OpCtx, input: LoginInput) {
   // 从数据库中查找用户，不存在则拒绝登录
   const dbUser = getDrizzle()
@@ -103,6 +116,7 @@ export function login(ctx: OpCtx, input: LoginInput) {
     name: dbUser.name,
     email: dbUser.email,
     role: dbUser.role,
+    permissions: permissionsForRole(dbUser.role),
   }
 
   // 登录成功审计：登录前无操作人上下文，operator 字段以登录账号覆盖
@@ -112,7 +126,7 @@ export function login(ctx: OpCtx, input: LoginInput) {
       operator: user.name ?? user.email,
       operatorId: String(dbUser.id),
       operatorAccount: user.email,
-      operatorRole: user.role ?? "user",
+      operatorRole: user.role ?? DEFAULT_ROLE,
     },
     {
       eventType: AUDIT_EVENT_TYPES.LOGIN,
@@ -143,7 +157,12 @@ export function auditLoginFailure(
   )
 }
 
-/** 刷新 token（旋转：作废旧 refreshToken，签发新 token 对） */
+/**
+ * 刷新 token（旋转：作废旧 refreshToken，签发新 token 对）
+ *
+ * 只复用登录时的会话快照，不重新查询 DB role / 权限：RBAC 变更需用户重新登录
+ * （见 README「权限门控与导航自动派生」的实现边界）。
+ */
 export function refreshTokens(refreshToken: unknown) {
   if (typeof refreshToken !== "string" || refreshToken.length === 0) {
     throw new RefreshTokenInvalidError()

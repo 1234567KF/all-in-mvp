@@ -137,8 +137,11 @@ function invalidateNotifications(queryClient: QueryClient) {
 // ─── Mutations ───────────────────────────────────────────────────────────────
 
 /**
- * mutation 失败统一提示：全局 mutation onError 只打 console，这里显式 toast，
- * 避免「已读又变回未读 / 删掉的条目又出现」时用户完全无感知。
+ * mutation 失败统一提示（领域文案）。
+ *
+ * 三个 mutation 都自带 onError，会在 defaultMutationOptions merge 时覆盖
+ * defaultOptions.mutations.onError，因此这里是错误提示的唯一出口、不会重复弹；
+ * 若将来移除自定义 onError，全局默认兜底会自动接管（无需额外标记）。
  */
 function notifyMutationError(error: unknown) {
   showError(extractErrorMessage(error) || "操作失败，请稍后重试")

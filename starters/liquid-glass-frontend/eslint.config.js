@@ -9,7 +9,8 @@ import { defineConfig, globalIgnores } from "eslint/config"
 
 // 项目内置 ESLint 规则（若不需要可移除对应注册与启用）：
 // - no-toisostring-slice：`.toISOString().slice(0, 10)` 在 UTC+ 时区会把日期往前挪一天
-// - no-tailwind-raw-colors：禁止 Tailwind 原色类（text-red-500 等），必须走语义化 token
+// - no-tailwind-raw-colors：禁止 Tailwind 原色类（text-red-500 等）与 JSX 内联 style
+//   硬编码颜色（hex / rgb() / hsl()，大小写不敏感），必须走语义化 token 或 color-mix(...)
 // - no-service-import-in-ui：pages/components 禁止值导入 @/services/*，服务端数据走 hooks/queries
 // - no-raw-viewport-check：禁止直读 window.innerWidth，窄屏分叉须走 useIsMobile() 或 CSS 断点类
 // - no-audit-fn-without-opctx：写审计的导出 service 函数首参必须是 OpCtx（后端架构约束）
@@ -39,6 +40,65 @@ const WRITE_LOG_RESTRICTION = {
   selector: 'CallExpression[callee.name="writeLog"]',
   message:
     "禁止裸调 writeLog。CRUD 走 auditedInsert/Update/Delete，非 CRUD 走 createAuditor；未认证入口只挂 opCtxMiddleware 取空壳 OpCtx，再 audit({ ...ctx, operator: <登录目标账号> }) 覆盖（见 AGENTS.md「审计日志」）。",
+}
+
+// ─── 对象存储导入禁令：业务模块统一走 shared/oss.ts ─────────────────────────
+// 直连 ali-oss 会绕开双模封装（本地 mock 回退、上传大小上限、签名 URL 与
+// content-disposition 防护、OSS_ENDPOINT 域名语义），因此与 route 直连 DB 同等级别拦截。
+const OSS_IMPORT_MESSAGE =
+  "业务模块禁止直接 import ali-oss：上传/下载统一走 shared/oss.ts（OSS / 本地 mock 双模，见 AGENTS.md「对象存储与 SQLite 运维工具箱」）。"
+
+const MODULE_OSS_IMPORT_RESTRICTION = {
+  patterns: [
+    {
+      group: ["ali-oss"],
+      message: OSS_IMPORT_MESSAGE,
+    },
+  ],
+}
+
+// 动态 import() 不受 no-restricted-imports 约束，用 no-restricted-syntax 兜底
+// （与 ROUTE_DB_DYNAMIC_IMPORT_RESTRICTION 同一思路）。
+const OSS_DYNAMIC_IMPORT_RESTRICTION = {
+  selector: 'ImportExpression[source.value="ali-oss"]',
+  message: `${OSS_IMPORT_MESSAGE}（动态 import() 同样禁止）`,
+}
+
+// ─── route 层导入禁令（eslint.config.js 内共享给静态/动态 import 两种形态）──
+// 1) 禁止直连数据库；2) 禁止直连 ali-oss（统一走 shared/oss.ts）。
+const DB_IMPORT_MESSAGE =
+  "route 层禁止直连数据库：查询/写入与业务规则必须下沉到同模块 *.service.ts（见 AGENTS.md「后端模块化」）。"
+
+// 静态 import / re-export 受限模块。`bun:sqlite` 是直接建库连接的原语，
+// 与 drizzle 同级受限——数据库只能从 db/ 层或 service 层进入。
+const ROUTE_IMPORT_RESTRICTION = {
+  patterns: [
+    {
+      group: [
+        "**/db",
+        "**/db.js",
+        "**/db/schema.js",
+        "drizzle-orm",
+        "bun:sqlite",
+      ],
+      message: DB_IMPORT_MESSAGE,
+    },
+    {
+      group: ["ali-oss"],
+      message: OSS_IMPORT_MESSAGE,
+    },
+  ],
+}
+
+// 动态 import() 不受 no-restricted-imports 约束（该规则只遍历 ImportDeclaration 与
+// re-export，见 ESLint 源码 no-restricted-imports.js），用 no-restricted-syntax 的
+// ImportExpression 选择器兜底。已知盲区：import(`./${name}.js`) 这类非字面量 source
+// 静态分析判不出来；require() 无需在此重复，@typescript-eslint/no-require-imports
+// 已全仓拦截；createRequire 属于显式规避（正常 route 不会这么写），交给评审兜底。
+const ROUTE_DB_DYNAMIC_IMPORT_RESTRICTION = {
+  selector:
+    "ImportExpression[source.value=/^(?:(?:.*\\/)?db(?:\\.js)?(?:\\/.*)?|drizzle-orm(?:\\/.*)?|bun:sqlite)$/]",
+  message: `${DB_IMPORT_MESSAGE}（动态 import() 同样禁止）`,
 }
 
 export default defineConfig([
@@ -91,16 +151,50 @@ export default defineConfig([
     },
   },
   // ─── UI 层架构约束（apps/web）────────────────────────────────────────────
-  // 1) 禁止 Tailwind 原色类（text-red-500 等），必须走语义化 token
+  // 1) 禁止 Tailwind 原色类（text-red-500 等）与 JSX 内联 style 硬编码颜色，
+  //    必须走语义化 token。适用范围是全部 web JSX（含 App.tsx / layouts / router），
+  //    判据与盲区见 eslint-rules/no-tailwind-raw-colors.js 的 JSDoc。
+  {
+    files: ["apps/web/src/**/*.tsx"],
+    ignores: ["**/*.test.tsx"],
+    rules: {
+      "project-rules/no-tailwind-raw-colors": "error",
+    },
+  },
   // 2) 禁止组件内直接 value-import @/services/*（type-only 允许），服务端数据须走 hooks/queries
   // 3) 禁止直读 window.innerWidth，窄屏分叉须走 useIsMobile() 或 CSS 断点类
   {
     files: ["apps/web/src/pages/**/*.tsx", "apps/web/src/components/**/*.tsx"],
     ignores: ["**/*.test.tsx"],
     rules: {
-      "project-rules/no-tailwind-raw-colors": "error",
       "project-rules/no-service-import-in-ui": "error",
       "project-rules/no-raw-viewport-check": "error",
+    },
+  },
+  // 4) 前端权限消费只认登录响应下发的 user.permissions（usePermission / PermissionGate），
+  //    禁止 import 角色 → 权限映射自行推导：权限来源将来切到 DB 动态授权时前端才能零改动。
+  //    盲区：namespace import（import * as shared）不受 importNames 约束，靠评审兜底。
+  //    约定见 AGENTS.md「前端权限消费」，断言见 eslint-rules/web-permission-import-guard.test.js。
+  {
+    files: ["apps/web/src/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "shared",
+              importNames: [
+                "ALL_PERMISSIONS",
+                "permissionsForRole",
+                "ROLE_PERMISSIONS",
+              ],
+              message:
+                "前端只消费 user.permissions（usePermission / PermissionGate），禁止 import 角色→权限映射自行推导。",
+            },
+          ],
+        },
+      ],
     },
   },
   // 永久豁免：一次性 auth 操作（login/changePassword）无缓存/失效语义，
@@ -131,17 +225,26 @@ export default defineConfig([
   // 2) hasPermission 只约束 route 的默认鉴权方式，不再禁止 service 表达资源级、
   //    字段级或依赖业务状态的授权。handler 中确有动态权限判断的例外，必须就地
   //    eslint-disable-next-line 并附理由。
+  // 3) route 层禁止直连数据库（静态 import / re-export / 动态 import() 均拦截）。
+  //    查询/写入与业务规则必须下沉到同模块 *.service.ts；route 只做参数校验、
+  //    鉴权与响应映射（见 AGENTS.md「后端模块化」）；同时禁止直连 ali-oss。
   //
   // flat config 对同一 rule key 整体覆盖而非合并，因此使用互斥文件范围；两个块
   // 都配置 writeLog，避免 route 块覆盖 modules 块时丢失约束。
   //
   // 已知盲区：selector 只匹配直接具名调用，成员调用、别名导入等形态拦不到。
   // 这些规则用于拦截常见漂移，不能替代权限与审计链路的代码评审。
+  // 5) 业务模块禁止直连 ali-oss（含动态 import()）：对象存储统一走 shared/oss.ts。
   {
     files: ["apps/api/src/modules/**/*.ts"],
     ignores: ["**/*.test.ts", "**/*.route.ts"],
     rules: {
-      "no-restricted-syntax": ["error", WRITE_LOG_RESTRICTION],
+      "no-restricted-syntax": [
+        "error",
+        WRITE_LOG_RESTRICTION,
+        OSS_DYNAMIC_IMPORT_RESTRICTION,
+      ],
+      "no-restricted-imports": ["error", MODULE_OSS_IMPORT_RESTRICTION],
     },
   },
   {
@@ -152,10 +255,13 @@ export default defineConfig([
         "error",
         HAS_PERMISSION_RESTRICTION,
         WRITE_LOG_RESTRICTION,
+        ROUTE_DB_DYNAMIC_IMPORT_RESTRICTION,
+        OSS_DYNAMIC_IMPORT_RESTRICTION,
       ],
+      "no-restricted-imports": ["error", ROUTE_IMPORT_RESTRICTION],
     },
   },
-  // 3) 写审计的导出 service 函数首参必须标注 OpCtx。
+  // 4) 写审计的导出 service 函数首参必须标注 OpCtx。
   //    只检查直接 auditor 调用的签名，纯只读查询不受影响；间接审计与身份字段
   //    是否完整仍由类型设计和代码评审保证。
   //    与上面的 no-restricted-syntax 是不同 rule key，分块不会互相覆盖。

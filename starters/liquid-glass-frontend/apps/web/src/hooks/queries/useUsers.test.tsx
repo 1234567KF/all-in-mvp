@@ -14,7 +14,9 @@ vi.mock("@/services/users", () => ({
   },
 }))
 
-import { type User, usersService } from "@/services/users"
+import type { User } from "shared"
+
+import { usersService } from "@/services/users"
 
 import { useCurrentUser, useUpdateCurrentUser } from "./useUsers"
 
@@ -23,6 +25,7 @@ const mockUser: User = {
   email: "user@example.com",
   name: "测试用户",
   role: "user",
+  permissions: ["user:view", "user:edit"],
   createdAt: "2026-01-01T00:00:00.000Z",
 }
 

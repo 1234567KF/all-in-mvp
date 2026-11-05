@@ -15,6 +15,7 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --cache --cache-strategy content",
+    "lint:nocache": "eslint . --no-cache",
     "lint:fix": "eslint . --fix",
     "test": "vitest"
   },

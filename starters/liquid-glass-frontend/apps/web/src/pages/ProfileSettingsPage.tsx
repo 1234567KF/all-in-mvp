@@ -1,7 +1,9 @@
 import { Lock, Save, User } from "lucide-react"
 import { useState } from "react"
+import { PERMISSIONS } from "shared"
 
 import { PasswordToggleInput } from "@/components/shared/PasswordToggleInput"
+import { PermissionGate } from "@/components/shared/PermissionGate"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -14,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
 import { useCurrentUser, useUpdateCurrentUser } from "@/hooks/queries/useUsers"
+import { extractErrorMessage } from "@/lib/errors"
 import { showError, showSuccess } from "@/lib/toast"
 import { AppearanceSettingsCard } from "@/pages/profile-settings/components/AppearanceSettingsCard"
 import { changePassword } from "@/services/auth"
@@ -40,7 +43,8 @@ export default function ProfileSettingsPage() {
           showSuccess("个人资料已更新")
           setNameDraft(null) // 重置脏标记，后续展示服务端新值
         },
-        onError: () => showError("更新失败，请重试"),
+        // 失败提示由 lib/query.ts 的全局 mutation onError 兜底（文案优先服务端 message），
+        // 此处不要重复 onError toast，否则同一错误会弹两次
       }
     )
   }
@@ -60,14 +64,9 @@ export default function ProfileSettingsPage() {
         useAuthStore.getState().clearAuth()
         window.location.href = "/login"
       }, 1500)
-    } catch (err: unknown) {
-      let message = "修改密码失败"
-      if (err && typeof err === "object" && "response" in err) {
-        const errMsg = (err as { response?: { data?: { message?: string } } })
-          .response?.data?.message
-        if (errMsg) message = errMsg
-      }
-      showError(message)
+    } catch (err) {
+      // 统一走 lib/errors：优先服务端 message，网络/超时等 axios 英文原生文案转中文
+      showError(extractErrorMessage(err))
     } finally {
       setChangingPassword(false)
     }
@@ -124,28 +123,38 @@ export default function ProfileSettingsPage() {
                   className="h-10 opacity-60"
                 />
               </div>
-              <Button
-                type="button"
-                size="sm"
-                disabled={
-                  updateCurrentUser.isPending ||
-                  !displayName.trim() ||
-                  displayName === currentUser?.name
+              {/* PUT /users/me 由后端 requirePermission(USER_EDIT) 把关，按钮按同权限显隐 */}
+              <PermissionGate
+                perm={PERMISSIONS.USER_EDIT}
+                fallback={
+                  <span className="pb-2.5 text-xs text-[var(--lg-text-muted)]">
+                    无编辑权限
+                  </span>
                 }
-                onClick={handleSaveProfile}
               >
-                {updateCurrentUser.isPending ? (
-                  <>
-                    <Spinner data-icon="inline-start" />
-                    保存中...
-                  </>
-                ) : (
-                  <>
-                    <Save data-icon="inline-start" />
-                    保存
-                  </>
-                )}
-              </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={
+                    updateCurrentUser.isPending ||
+                    !displayName.trim() ||
+                    displayName === currentUser?.name
+                  }
+                  onClick={handleSaveProfile}
+                >
+                  {updateCurrentUser.isPending ? (
+                    <>
+                      <Spinner data-icon="inline-start" />
+                      保存中...
+                    </>
+                  ) : (
+                    <>
+                      <Save data-icon="inline-start" />
+                      保存
+                    </>
+                  )}
+                </Button>
+              </PermissionGate>
             </div>
           )}
         </CardContent>

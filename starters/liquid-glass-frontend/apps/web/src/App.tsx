@@ -12,6 +12,7 @@ import ProtectedRoute from "@/router/ProtectedRoute"
 import { useAuthStore } from "@/stores/auth"
 
 const DashboardPage = lazy(() => import("@/pages/DashboardPage"))
+const AuditLogPage = lazy(() => import("@/pages/audit-log/AuditLogPage"))
 const ComponentsOverviewPage = lazy(
   () => import("@/pages/ComponentsOverviewPage")
 )
@@ -27,6 +28,8 @@ const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"))
 const ForbiddenPage = lazy(() => import("@/pages/ForbiddenPage"))
 const ServerErrorPage = lazy(() => import("@/pages/ServerErrorPage"))
 const ResultPage = lazy(() => import("@/pages/ResultPage"))
+
+// [gen:module:app-lazy-imports] 由 bun run gen:module 追加业务模块页面懒加载（勿手改本行）
 
 export default function App() {
   const [isAuthReady, setIsAuthReady] = useState(false)
@@ -185,6 +188,15 @@ export default function App() {
                   </Suspense>
                 }
               />
+              <Route
+                path="/audit-log"
+                element={
+                  <Suspense fallback={<PageSkeleton />}>
+                    <AuditLogPage />
+                  </Suspense>
+                }
+              />
+              {/* [gen:module:app-routes] 由 bun run gen:module 追加业务模块路由（勿手改本行） */}
             </Route>
           </Route>
 

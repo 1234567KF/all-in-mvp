@@ -55,8 +55,12 @@ export function hasPermission(c: Context, permission: string): boolean {
   const roles = [user.role, ...(user.roles ?? [])]
   if (roles.includes("admin")) return true
 
-  return roles.some((role) =>
-    (ROLE_PERMISSIONS[role] ?? []).includes(permission)
+  // Object.hasOwn：避免角色名为 toString / __proto__ 等原型键时取到函数/对象，
+  // 让 `.includes` 抛 TypeError 变成 500；与 shared 的 permissionsForRole 同判据。
+  return roles.some(
+    (role) =>
+      Object.hasOwn(ROLE_PERMISSIONS, role) &&
+      ROLE_PERMISSIONS[role].includes(permission)
   )
 }
 

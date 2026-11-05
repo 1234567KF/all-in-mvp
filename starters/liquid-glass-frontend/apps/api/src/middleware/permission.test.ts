@@ -154,6 +154,13 @@ describe("hasPermission", () => {
     expect(hasPermission(c, PERMISSIONS.USER_VIEW)).toBe(false)
   })
 
+  it("原型键角色（toString / __proto__ / constructor）→ false，不抛异常", () => {
+    for (const role of ["toString", "__proto__", "constructor"]) {
+      const c = createCtx({ sub: "6", username: "x", role })
+      expect(hasPermission(c, PERMISSIONS.USER_VIEW), role).toBe(false)
+    }
+  })
+
   it("多角色扩展位 roles 命中任一即 true", () => {
     const c = createCtx({
       sub: "4",

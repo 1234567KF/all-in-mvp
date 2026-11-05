@@ -2,7 +2,11 @@
  * TanStack Query 客户端配置
  * 服务端状态统一由 Query 管理（hooks/queries/），Zustand 仅存 auth 与 UI 状态
  */
-import { QueryCache, QueryClient } from "@tanstack/react-query"
+import {
+  type MutationFunctionContext,
+  QueryCache,
+  QueryClient,
+} from "@tanstack/react-query"
 
 import { extractErrorMessage } from "@/lib/errors"
 import { showError } from "@/lib/toast"
@@ -11,6 +15,28 @@ import { useAuthStore } from "@/stores/auth"
 // 错误 toast 去重：相同 message 在窗口期内只弹一次，避免多 query 同时失败时 toast 堆叠
 const recentErrors = new Map<string, number>()
 const DEDUP_MS = 3000
+
+/**
+ * mutation 失败的全局默认处理：console 记录 + toast 提示。
+ *
+ * 生效范围：写在 useMutation options 里的 onError 会在 defaultMutationOptions
+ * merge 时覆盖本默认处理；但 `mutate(vars, { onError })` 的调用点回调属于
+ * MutationObserver 层，与底层 options.onError 是两层，二者都会执行。
+ * 因此调用点若要自定义提示文案，必须同时在 mutation options 声明
+ * `meta: { silentError: true }` 抑制本处 toast，否则同一错误会弹两次。
+ * 文案优先服务端 message，兜底由 extractErrorMessage 提供（网络错误统一中文）。
+ */
+function defaultMutationErrorHandler(
+  error: Error,
+  _variables: unknown,
+  _onMutateResult: unknown,
+  context: MutationFunctionContext
+): void {
+  // 保留 console.error：即便 UI 已提示，排查问题仍需要完整错误对象
+  console.error("[mutation] failed:", error)
+  if (context.meta?.silentError === true) return
+  showError(extractErrorMessage(error))
+}
 
 export const queryClient = new QueryClient({
   // 查询失败统一 toast（v5 中 useQuery 无 onError，需在 QueryCache 层处理）；
@@ -40,11 +66,9 @@ export const queryClient = new QueryClient({
       throwOnError: false,
     },
     mutations: {
-      // mutation 错误由调用方 try/catch 处理（字段级错误合并等），
-      // 此处仅兜底未捕获场景
-      onError: (err) => {
-        console.error("[mutation] failed:", err)
-      },
+      // mutation 失败默认弹 toast，避免提交失败静默无反馈；
+      // 已在调用点自行处理错误（自有 onError / 更友好文案）时用 meta.silentError 抑制
+      onError: defaultMutationErrorHandler,
     },
   },
 })

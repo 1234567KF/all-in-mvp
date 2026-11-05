@@ -3,7 +3,8 @@
  *
  * 未认证入口：不挂 authMiddleware，仅挂 opCtxMiddleware 以获得
  * ip/ua/requestId（供登录成功/失败审计使用，operator 字段为空由 Service 覆盖）。
- * 路由路径与响应形状与迁移前 routes/auth.ts 保持一致。
+ * 路由路径与响应形状与迁移前 routes/auth.ts 保持一致
+ * （B3 起 login 的 user 向后兼容地新增 permissions: string[]）。
  */
 import { Hono } from "hono"
 import { LoginSchema } from "shared"

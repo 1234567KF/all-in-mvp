@@ -4,9 +4,10 @@
  * 后续扩展列表/详情端点时按 userKeys.list()/detail() 约定补充
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import type { UpdateMeInput } from "shared"
 
 import { userKeys } from "@/lib/query-keys"
-import { type UpdateMeInput, usersService } from "@/services/users"
+import { usersService } from "@/services/users"
 
 export function useCurrentUser() {
   return useQuery({

@@ -6,11 +6,11 @@
  * - 写操作：safeJson 防畸形 body → Zod safeParse → 调 Service → try/catch
  *   + mapServiceError 统一映射领域错误
  * - 路由路径与响应形状与迁移前 routes/users.ts 保持一致
- *   （web 端 useUsers 依赖 GET/PUT /users/me 的 data.user）
+ *   （web 端 useUsers 依赖 GET/PUT /users/me 的 data.user；B3 起 data.user
+ *   向后兼容地新增按 role 解析的 permissions: string[]）
  */
 import { Hono } from "hono"
-import { PERMISSIONS } from "shared"
-import { z } from "zod"
+import { PERMISSIONS, UpdateMeSchema } from "shared"
 
 import { authMiddleware } from "../../middleware/auth.js"
 import { requirePermission } from "../../middleware/permission.js"
@@ -42,16 +42,9 @@ usersRoute.get("/me", (c) => {
 // ─── PUT /users/me — 更新当前用户信息（requirePermission 活教材）───────────────
 // 路由级权限鉴权示范：拥有 user:edit 权限才放行（admin 自动放行）────────────
 
-// 邮箱变更会导致 JWT sub 失效（token 签发以 email 为 sub），需走独立安全流程，
-// 此端点仅允许修改 name。.refine() 防止空 body 透传至 Drizzle 生成无效 SQL。
-const UpdateMeSchema = z
-  .object({
-    name: z.string().min(1).optional(),
-  })
-  .refine((d) => d.name !== undefined, {
-    message: "至少提供一个要更新的字段",
-  })
-
+// UpdateMeSchema 已下沉 packages/shared/src/user.ts（api / web 单一事实源）：
+// 仅允许改 name（邮箱变更会导致 JWT sub 失效，需走独立安全流程），
+// .refine() 防止空 body 透传至 Drizzle 生成无效 SQL。
 usersRoute.put("/me", requirePermission(PERMISSIONS.USER_EDIT), async (c) => {
   const body = await safeJson(c)
   if (!body) return fail(c, 400, "VALIDATION_ERROR", "请求体必须为有效 JSON")

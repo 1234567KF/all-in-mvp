@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link, Outlet, useLocation } from "react-router-dom"
 
 import RouteErrorBoundary from "@/components/layout/RouteErrorBoundary"
@@ -20,12 +20,16 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { menuGroups } from "@/lib/menu-config"
+import { usePermission } from "@/hooks/usePermission"
+import { filterMenuGroups, menuGroups } from "@/lib/menu-config"
 import { useLayoutStore } from "@/stores/layoutStore"
 
 function SidebarMenuContent() {
   const location = useLocation()
   const { isMobile, setOpenMobile } = useSidebar()
+  const { can } = usePermission()
+  // 只渲染有权限的菜单项（permission 缺省 = 全员可见）；can 引用稳定，仅权限变化时重算
+  const visibleGroups = useMemo(() => filterMenuGroups(menuGroups, can), [can])
 
   const handleLinkClick = () => {
     if (isMobile) {
@@ -35,7 +39,7 @@ function SidebarMenuContent() {
 
   return (
     <SidebarContent>
-      {menuGroups.map((group) => (
+      {visibleGroups.map((group) => (
         <SidebarGroup key={group.label}>
           <SidebarGroupLabel
             style={{

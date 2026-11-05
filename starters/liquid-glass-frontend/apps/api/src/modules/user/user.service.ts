@@ -8,7 +8,7 @@
  *   Service 顶部，update 用 auditedUpdate 自动 diff（changes key 为中文标签）
  */
 import { eq } from "drizzle-orm"
-import { AUDIT_MODULES } from "shared"
+import { AUDIT_MODULES, permissionsForRole, type UpdateMeInput } from "shared"
 
 import { getDrizzle } from "../../db.js"
 import { users } from "../../db/schema.js"
@@ -48,21 +48,27 @@ export class UserNotFoundError extends ServiceError {
 
 type UserRow = typeof users.$inferSelect
 
-export interface UpdateMeInput {
-  name?: string
-}
+/**
+ * GET/PUT /users/me 的 wire 形状：DB 行 + 由 role 解析出的扁平权限码
+ *
+ * permissions 是前端权限消费的唯一入口（usePermission / PermissionGate /
+ * 侧边栏与 ⌘K 菜单过滤），前端不感知 role → 权限的映射规则。
+ */
+export type MeUser = UserRow & { permissions: string[] }
+
+// UpdateMeInput 统一来自 shared（与 web 共用同一份契约）
 
 // ─── Service 方法 ─────────────────────────────────────────────────────────────
 
-/** 按邮箱（JWT sub）获取当前用户 */
-export function getMe(email: string): UserRow {
+/** 按邮箱（JWT sub）获取当前用户（含 role 解析出的 permissions） */
+export function getMe(email: string): MeUser {
   const user = getDrizzle()
     .select()
     .from(users)
     .where(eq(users.email, email))
     .get()
   if (!user) throw new UserNotFoundError()
-  return user
+  return { ...user, permissions: permissionsForRole(user.role) }
 }
 
 /**
@@ -75,7 +81,7 @@ export function updateMe(
   ctx: OpCtx,
   email: string,
   patch: UpdateMeInput
-): UserRow {
+): MeUser {
   const db = getDrizzle()
 
   const existing = db.select().from(users).where(eq(users.email, email)).get()
@@ -99,5 +105,5 @@ export function updateMe(
     },
   })
 
-  return updated
+  return { ...updated, permissions: permissionsForRole(updated.role) }
 }

@@ -55,6 +55,24 @@ describe("extractErrorMessage", () => {
     })
     expect(extractErrorMessage(err)).toBe("网络超时")
   })
+
+  it("axios 网络错误（无 response）统一转中文兜底，不展示英文原生 message", () => {
+    expect(extractErrorMessage(new Error("Network Error"))).toBe(
+      "网络连接失败，请检查网络后重试"
+    )
+    expect(extractErrorMessage(new Error("timeout of 10000ms exceeded"))).toBe(
+      "网络连接失败，请检查网络后重试"
+    )
+    expect(extractErrorMessage(new Error("Failed to fetch"))).toBe(
+      "网络连接失败，请检查网络后重试"
+    )
+  })
+
+  it("axios HTTP 状态错误（响应体没带 message）转中文兜底而非英文状态文案", () => {
+    expect(
+      extractErrorMessage(new Error("Request failed with status code 500"))
+    ).toBe("操作失败，请重试")
+  })
 })
 
 describe("extractFieldErrors", () => {

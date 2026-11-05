@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 
 import {
@@ -8,7 +9,8 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
-import { allMenuItems } from "@/lib/menu-config"
+import { usePermission } from "@/hooks/usePermission"
+import { allMenuItems, filterMenuItems } from "@/lib/menu-config"
 
 interface CommandPaletteProps {
   open: boolean
@@ -17,6 +19,9 @@ interface CommandPaletteProps {
 
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const navigate = useNavigate()
+  const { can } = usePermission()
+  // ⌘K 与侧边栏同源过滤：无权限的菜单项不进入搜索结果
+  const visibleItems = useMemo(() => filterMenuItems(allMenuItems, can), [can])
 
   return (
     <CommandDialog
@@ -29,7 +34,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
       <CommandList>
         <CommandEmpty>未找到匹配结果</CommandEmpty>
         <CommandGroup heading="导航">
-          {allMenuItems.map((item) => (
+          {visibleItems.map((item) => (
             <CommandItem
               key={item.path}
               value={`${item.title} ${item.keywords || ""}`}

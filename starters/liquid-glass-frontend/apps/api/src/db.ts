@@ -13,18 +13,44 @@ import { env } from "./env.js"
 // DB_BOOTSTRAP_DIR  数据库结构来源目录（init.sql 或 drizzle/）。
 //                   默认先找 `${cwd}/db-bootstrap`（Docker 镜像内），再回落到 cwd
 //                   （本地开发 = apps/api）。模板用 init.sql，生成项目用 drizzle/。
-const dataDir = process.env.DATA_DIR || path.join(process.cwd(), "data")
-const dbPath = path.join(dataDir, "sqlite.db")
+/** SQLite 数据库文件所在目录（DATA_DIR，默认 `${cwd}/data`） */
+export const dataDir = process.env.DATA_DIR || path.join(process.cwd(), "data")
+/** SQLite 数据库文件路径 */
+export const dbPath = path.join(dataDir, "sqlite.db")
 
 let drizzleDb: DrizzleDB | null = null
+let rawSqlite: Database | null = null
 let testDb: DrizzleDB | null = null
 
 /**
- * @internal 注入内存 DB（仅用于测试）
+ * @internal 注入内存 DB（仅用于测试）。
+ * 注入 / 清空时同步丢弃真实 sqlite 连接引用与 drizzle 缓存：
+ * 否则先初始化过真实库的进程在注入测试库后，getRawSqlite() 会回落到真实文件库。
  */
 export function _setTestDb(d: DrizzleDB | null) {
   testDb = d
-  if (d) drizzleDb = d
+  drizzleDb = d
+  rawSqlite = null
+}
+
+/**
+ * 获取底层 bun:sqlite 连接（供运维工具箱做 VACUUM / 统计，见 shared/sqlite-ops.ts）。
+ * 惰性初始化：首次调用与 getDrizzle() 共用同一个连接。
+ * 测试注入的是 Drizzle 壳而没有底层连接，需要运维函数时请显式传 db 参数。
+ */
+export function getRawSqlite(): Database {
+  if (testDb) {
+    throw new Error(
+      "SQLite 底层连接不可用：测试注入的数据库不暴露 bun:sqlite 句柄，请显式传入 db 参数"
+    )
+  }
+  getDrizzle()
+  if (!rawSqlite) {
+    throw new Error(
+      "SQLite 底层连接不可用：数据库尚未初始化，请先调用 getDrizzle()"
+    )
+  }
+  return rawSqlite
 }
 
 /** 惰性单例 — 首次调用时创建 DB + 自举结构 + 种子数据 */
@@ -70,6 +96,7 @@ export function getDrizzle(): DrizzleDB {
     }
 
     drizzleDb = db
+    rawSqlite = sqlite
     console.log(`✅ SQLite ready (${dbPath}).`)
     return db
   } catch (err) {

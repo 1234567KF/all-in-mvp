@@ -33,9 +33,13 @@ export interface DangerZoneItemProps {
   confirmTitle?: string
   /** 二次确认弹窗描述 */
   confirmDescription?: React.ReactNode
-  /** 确认回调 */
-  onConfirm: () => void | Promise<void>
-  /** 是否需要密码验证 */
+  /**
+   * 确认回调。
+   * `requirePassword` 为 true 时会把用户输入密码作为首参透传（`onConfirm(password)`），
+   * 业务方必须在后端完成真实身份校验——本组件只做前端非空确认门禁，UI 门禁 ≠ 鉴权。
+   */
+  onConfirm: (password?: string) => void | Promise<void>
+  /** 是否要求输入当前用户密码做二次确认（密码仅透传，不在此校验） */
   requirePassword?: boolean
   /** 是否禁用 */
   disabled?: boolean
@@ -65,11 +69,17 @@ export function DangerZoneRow({ item }: { item: DangerZoneItemProps }) {
     e.preventDefault()
     setLoading(true)
     try {
-      await item.onConfirm()
-    } finally {
-      setLoading(false)
+      await item.onConfirm(item.requirePassword ? password : undefined)
+      // 成功才关闭弹窗
       setOpen(false)
       setPassword("")
+    } catch {
+      // 业务方负责错误提示（toast / mutation 默认提示）；这里必须吞掉 rejection，
+      // 否则 onClick 返回的 rejected Promise 会触发 UnhandledPromiseRejection。
+      // 失败保留弹窗便于重试，同时清空密码避免敏感输入残留。
+      setPassword("")
+    } finally {
+      setLoading(false)
     }
   }
 

@@ -25,6 +25,7 @@ import {
 } from "shared"
 
 import { getDrizzle } from "../../db.js"
+import { resetDemoNotifications } from "../../db/demo-seed.js"
 import { notifications } from "../../db/schema.js"
 import { toWireNotification } from "../../shared/notification.js"
 import { ServiceError } from "../../shared/service-error.js"
@@ -231,4 +232,12 @@ export function deleteNotification(recipientId: string, id: string): void {
     .all()
 
   if (deleted.length === 0) throw new NotificationNotFoundError()
+}
+
+// ─── Demo 专用（仅 dev/test 入口；生产不暴露）───────────────────────────────
+// 收拢在 service 层：route 不允许直连 db/demo-seed，demo 端点的数据操作也走本层。
+
+/** demo 专用端点：恢复演示收件箱（仅由 dev/test 入口调用，生产不暴露） */
+export function resetDemoInbox(): number {
+  return resetDemoNotifications(getDrizzle())
 }

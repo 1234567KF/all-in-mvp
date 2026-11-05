@@ -1,20 +1,11 @@
 /**
  * Users service — 封装 /users API 调用
  * 端点见 apps/api/src/modules/user/user.route.ts（GET/PUT /users/me，信封 {success,message,data}）
+ * 类型契约统一来自 shared（packages/shared/src/user.ts），禁止在此重复手写 interface
  */
+import type { UpdateMeInput, User } from "shared"
+
 import { api } from "@/lib/api"
-
-export interface User {
-  id: number
-  email: string
-  name: string | null
-  role: string | null
-  createdAt: string | null
-}
-
-export interface UpdateMeInput {
-  name?: string
-}
 
 export const usersService = {
   /** 获取当前登录用户信息 */

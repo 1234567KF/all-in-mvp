@@ -23,8 +23,6 @@ import { Hono } from "hono"
 import { streamSSE } from "hono/streaming"
 import { NOTIFICATION_STREAM_EVENT, NotificationListQuerySchema } from "shared"
 
-import { getDrizzle } from "../../db.js"
-import { resetDemoNotifications } from "../../db/demo-seed.js"
 import { env } from "../../env.js"
 import { authMiddleware } from "../../middleware/auth.js"
 import { fail, ok } from "../../response.js"
@@ -40,6 +38,7 @@ import {
   listNotifications,
   markAllRead,
   markRead,
+  resetDemoInbox,
 } from "./notification.service.js"
 
 const notificationsRoute = new Hono()
@@ -205,7 +204,7 @@ notificationsRoute.post("/dev/reset", (c) => {
   }
 
   try {
-    const inserted = resetDemoNotifications(getDrizzle())
+    const inserted = resetDemoInbox()
     return ok(c, { inserted }, "演示消息已重置")
   } catch (err) {
     return mapServiceError(c, err)
