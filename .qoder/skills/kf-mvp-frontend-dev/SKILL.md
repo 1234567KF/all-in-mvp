@@ -2,7 +2,7 @@
 name: kf-mvp-frontend-dev
 description: >-
   Load when user asks to develop frontend, create React components, or build pages
-  with mock API. Triggers: 前端开发, react, 页面开发, frontend, 组件开发,
+  against the real backend. Triggers: 前端开发, react, 页面开发, frontend, 组件开发,
   前端, create page, build UI. NOT for: backend development, database design,
   or API contract design.
 metadata:
@@ -13,8 +13,6 @@ metadata:
 recommended_model: qwen-3.7-Max
 graph:
   dependencies:
-    - target: kf-mvp-mock-service
-      type: sequential
     - target: kf-mvp-arch-expert
       type: semantic
     - target: kf-mvp-playwright-infra
@@ -25,10 +23,14 @@ graph:
 
 # MVP Frontend Developer — 前端开发技能
 
-> **Core Belief**: Frontend should never wait for backend. Build against mock, swap for real API when ready. Component by component, page by page.
+> **Core Belief**: Frontend is a step inside a module vertical slice, not a separate queue. Build against the **real backend**; there is no mock layer to swap later. Component by component, page by page.
 > **权威源**: `starters/liquid-glass-frontend/` — React 19 + Vite 8 + Tailwind 4 + shadcn/ui (radix-nova) + Liquid Glass 设计体系。
 
-**Division of Labor**: This Skill focuses on **React component development** with mock API integration. It outputs pages, components, and hooks. Network access is isolated in `src/services/`.
+**Division of Labor**: This Skill focuses on **React component development** wired to real APIs through TanStack Query hooks. It outputs pages, components, services, and query hooks. Network access is isolated in `src/services/`.
+
+> **v2.26 变更**：本技能原「基于 Mock 并行开发」的形态已取消。Mock 是"前后端两条队列并行"这一调度形态的副产品；
+> 现在并行度来自模块之间（纵向切片），前端不再等假接口，也不存在 Stage4「切 Mock → 切真实」这一步。
+> 依据：`kf-mvp-mock-service` 已废弃（血案 B028 —— 改密功能 mock 单测全绿、真实 curl 404）。
 
 **Default Tech Stack** (enforced unless user explicitly overrides):
 - Framework: React 19 (Hooks)
@@ -45,7 +47,7 @@ Load `.qoder/skills/references/mvp-tech-stack-default.md` for full specification
 
 # Core Philosophy
 
-1. **Mock-first** — Build against mock server, swap API later
+1. **Real-backend-first** — Build against the module's registered routes; contract lives in `packages/shared` (Zod), not in a mock server
 2. **Component-based** — Reusable components, clean architecture
 3. **Hooks** — React 19 Hooks throughout
 4. **TypeScript** — Full type safety
@@ -632,7 +634,7 @@ describe("[Module]FormDialog", () => {
 
 **MUST DO:**
 
-- Use mock API URL in development
+- Point `VITE_API_BASE_URL` at the **real backend** in development (Vite `/api` proxy)
 - Handle loading and error states
 - Use Hooks only (no class components)
 - Type all props and emits
@@ -657,7 +659,7 @@ describe("[Module]FormDialog", () => {
 
 ## Gotchas
 
-- **Mock URL** — 在 `.env.development` 设置 `VITE_API_BASE_URL`
+- **API URL** — 在 `.env.development` 设置 `VITE_API_BASE_URL` 指向真实后端；本仓无 mock 环境这一档，演示数据靠 `DEMO_MODE` + `demo-seed`
 - **Auth token** — accessToken 仅内存，refreshToken 存 sessionStorage（脚手架 `stores/auth.ts`）
 - **Response envelope** — 统一 `{ success, data, message }`；service 层返回 `res.data.data`
 - **Error handling** — service 抛错，UI 捕获后 `showError`，禁止空 `.catch(() => {})`
@@ -676,8 +678,11 @@ describe("[Module]FormDialog", () => {
 | 层级 | 测试类型 | 工具 | 覆盖目标 |
 |------|---------|------|---------|
 | **FT1** | 组件单元测试 | Vitest + @testing-library/react | 渲染、props、事件、hook |
-| **FT2** | 页面交互测试 | Vitest + @testing-library/react + Mock API | 表单、状态、路由、API 调用 |
-| **FT3** | 端到端流程测试 | Playwright | 完整用户旅程、跨页面、真实浏览器 |
+| **FT2** | 页面交互测试 | Vitest + @testing-library/react（`vi.mock("@/lib/api")` 只 mock 网络层） | 表单、状态、路由、API 调用路径 |
+| **FT3** | 端到端流程测试 | Playwright（真实后端） | 完整用户旅程、跨页面、真实浏览器、**异常分支** |
+
+> FT1/FT2 用 `vi.mock` 是**合法且必要的**（它们钉住"前端发出的是什么路径/参数"，防止字段被随手改掉）；
+> 但它们证明不了"后端存在这条路由"——那是 FT3 + 防线4 的职责（血案 B028）。
 
 ```text
 # 测试文件与被测源码同目录就近放置（权威脚手架 v2.26 起统一此约定）
@@ -692,30 +697,34 @@ apps/web/src/
 
 ---
 
-# Mock 连接与验证规则
+# 后端连接与双分支验证规则（v2.26 取代原「Mock 连接与验证」）
 
 ## 环境变量
 
 ```env
-# .env.development
+# .env.development — 直指真实后端（Vite 有 /api 代理）
 VITE_API_BASE_URL=http://localhost:3000
 
-# .env.production
+# .env.production — 同源部署，Hono 直接托管前端静态文件
 VITE_API_BASE_URL=/api
 ```
 
-## Mock 持续验证
+> 没有 `.env.mock`、没有 `mock:sync` 脚本、没有"Stage4 切真实后端"这一步。
+> 演示/测试数据靠 `DEMO_MODE=true` + 幂等 `demo-seed`，异常分支靠 dev-only 造数端点
+> （非 development/test/DEMO_MODE 一律 404，造数入口禁止进生产）。
 
-```json
-{
-  "scripts": {
-    "mock:sync": "node scripts/verify-mock-contract.ts",
-    "dev": "bun run mock:sync && vite"
-  }
-}
+## 双分支可验证要求（切片 DONE 前置，R035）
+
+```bash
+# 1) 前端调用的每个路径必须在后端实际注册路由里存在（R014）
+powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/check-api-endpoints.ps1
+
+# 2) 异常分支清单逐条真实复现（真实浏览器，不是看测试绿）
+#    400 逐字段 / 401 / 403 / 404 / 409 / 空态 / 超长与特殊字符 / 5xx 与断网
 ```
 
-> Mock drift 超过 24h → 前端标记 BLOCKED，等待 Mock 同步。
+> 某条异常分支无法在真实后端复现 → `BLOCKED(造数缺失)`，补 `demo-seed` 或造数端点；
+> **禁止用假接口或"逻辑上应该没问题"充数**。契约漂移 → 先改 `packages/shared` + 后端实现，再回改派生视图。
 
 ---
 

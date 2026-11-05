@@ -57,8 +57,8 @@ skills:
 - 产出物标记为【初版】——经 ↺ 审查循环通过后升级为【锁定版】
 - DTO 设计要覆盖所有 PRD 功能需求的输入输出
 - 错误码统一规划，覆盖常见异常（400/401/403/404/409/500）
-- **端口配置化（v2.13）**：Stage2 产物 MUST 包含 `.env`（`API_PORT=3333`、`WEB_PORT=5555`），spec.md 中注明所有配置文件（后端 env.ts、vite proxy、playwright config、mock launcher）从 `.env` 读取端口，禁止硬编码端口字面量
-- **种子数据单一真源（v2.13）**：spec.md MUST 规划独立 `seeds/` 目录作为测试账号/基础数据的权威定义，Mock 与真实 DB 种子函数共同引用
+- **端口配置化（v2.13）**：Stage2 产物 MUST 包含 `.env`（`API_PORT=3333`、`WEB_PORT=5555`），spec.md 中注明所有配置文件（后端 env.ts、vite proxy、playwright config，v2.26 起无 mock launcher）从 `.env` 读取端口，禁止硬编码端口字面量
+- **种子数据单一真源（v2.13 / v2.26 更正）**：spec.md MUST 规划权威种子定义（starter 形态是 `apps/api/db/demo-seed.ts` + `init.sql`），账号与基础数据只此一份；异常分支所需状态同样由它或 dev-only 造数端点产生，不允许另立假数据源
 - **api-contract.yaml MUST 包含 `enums` 段（v2.16）**：定义所有枚举值的完整列表，前后端代码生成阶段都从契约文件读取
 - **响应 shape 标注具体结构（v2.16）**：不仅标注类型（Array/Object），还要标注具体元素结构和空值行为（[] 不 null，0 不 undefined）
 - **spec.md MUST 包含 Integration Point Checklist（v2.16）**：每个跨模块功能的 数据层→判断层→渲染层 链路，标注每层 owner

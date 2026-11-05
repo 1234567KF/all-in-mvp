@@ -23,7 +23,7 @@ skills:
 - `src/modules/` — Stage3 产出的所有后端模块
 - `src/views/` + `src/components/` — Stage3 产出的所有前端页面
 - `integration-tests/` — Stage2 产出的测试用例
-- `mock-drift-issues.md`（如有）
+- `contract-drift-issues.md`（如有）
 
 ## Output
 - 联调问题分发指令
@@ -43,10 +43,10 @@ skills:
 4.2 前后端联调
   ├── **API 端点一致性扫描（v2.14）**：`powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/check-api-endpoints.ps1`，孤端点即阻断→禁止继续联调
   ├── **集成点全链路检查（v2.16）**：对每个跨模块功能，验证完整链路：数据层(后端service) → 判断层(store/composable) → 渲染层(组件)。三层全部存在且正确连接 → 通过。任一缺失 → 标记 INTEGRATION_GAP，分配给对应 Agent 修复
-  ├── 前端切换 Mock → 真实后端 API（按模块逐个切换）
+  ├── 前端已直指真实后端（Stage3 切片内完成），本阶段无「切 Mock」动作
   ├── 记录接口不匹配问题到 `integration-issues.md`
-  ├── 切换策略：api.config.ts 按模块映射 baseURL
-  └── 回退：发现问题 → 标记 BLOCKED → 回退 Mock → 修复 → 再次切换
+  ├── **双分支可交互门禁（v2.26，R035）**：逐模块在真实浏览器 + 真实后端跑完异常分支清单（400/401/403/404/409/空态/超长/5xx）
+  └── 异常分支复现不了 → BLOCKED(造数缺失)，补 demo-seed / dev-only 造数端点后重跑，禁止用假接口顶替
     ↓
 4.3 集成测试执行
   ├── 运行 `integration-tests/modules/` + `integration-tests/scenarios/` + `integration-tests/regression/`
@@ -131,7 +131,7 @@ Step 3: 覆盖率判定
   ├── **第二步：精确路由** → 根据 Bug 所属模块，将 Bug 发回当初开发该模块的原 Agent
   │   ├── 后端模块 Bug → 路由给写该模块的 mvp-backend-tdd（非 mvp-debug-fixer）
   │   ├── 前端页面 Bug → 路由给写该页面的 mvp-frontend-dev（非 mvp-debug-fixer）
-  │   ├── Mock 偏差 → 路由给 mvp-mock-service
+  │   ├── 造数缺失（异常分支复现不了）→ 路由回该切片原开发 Agent 补 demo-seed / dev-only 端点
   │   └── 无法定位归属的 Bug → 交给 mvp-debug-fixer 做首次根因定位，定位后仍路由回原开发 Agent
   ├── **第三步：原 Agent 修复** → 接收 Bug 报告 → 定位根因 → 最小修复 → 补充回归测试
   ├── **第四步：自动回归** → 修复后立即运行该模块相关测试集
@@ -150,21 +150,20 @@ Step 3: 覆盖率判定
 
 | 分类 | 判定 | 路由目标 | 定位方式 |
 |------|------|---------|---------|
-| 契约问题 | 接口响应与 api-contract.yaml 不一致 | **写该模块的 mvp-backend-tdd** | module_agent_map 查找模块归属 |
+| 契约问题 | 接口响应与 `packages/shared` schema 不一致（`api-contract.yaml` 仅派生视图） | **写该模块的 mvp-backend-tdd** | module_agent_map 查找模块归属 |
 | 实现问题 | 接口符合契约但数据/逻辑错误 | **写该模块的 mvp-backend-tdd** | module_agent_map 查找模块归属 |
 | 理解偏差 | 前端对接口理解与后端设计不一致 | **写该页面的 mvp-frontend-dev** | module_agent_map 查找页面归属 |
-| Mock偏差 | Mock 与真实 API 不一致 | **mvp-mock-service** | 直接路由 |
+| 造数缺失（v2.26 取代 Mock偏差） | 某条异常分支在真实后端无法复现 | **写该模块的原开发 Agent** | module_agent_map 查找模块归属 |
 | 归属不明 | 无法从失败日志定位具体模块 | **mvp-debug-fixer（仅做首次定位）** | 定位后路由回原开发 Agent |
 
 > **mvp-debug-fixer 的新定位**：从「修复所有 Bug」降级为「仅处理归属不明的 Bug 的首次根因定位」，定位完成后立即将 Bug 路由回 `module_agent_map` 中对应的原开发 Agent。原开发 Agent 拥有该模块的完整上下文，修复效率远高于通用 Debug Agent。
 
-## 切换策略
-前端 `api.config.ts` 中按模块映射 baseURL，逐模块切换：
-```
-user: mock  → user: real
-product: mock → product: real
-```
-回退：切换后发现问题 → 标记该模块 `BLOCKED` → 回退到 Mock → 通过 `module_agent_map` 路由给原开发 Agent 修复 → 再次切换。
+## 联调失败处置（v2.26：无 Mock 可回退）
+前端在 Stage3 切片里就已经打真实后端，Stage4 不存在「baseURL 逐模块切换」。
+失败按类型处置：
+- 接口不匹配 → 先改 `packages/shared` schema + 后端实现，再回改派生视图，最后改前端调用点；
+- 异常分支无法复现 → `BLOCKED(造数缺失)`，通过 `module_agent_map` 路由回原开发 Agent 补 `demo-seed` 或 dev-only 造数端点；
+- 归属不明 → mvp-debug-fixer 首次定位，定位后仍路由回原开发 Agent。
 
 ## Stage4 回滚协议
 
@@ -193,7 +192,7 @@ product: mock → product: real
 | # | 门禁项 | 判定标准 | 未达标动作 |
 |---|--------|---------|-----------|
 | 1 | 后端合并 | 路由一致性验证通过 | 驳回，修复后重检 |
-| 2 | 前后端联调 | 全部模块通过 | 驳回 BLOCKED 模块 |
+| 2 | 全链路联调 + 双分支门禁 | 全部模块通过，异常分支清单 100% 走完（R035） | 驳回 BLOCKED 模块 / BLOCKED(造数缺失) |
 | 3 | 集成测试 | Happy Path 100%，Exception ≥80% | 驳回，补测 |
 | 4 | **设计-执行覆盖矩阵** | P0 = 100%，P1 ≥ 80%（复盘 D-01） | **P0 阻断**，禁止标 COMPLETE |
 | 4.5 | **前端一致性（复盘 D-09）** | 用户访问的前端 === E2E 测试的前端（starters 已删除 或 diff 无差异） | P0 阻断 |
@@ -204,7 +203,7 @@ product: mock → product: real
 
 ## Constraints
 - 只编排不开发——不直接修改业务代码
-- 遇到的问题必须分类归档（契约/实现/理解偏差/Mock偏差）
+- 遇到的问题必须分类归档（契约/实现/理解偏差/造数缺失）
 - 回滚前 Git 备份当前代码
 - 回滚后仍无法通过 → 标记「本轮不可交付」→ 进入 Stage5 复盘
 - 可复用 Stage3 Pipeline Coordinator 实例，跨 Stage 复用时每轮调度前执行上下文精简

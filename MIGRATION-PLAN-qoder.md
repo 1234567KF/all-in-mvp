@@ -393,6 +393,105 @@ CODE REVIEW: dispatch subagent "mvp-code-reviewer" (skill kf-mvp-code-review) fo
 处理方式（需要你选，我没有擅自改）：a) 只报对方，我们保持与权威 starter 一致；b) 我们侧先修（把路径改对需要后端补路由，属于新增业务功能，不是改一行）；c) 我们侧至少把这个错误字面量的测试改成会失败的断言，避免技能/Agent 抄到错误范式。默认建议 a + c 的轻量版：不改业务功能，只在门禁层拦"前端调用路径必须能在后端路由枚举里找到"。
 
 
+---
+
+## 11. 第五轮执行（v2.27）— 权威 starter 重大更新二次同步 + 领先项逐条实证
+
+**上游范围**：`167d77c..0005fa1`，9 commits / 93 files / **+14945 −873**。提交 `6858aed1`（分支 `qoder-migration`，未推送）。
+
+### 11.1 对方这次带来了什么（我们原先没有的能力）
+
+| 能力 | 落点 | 对我们流水线的意义 |
+|------|------|-------------------|
+| 业务模块一键生成器 `gen:module` | `scripts/gen-module.ts`（4457 行）+ `.test.ts`（747 行，含真实锚点断言）；注册位置靠源码 `[gen:module:*]` 锚点定位 | 纵向切片的"骨架"不再由 Agent 手写，#19 的切片产出可以直接从这条命令起步，漂移面收窄到字段与业务规则 |
+| AST 架构门禁 + **450 行棘轮** | `arch-check.ts` 的 `MAX_LINES` / `LONG_FILE_RATCHET`，四种失败态 `overlong-ratchet-{exceeded,stale,unlowered,missing}`；scaffold 侧 `pruneMissingLongFileRatchet()` 剪枝 | "切片太大"变成可执行判据，而不是复盘时才发现的抱怨 |
+| `shared/oss.ts` 双模对象存储 + `shared/sqlite-ops.ts` | 三键同时配置才走 OSS，否则本地降级；stats / `VACUUM INTO` / 热备 | 造数与演示环境不再需要假 SDK；生产/演示同一份代码路径 |
+| 只读审计 API + 三态 Diff | `modules/log`（`GET /logs`，需 `audit:view`）+ `AuditDiffViewer` | 异常分支走查有了可核对的现场证据 |
+| 前端权限体系统一 | `usePermission` / `PermissionGate` / `menu-config.ts` 按 `user.permissions` 过滤，`permissionsForRole` 只在后端解析 | 消灭"前端自行推导角色"这第二真相源（已固化为 R038） |
+| 5 要素规格书模板 + `business-feature-builder` 技能 + `WORKFLOW.md` | `docs/specs/_template.md` 等 | 与 #19 的"正常/异常双分支清单"天然对齐，可直接作为清单载体 |
+| 3 个 **flat-config 集成测试** | `eslint-rules/{api-oss-import-guard,route-db-guard,web-permission-import-guard}.test.js` | 加载真实 `eslint.config.js` 用 `Linter.verify` 断言"配置块 + 内置规则 + selector"的组合行为——正是 B026 教训的制度化：门禁自己也要被门禁 |
+| README 重写（+1078 行） | — | 我们 v2.25 补的治理文案被对方更完整的版本覆盖，如实让位（见 11.3） |
+
+### 11.2 三方合并做法（不是覆盖，是逐文件比对）
+
+以我们自己的导入提交为 base，对每个文件三方比对：对方新增 96 / 删除 10 / 修改 86。取对方树后手工还原领先项，并排除 `skills/wecode-project-scaffolder`（内部交付工具，不属于本仓）。
+
+还原的领先项（3 个 ESLint 规则的 JSDoc 与指针、`DESIGN.md` 的 Qoder 措辞、以及下面两个必须重打的 Windows 补丁）：
+
+1. **`arch-check.ts` 路径处理**（上游新版把这个问题带回来了）：
+   ```ts
+   import { fileURLToPath } from "node:url"
+   const ROOT = fileURLToPath(new URL("..", import.meta.url))   // URL.pathname 在 Windows 得 "/D:/..." → join 后 "\D:\..." → ENOENT
+   const toPosix = (p: string) => p.replace(/\\/g, "/")
+   const relOf = (base: string, target: string) => toPosix(relative(base, target))
+   ```
+   Rule 1 的文件键、Rule 4 的 `pageFile.split("/")`、`pathHint`、棘轮白名单比对全部改走 `relOf`。
+   **实测证据**：同一目录 `bun` 脚本跑 `new URL("..", import.meta.url).pathname` → `ENOENT`，`fileURLToPath` → 正常列 16 项。
+   特别注意 **Rule 4 的静默失效**：Windows 绝对路径 `split("/")` 返回 1 个元素，循环体一次都不进，扫描"通过"但其实什么都没查——典型的 B025 类假绿。
+2. **`no-tailwind-raw-colors.js` 全量上报**：保留对方新增的 250 行规则本体，把 `exec` 循环换回 `matchAll`，并加了一条回归用例（同一 `className` 内两个原色类必须报 2 次）。实测 `exec` 写法漏报。
+
+### 11.3 如实让位的部分
+
+我们 v2.25 写进 starter README / AGENTS.md 的治理段落，被对方本轮的扩写版本覆盖——对方写得更完整且已在 CI 上跑。按"兼容性平移、不擅自重写"的既定约束，**接受对方版本**，不再保留我们的措辞。这不是失去领先，而是原本那点领先已被对方吸收并超越（同 §10.2 的教训：上一轮宣称的 4 项领先有 3 项对方已独立采纳）。
+
+### 11.4 实测验证（全部真实执行，非声称）
+
+`bun install` rc=0（60 pkgs）· `arch:check` rc=0（135 + 28 files）· `typecheck` rc=0 · `test:eslint` 92 用例/8 文件 · `lint` 0 errors / 19 warnings · `test:web` 347/42 · `test:api` 308/26 · `test:scripts` 35/1 · `check-token-sync` PASS(4)。
+Playwright E2E 仍未真实跑过（task #9，两侧 CI 都不跑 E2E）。
+
+### 11.5 框架门禁对上权威 starter 的收尾校准（R010 / R011，血案 B029）
+
+首轮 `check-stage4-gate.ps1 -TargetDir starters/liquid-glass-frontend` = 9 条里 **6 PASS / 3 FAIL**，其中 R014 是真缺陷，R010、R011 是我们自己的规则文本把「项目形状」当成了规则本身。
+
+**R011（端口）改了两轮，第二轮才是关键**：
+
+1. 第一轮：`.env` 被 gitignore、提交 `.env.example` 即认可；env 里声明过的端口值（starter 的固定 `PORT=3000`）降为例外清单 → starter 转 PASS。
+2. 我拿反例试它：`vite.config.ts` 里写 `port: 5177`（不在任何声明里）→ 仍然 PASS。原因不是例外清单，而是**扫描面写死成六个端口号** `@("3333","5555","2222","5173","3000","3001")`，B009 那类漂移恰好发生在清单之外。这正是 B025/B027 的同一病根：门禁声称覆盖，实际覆盖不到。
+3. 第二轮改为扫「端口字面量的形态」（`://host:PORT` 与 `port: PORT`），env 声明值才是例外；同端口同行去重。
+4. 四个 fixture 实跑：starter PASS（allowlisted 1，且逐行核对确认扫到的正是 `apps/web/vite.config.ts:55`）· `port: 5177` FAIL · proxy 指向已声明的 3000 PASS · 无 env 文件 FAIL（报"缺 env"而非"0 处硬编码"，避免空覆盖冒充绿）。
+
+**R010（种子单源）重写**：根目录 `seeds/` 从硬要求降为候选定位，改按「账号记录的定义形状」定位种子源；删除 v2.26 后恒不可能命中的 Mock-vs-DB 子检查（空门禁）；新增「非种子文件里 `insert(users)` 带字面量 values」与「init.sql 等派生脚本必须有生成器」两条；多个种子源之间要求存在 import 关系。五个 fixture 实跑：规范单源 PASS · 第二套账号定义 FAIL · 无种子 FAIL · 手写 init.sql FAIL · 两种子源互不 import FAIL。
+收紧过程中撞出两个新假阳性，已作数据形态限定并写进「已声明盲区」：i18n 字段标签 `email: "邮箱"`（现限定 ASCII 值）、`scripts/` 下代码生成器里的凭证模板（按产物模板放行，实测 `gen-module.ts`）。
+
+**终局**：`check-stage4-gate.ps1` 对权威 starter = **7 PASS / 2 FAIL，且两条 FAIL 都是真实缺陷**——
+R014 孤端点 `/api/auth/change-password`（§11.4/B028）、R010 `apps/api/src/db.ts` 结构自举 inline 插入 admin 与 `apps/api/scripts/seed-dev.ts` 构成两套账号定义。按既定处置原则，**业务代码只报不修**。
+`gate-rules.yaml` 的 R010/R011 描述重写并升版 v2.27、`applies_to` 去掉已废弃的 mock-service；严格 YAML 复核：39 条规则、无重复 ID、无未知引用。PLAYBOOK 新增 **B029**，血案 27 → **28** 条。
+
+---
+
+## 12. 第六轮执行（#19）— 去前后端分离落地：纵向切片 + 前置可交互双分支门禁
+
+**用户锁定方向**（原话）：「不必前后端了。但是要达到前置可交互检查正常分支和异常分支……我现在优势的地方保留。」
+
+### 12.1 论证：Mock 不是技术必需，是调度形态的副产品
+
+前后端分离真正不可替代的是**并行分派 + 可门禁的显式契约**。Mock 只是"两条队列并行"的产物——前端不等后端就得有假接口。把并行度从「前端↔后端」改成「模块↔模块」（纵向切片），Mock 的三个理由同时消失：
+契约由 `packages/shared` 的 Zod schema 单一定义承担（同仓类型贯通，`api-contract.yaml` 降为派生视图）；原型确认可用已上线的 `DEMO_MODE` + 幂等 `demo-seed` + dev-only 造数/重置端点承担；对方 starter 里根本没有独立 mock 层（只有测试内 `vi.mock`），形状与我们要走的一致。
+
+**决定性证据（B028）**：权威 starter 的改密功能真实 404，而 270 个前端单测全绿。mock 是按前端期望写的，所以"mock 全绿"在结构上无法证明"被调用方存在"。这类缺陷加多少测试都补不上，只能取消假接口这一档。
+
+### 12.2 落地清单
+
+| 层 | 改动 |
+|----|------|
+| Stage 2 | 删掉 ③a Mock 阶段；产出收敛为 `packages/shared` Zod + `init.sql` + `demo-seed` + dev-only 造数端点；GATE_PROBE 第 2 行改探 `z.object`；新增「契约单源一致性」「异常分支可造数」两条评审行；明文规定 Stage 2 之后自行搭 Mock = 违规 |
+| Stage 3 | 前后端两个 Agent 合并为**按模块纵向切片**（后端 TDD → 前端 hooks/queries → 异常分支造数 → 双分支自测）；`mvp-frontend-dev` 降级为切片内步骤；切片 `DONE` 硬条件＝清单里每条异常分支都能真实复现，否则 `BLOCKED(造数缺失)`；并行度来自模块依赖图分批 |
+| Stage 4 | 4.2 重写为「全链路联调 + 双分支可交互门禁」，异常清单固定覆盖 400 逐字段 / 401 / 403 / 404 / 409 / 空态 / 超长与特殊字符 / 5xx 断网；Bug 分类表里「Mock偏差」换成「造数缺失」 |
+| MSVP | A 类新增 **A10 异常分支不可复现**；新增 **Step 3.5 双分支可交互走查**（真实浏览器打真实后端） |
+| 门禁 | 新增 **R035**（前置可交互双分支，BLOCKER）+ 本轮从对方同步的四条 **R036** route 禁直连 DB / **R037** 业务禁直连 `ali-oss` / **R038** 前端只消费 `user.permissions` / **R039** 450 行棘轮，均写满「已声明盲区」；规则总数 34 → **39**；stage3/stage4/fix 分别 25/35/19 条 |
+| R014 脚本 | `.qoder/scripts/check-api-endpoints.ps1` 真相源从 `api-contract.yaml` 改为**后端实际注册路由**（两遍枚举 `app.route()` 挂载前缀 + `app.get/post/...`，`:param` → `[^/]+`，尾斜杠折叠，`/api` 前缀候选剥离）；发现 0 条后端路由时输出 `degraded` + `[WARN]`，**绝不允许静默降级成弱检查** |
+| 资产状态 | `kf-mvp-mock-service` 技能与 `mvp-mock-service` Agent 标注废弃（保留文件与历史血案引用，不删），description 加引号规避 R029 的 `": "` 坑 |
+| 文档 | SKILL.md 内所有"规定用 Mock"的行清空（残留 6 处全是否定句或历史引用）；PLAYBOOK 新增 B027（5 条规则挂着从不存在的 `check_script`，聚合脚本 SKIP 当绿）与 B028；README 计数更新 R001–R039 / 血案 27 条（§11.5 补 B029 后为 28 条）/ mock 技能废弃注记 |
+
+### 12.3 仍需你决策（未擅自动手）
+
+1. `changePassword` 缺陷：报上游 / 本地补后端路由（属新增业务，不是改一行）/ 只靠 R014+R035 拦。当前选择是**只在门禁层拦，不改业务**。
+2. 推送前的脱敏边界：`192.168.110.2` git URL、`192.168.110.214:11070`、`wecode-cloud` registry、`~/.claude`/`~/.gemini` 路径——本轮同步把它们带进了更多文件；`skills/wecode-project-scaffolder` 是否继续排除在发布树外。
+3. `gen:module` 是否正式纳入 Stage 3 切片分派（目前是"可用"而非"默认"）。
+4. task #9：一次真实 Playwright E2E 运行仍未做。
+
+---
+
 ## 附录 A — 关键证据
 - `file .qoder/skills/all-in-mvp/SKILL.md` → "UTF-8 (with BOM), CRLF"；`kf-mvp-api-contract/SKILL.md`（正常）→ 无 BOM。
 - `ls .claude` → 不存在；`grep ".claude/workflows" .qoder/skills` → 仅 `all-in-mvp/SKILL.md`。
@@ -405,8 +504,8 @@ CODE REVIEW: dispatch subagent "mvp-code-reviewer" (skill kf-mvp-code-review) fo
 | Stage | 现有 Workflow 脚本 | 改用的 Qoder 子 Agent（`.qoder/agents/`） |
 |-------|-------------------|------------------------------------------|
 | Stage1 PRD | stage1-prd.js | `mvp-pm-agent` |
-| Stage2 规划 | stage2-planning.js | `mvp-architect` + `mvp-domain-expert` + `mvp-grill-review` + `mvp-mock-service` + `mvp-test-writer`/`mvp-scenario-test` + `mvp-test-review` |
-| Stage3 开发 | stage3-execution.js | `mvp-pipeline-coordinator` + `mvp-backend-tdd` + `mvp-frontend-dev` + `mvp-code-reviewer` |
+| Stage2 规划 | stage2-planning.js | `mvp-architect` + `mvp-domain-expert` + `mvp-grill-review` + `mvp-test-writer`/`mvp-scenario-test` + `mvp-test-review`（v2.26 起 `mvp-mock-service` 已废弃，不再进 Stage2） |
+| Stage3 开发 | stage3-execution.js | `mvp-pipeline-coordinator` + 按模块的纵向切片（`mvp-backend-tdd` 主，`mvp-frontend-dev` 降为切片内步骤）+ `mvp-code-reviewer` |
 | Stage3.5 E2E | （主 Agent 直接执行） | `mvp-scenario-test` / kf-mvp-test-e2e 技能 |
 | Stage4 集成 | stage4-integration.js | `mvp-stage4-coordinator` + `mvp-debug-fixer` + `mvp-verifier` |
 | Stage5 复盘 | （主 Agent） | `mvp-retrospective-agent` |

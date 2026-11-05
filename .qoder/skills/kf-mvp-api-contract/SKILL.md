@@ -138,72 +138,61 @@ interface UserResponseDto {
 
 ---
 
-# Mock-后端一致性验证 (MUST — 迭代2核心修复)
+# 契约单源一致性验证 (MUST — v2.26 取代原「Mock-后端一致性验证」)
 
-**问题**：之前前端用 Mock 开发，后端用真实 API，两者行为不一致导致联调时大量 bug。
+**原问题**：前端用 Mock 开发、后端用真实 API，两者行为不一致，联调时大量 bug。
+**原解法的问题**：它把"两个真相源要对齐"当成前提，于是需要第三个东西去对不齐——一致性测试。
+**v2.26 解法**：只留一个真相源，把"对齐"变成"同一份定义在两处被消费"，可校验面从 7 项对比降为 1 组断言。
 
-**解决方案**：API 契约设计完成后，MUST 生成 **一致性验证测试**，确保 Mock 和真实后端行为完全一致。
+真相源层级（裁决顺序自上而下）：
 
-## 一致性验证清单
+```
+后端实际注册路由  =  packages/shared 的 Zod schema   ← 真源
+        ↓ 派生
+api-contract.yaml（文档视图，不参与判定，冲突时改它）
+```
 
-| 验证项 | Mock | 真实后端 | 验证方式 |
-|--------|------|---------|---------|
-| 响应格式 | `{success, data/error}` | `{success, data/error}` | 结构对比 |
-| HTTP状态码 | 200/201/400/401/404/409 | 相同 | 状态码对比 |
-| Error Code | `INVALID_CREDENTIALS` | `INVALID_CREDENTIALS` | 字符串完全匹配 |
-| 字段类型 | `id: number` | `id: number` | TypeScript类型检查 |
-| 分页参数 | `page=1&limit=10` | `page=1&limit=10` | 默认值对比 |
-| CORS头 | `Access-Control-Allow-Origin` | 相同 | 响应头对比 |
-| 延迟范围 | 100-500ms | 真实网络 | 可配置 |
+| 验证项 | 由谁保证 | 验证方式 |
+|--------|---------|---------|
+| 响应格式 `{success, data/error}` | 后端 `ok()/fail()` 唯一出口 | 后端路由测试逐条断言（R001） |
+| HTTP 状态码 200/201/400/401/403/404/409/500 | service 抛 `ServiceError` → `mapServiceError` | 异常分支清单逐条真实请求（R035） |
+| Error Code 字符串 | `packages/shared` 里的错误码常量 | 前端展示与后端返回同一常量，禁止字面量 |
+| 字段名与类型 | Zod schema 单一来源，双端同 import | `typecheck` + service 层 `schema.parse` |
+| 分页参数与默认值 | `packages/shared/pagination.ts` | 单测断言默认值，禁止双端各写一套 |
+| 前端调用路径存在性 | 后端路由表 | `check-api-endpoints.ps1`（R014，孤端点即 FAIL） |
+| CORS / 前缀 | Vite `/api` 代理 + Hono 挂载点 | E2E 必须穿透代理层（R003） |
 
 ## 自动化验证脚本
 
 ```typescript
-// tests/contract-consistency.test.ts
-import { describe, it, expect } from 'vitest';
+// apps/api/src/modules/user/user.route.test.ts —— 对真实后端断言，不与 mock 比对
+import { describe, it, expect, beforeEach } from "bun:test";
 
-const MOCK_URL = 'http://localhost:3001';
-const REAL_URL = 'http://localhost:3000';
+describe("契约单源：后端响应形状", () => {
+  it("GET /users 未认证 → 401 + 结构化 error", async () => {
+    const res = await app.request("/users");
+    expect(res.status).toBe(401);
+    const json = await res.json();
+    expect(json).toEqual({ success: false, error: { code: expect.any(String), message: expect.any(String) } });
+  });
 
-describe('API Contract Consistency', () => {
-  const endpoints = [
-    { method: 'GET', path: '/api/users', auth: true },
-    { method: 'POST', path: '/api/users', auth: true, body: { name: 'test' } },
-    { method: 'GET', path: '/api/users/1', auth: true },
-  ];
-
-  endpoints.forEach(({ method, path, auth, body }) => {
-    it(`${method} ${path} should have consistent response format`, async () => {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (auth) headers['Authorization'] = 'Bearer mock-token';
-
-      const [mockRes, realRes] = await Promise.all([
-        fetch(`${MOCK_URL}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined }),
-        fetch(`${REAL_URL}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined }),
-      ]);
-
-      const mockJson = await mockRes.json();
-      const realJson = await realRes.json();
-
-      // 1. 响应结构必须一致
-      expect(mockJson).toHaveProperty('success');
-      expect(realJson).toHaveProperty('success');
-
-      // 2. Error 结构必须一致
-      if (!mockJson.success) {
-        expect(mockJson.error).toHaveProperty('code');
-        expect(mockJson.error).toHaveProperty('message');
-        expect(realJson.error).toHaveProperty('code');
-        expect(realJson.error).toHaveProperty('message');
-        expect(mockJson.error.code).toBe(realJson.error.code); // MUST 完全匹配
-      }
-
-      // 3. HTTP 状态码必须一致
-      expect(mockRes.status).toBe(realRes.status);
-    });
+  it("POST /users 字段非法 → 400 且逐字段 errors 与 shared schema 同源", async () => {
+    const res = await app.request("/users", { method: "POST", body: JSON.stringify({}) });
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(Object.keys(json.error.errors ?? {})).toContain("email");
   });
 });
 ```
+
+```powershell
+# 派生视图与前端调用点校验（Stage4 门禁，R014 / R016）
+powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/check-api-endpoints.ps1
+```
+
+> **为什么不写"mock vs real"对比测试**：mock 的路径、字段、错误码都是按前端期望填的，
+> 两边一致只能证明"前端是自洽的"，证不了后端存在这条路由。
+> 真实事故：权威 starter 的改密功能 270 个 mock 单测全绿，`curl` 真实后端 404（血案 B028）。
 
 ---
 

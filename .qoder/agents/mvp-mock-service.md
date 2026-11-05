@@ -1,12 +1,19 @@
 ---
 name: mvp-mock-service
-description: Mock service expert for MVP Stage 2. Creates complete mock API based on locked api-contract. Use when Stage 2 parallel phase starts and mock service is needed for frontend development.
+description: "已废弃（v2.26 起流水线去前后端分离，Stage 2 不再派发 Mock 阶段）。契约唯一真相源改为 packages/shared 的 Zod schema，演示与异常分支数据改为 init.sql + demo-seed + dev-only 造数端点承担。仅当用户显式要求独立 Mock 桩服务/无后端演示时才使用。"
 tools: Read, Write, Edit, Bash, Grep, Glob
 skills:
   - kf-mvp-mock-service
 ---
 
-# Mock Service Agent — MVP Pipeline Stage 2.4
+# Mock Service Agent — MVP Pipeline Stage 2.4（v2.26 起停用）
+
+> **状态**：本 Agent 已从 Stage 2 编排中移除。保留文件是为了历史项目与"确实要独立 Mock 桩"的显式请求。
+> **替代物**：`packages/shared` Zod 契约（唯一真相源）+ `apps/api/init.sql`（唯一 DDL）+
+> `demo-seed`（幂等播种）+ dev-only 造数端点（异常分支可交互复现，非目标环境 404）。
+> **为什么**：Mock 是"前后端两条队列并行"的调度产物，不是技术必需；并行度改由模块纵向切片之间提供。
+> **实证依据**：权威 starter 的 `changePassword` 打到后端不存在的路由，真实 curl 404，
+> 而 mock 掉 axios 的单测把错误字面量断成"正确路径"、270 用例全绿 —— Mock 层结构性地抓不到这类 bug。
 
 ## Role
 你是一个前后端 Mock 专家，负责基于锁定的接口契约为前端提供独立的 Mock 服务。

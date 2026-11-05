@@ -13,7 +13,7 @@
 - `src/modules/` — Stage3 产出的所有后端模块
 - `src/views/` + `src/components/` — Stage3 产出的所有前端页面
 - `integration-tests/` — Stage2 产出的测试用例
-- `mock-drift-issues.md`（如有）
+- `contract-drift-issues.md`（如有）
 
 ## Output
 - 联调问题分发指令
@@ -33,10 +33,10 @@
 4.2 前后端联调
   ├── **API 端点一致性扫描（v2.14）**：`powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/check-api-endpoints.ps1`，孤端点即阻断→禁止继续联调
   ├── **集成点全链路检查（v2.16）**：对每个跨模块功能，验证完整链路：数据层(后端service) → 判断层(store/composable) → 渲染层(组件)。三层全部存在且正确连接 → 通过。任一缺失 → 标记 INTEGRATION_GAP，分配给对应 Agent 修复
-  ├── 前端切换 Mock → 真实后端 API
-  ├── 按模块逐个联调
+  ├── 前端已直指真实后端（Stage3 切片内完成），本阶段无「切 Mock」动作
+  ├── 按模块逐个联调（跨模块链路优先）
   ├── 记录接口不匹配问题到 `integration-issues.md`
-  └── 切换策略：按模块逐个切换，失败→回退Mock→修复→再次切换
+  └── **双分支可交互门禁（v2.26，R035）**：逐模块在真实浏览器 + 真实后端跑完异常分支清单；复现不了 → BLOCKED(造数缺失)
     ↓
 4.3 集成测试执行
   ├── 运行 `integration-tests/modules/` + `integration-tests/scenarios/`
@@ -56,19 +56,17 @@
 
 | 分类 | 判定 | 分发对象 |
 |------|------|---------|
-| 契约问题 | 接口响应与 api-contract.yaml 不一致 | 后端 Agent |
+| 契约问题 | 接口响应与 `packages/shared` schema 不一致 | 后端 Agent |
 | 实现问题 | 接口符合契约但数据/逻辑错误 | 后端 Agent |
-| 理解偏差 | 前端对接口理解与后端设计不一致 | 前端 Agent + Mock Agent |
-| Mock偏差 | Mock 与真实 API 不一致 | Mock Agent |
+| 理解偏差 | 前端对接口理解与后端设计不一致 | 该切片的开发 Agent |
+| 造数缺失（v2.26 取代 Mock偏差） | 异常分支在真实后端无法复现 | 后端 Agent（补 demo-seed / 造数端点） |
 
-## 切换策略
-前端 `api.config.ts` 中按模块映射 baseURL，逐模块切换：
-```
-user: mock  → user: real
-product: mock → product: real
-...
-```
-回退：切换后发现问题 → 标记该模块 `BLOCKED` → 回退到 Mock → Debug Agent 修复 → 再次切换。
+## 联调失败处置（v2.26：无 Mock 可回退）
+前端在 Stage3 切片里就已经打真实后端，Stage4 不存在「baseURL 逐模块切换」。
+失败按类型处置：
+- 接口不匹配 → 先改 `packages/shared` schema + 后端实现，再回改派生视图 `api-contract.yaml`，最后改前端调用点；
+- 异常分支无法复现 → `BLOCKED(造数缺失)`，路由回原开发 Agent 补 `demo-seed` 或 dev-only 造数端点；
+- 归属不明 → Debug Agent 首次定位，定位后仍路由回原开发 Agent。
 
 ## Stage4 回滚协议
 
@@ -84,6 +82,6 @@ product: mock → product: real
 
 ## Constraints
 - 只编排不开发——不直接修改业务代码
-- 遇到的问题必须分类归档（契约/实现/理解偏差）
+- 遇到的问题必须分类归档（契约/实现/理解偏差/造数缺失）
 - 回滚前 Git 备份当前代码
 - 回滚后仍无法通过 → 标记「本轮不可交付」→ 进入 Stage5 复盘

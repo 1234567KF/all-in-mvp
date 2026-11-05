@@ -75,10 +75,10 @@ Stage4的4个子阶段严格串行：
 
 | 问题类型 | 判定依据 | 分发目标 | 动作 |
 |---------|---------|---------|------|
-| 契约问题 | 实现与 api-contract.yaml 不一致 | 后端 Agent（修正实现）或 架构专家（修正契约） | 记录到 integration-issues.md |
+| 契约问题 | 实现与 `packages/shared` schema 不一致（`api-contract.yaml` 只是派生视图） | 后端 Agent（修正实现）或 架构专家（修正契约） | 记录到 integration-issues.md |
 | 实现问题 | 代码逻辑错误、缺失边界处理 | 对应模块的 Backend Agent | Fix → 单元测试 → 重新联调 |
 | 理解偏差 | PRD解读不一致导致的行为差异 | 产品经理 + 对应 Agent | 澄清 → 修正PRD或实现 |
-| Mock漂移 | 前端期望与后端响应格式不一致 | Mock Agent + 后端 Agent | Mock同步协议 |
+| 造数缺失（v2.26 取代 Mock漂移） | 某条异常分支在真实后端无法复现 | 该模块原开发 Agent（补 demo-seed / dev-only 造数端点） | BLOCKED(造数缺失) → 补数 → 重跑走查 |
 
 **问题分发流程**：
 ```
@@ -89,7 +89,7 @@ Coordinator 读取问题描述 → 分类
 ├── 契约问题 → 写 change-request.md → 人类审查（<3接口可自动批准）
 ├── 实现问题 → 分配 Debug Agent → 修复 → 验证
 ├── 理解偏差 → 上浮人类 → 更新PRD或实现
-└── Mock漂移 → 触发Mock同步协议
+└── 造数缺失 → 路由回原开发 Agent 补 demo-seed / 造数端点（禁止用假接口顶替）
     ↓
 修复完成 → 重新联调验证
 ```
@@ -134,9 +134,10 @@ Stage4交付前的硬性门禁（全部通过才可交付）：
 - [ ] 路由冲突检测——无重复 HTTP Method + Path 组合
 - [ ] 全量单元测试通过
 
-### 4.B 联调门禁
-- [ ] 前端切换 Mock → 真实后端 API，所有页面无报错
-- [ ] 所有 API 调用返回格式与 api-contract.yaml 一致
+### 4.B 联调门禁（v2.26：全链路 + 双分支）
+- [ ] 前端直指真实后端，所有页面无报错（v2.26 起不存在「切 Mock → 切真实」这一步）
+- [ ] 所有 API 调用路径与后端实际注册路由匹配（R014），返回格式与 `packages/shared` schema 一致
+- [ ] **双分支可交互走查通过（R035）**：每模块异常分支清单 100% 在真实浏览器 + 真实后端复现（400/401/403/404/409/空态/超长/5xx）
 - [ ] 无未解决的 integration-issues.md 记录
 - [ ] 无未解决的 VISUAL_PENDING 标记（所有前端页面视觉已由人类确认）
 
@@ -198,27 +199,28 @@ Step 4: 合并后验证
 
 ---
 
-## 切换策略（按模块逐个切换）
+## 联调失败处置（v2.26：无 Mock 可回退）
 
-**切换流程**：
+v2.26 起前端在 Stage3 的模块切片里就已经打真实后端，**不存在「按模块把 baseURL 从 mock 切成 real」这一步**。
+原来的逐模块切换流程与 `api.config.ts` 的 `status: 'mock'/'real'` 双态设计一并作废。
+
+**按模块推进联调**：
 ```
-1. 检查模块后端状态 → DONE + Code Review 通过
-2. 前端对应页面 → 修改 api.config.ts 中该模块的 baseURL
-   user: mock → user: real
-3. 验证该模块的页面功能
+1. 检查模块状态 → DONE（含防线4 双分支走查通过）
+2. 跑该模块跨模块链路的真实请求（真实后端 + 真实库），验证全链路
+3. 逐条复现异常分支清单 → 复现不了的记 A10
 4. 通过 → 继续下一个模块
-5. 失败 → 标记该模块为联调BLOCKED → 回退到Mock → 修复 → 再次切换
+5. 失败 → 标记该模块 BLOCKED → 按类型处置（见下）→ 重跑
 ```
 
-**api.config.ts 按模块映射示例**：
-```typescript
-// api.config.ts
-export const apiConfig = {
-  user:    { baseURL: 'http://localhost:3000/api', status: 'real' },
-  product: { baseURL: 'http://localhost:3000/api', status: 'real' },
-  trace:   { baseURL: 'http://localhost:3001/api', status: 'mock' },  // 尚未切换
-};
-```
+**处置分型**：
+- 接口不匹配 → 先改 `packages/shared` schema + 后端实现，再回改派生视图 `api-contract.yaml`，最后改前端调用点；
+- 异常分支无法复现 → `BLOCKED(造数缺失)`，路由回原开发 Agent 补 `demo-seed` 或 dev-only 造数端点（R035）；
+- 归属不明 → 先做首次根因定位，定位后仍路由回原开发 Agent。
+
+> **为什么不能留 mock 兜底**：`api.config.ts` 里 `status: 'mock'` 的模块等于「尚未被任何真实请求验证过」，
+> 而 mock 的路径与响应形状是按前端期望写的——血案 B028 里改密功能 mock 单测 270 全绿、真实 curl 404 就是这个机制。
+> 回退到 Mock 只会把缺陷推迟到交付时刻。
 
 ---
 

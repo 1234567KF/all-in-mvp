@@ -10,7 +10,7 @@
 
 | 数据源 | 文件/目录 | 获取方式 |
 |--------|----------|---------|
-| 阶段产出物 | `PRD.md`, `spec.md`, `schema.sql`, `api-contract.yaml`, `task.md`, `modules/*.md`, `mocks/`, `integration-tests/` | 检查文件存在性 |
+| 阶段产出物 | `PRD.md`, `spec.md`, `schema.sql`, `packages/shared/src/`（契约真源）, `api-contract.yaml`（派生视图）, `task.md`, `modules/*.md`, `init.sql` + `demo-seed`, `integration-tests/` | 检查文件存在性（v2.26 起无 `mocks/`） |
 | 模块状态 | `src/modules/<module>/DONE` 或 `BLOCKED` | 读取标记文件 |
 | 执行日志 | `pipeline-execution-log.md`（项目根目录） | 解析 spawn 记录 |
 | 审查报告 | grill 产出的审查报告文件 | 解析轮次与修复数 |
@@ -28,7 +28,7 @@
 - [ ] ① `spec.md` 存在 + `schema.sql` 存在 + `api-contract.yaml` 存在
 - [ ] ② `task.md` 存在 + `modules/*.md` 数量 >= task.md 中声明的模块数
 - [ ] ↺ 审查报告结论为 LOCKED
-- [ ] ③a `mocks/` 目录非空（存在 mock 服务文件）
+- [ ] ③ 契约单源：`packages/shared/src` 有 Zod schema，`demo-seed` 可幂等重放（v2.26 起 ③a Mock 阶段已取消，禁止出现 `mocks/`）
 - [ ] ③b-1 `integration-tests/modules/*.test.ts` 覆盖全部模块
 - [ ] ③b-2 `integration-tests/scenarios/*.test.ts` 存在
 

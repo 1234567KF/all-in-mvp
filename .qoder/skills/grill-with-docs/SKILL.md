@@ -397,7 +397,7 @@ grill 输出「未决问题清单」+ 按「最简实现原则」推荐方案
 - [ ] 产出物路径与白皮书一致（`docs/PRD.md`、`spec.md`、`schema.sql` 等）
 - [ ] 模块代码在 `src/modules/<module>/`
 - [ ] 测试文件在 `integration-tests/modules/` 和 `integration-tests/scenarios/`
-- [ ] Mock 在 `mocks/` 目录，按模块组织
+- [ ] 契约单源在 `packages/shared/`（Zod schema），`api-contract.yaml` 只是派生视图；异常分支所需数据由 `demo-seed` / dev-only 造数端点覆盖（v2.26 起 Stage2 不再产出 `mocks/` 目录）
 
 ### 流程门禁
 - [ ] PRD 锁定后才能进入 Stage2

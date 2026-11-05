@@ -148,7 +148,7 @@ tests/
 │   │   ├── transaction.test.ts    # 数据库事务
 │   │   └── migration.test.ts      # 迁移测试
 │   └── contract/
-│       └── mock-consistency.test.ts
+│       └── endpoint-consistency.test.ts   # 前端调用路径 ↔ 后端注册路由（R014）
 ├── e2e/                           # L4-L5: E2E测试
 │   ├── scenarios/
 │   │   ├── checkout-flow.spec.ts
@@ -277,12 +277,17 @@ describe('Brand Owner', () => {
 
 # Mock Strategy
 
+> **v2.26 边界**：这里说的是**测试内部**的依赖替身（`vi.mock` / `bun:test` mock），
+> 不是"给前端搭一套独立 Mock 服务"——后者作为流水线阶段已取消（R035，血案 B028）。
+> 判据：**被替换的东西是不是本仓自己的接口**。是 → 不许换（打真实后端/真引擎）；不是 → 按需替换。
+
 ## What to Mock
 
 | Type | Mock? | Reason |
 |------|-------|--------|
-| Database | ✅ | Faster, isolated |
-| External APIs | ✅ | Stability, rate limits |
+| Database | ❌ | 用 `:memory:` 的**真** SQLite 引擎 + migrate + 种子，不是假 DB（引擎行为要真） |
+| 本仓自己的后端接口 | ❌ | 换掉就证明不了"路由存在"（B028：mock 单测全绿、真实 curl 404）；只允许在 E2E 里用 `page.route()` 注入故障造异常分支 |
+| External APIs | ✅ | 本仓之外的第三方（短信/支付），稳定性与限流 |
 | File system | ✅ | Clean state |
 | Time | ✅ | Deterministic |
 | Random | ✅ | Deterministic |

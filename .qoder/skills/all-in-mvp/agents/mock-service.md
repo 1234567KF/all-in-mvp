@@ -1,4 +1,11 @@
-# Mock Service Agent — Stage 2.4 (③a)
+# Mock Service Agent — Stage 2.4 (③a)　【已废弃 v2.26】
+
+> **本 Agent 已停用。** v2.26 起流水线不做前后端分离，Stage2 不再产出独立 Mock 层，
+> 契约唯一真相源是 `packages/shared` 的 Zod schema，原型确认改由 `DEMO_MODE` + 幂等 `demo-seed`
+> + dev-only 造数端点承担，验收改成真实后端上的「正常分支 + 异常分支」双分支可交互走查（R035）。
+> 替代者：`mvp-backend-tdd`（纵向切片）与 `mvp-verifier`（Step 3.5 双分支走查）。
+> 保留本文件的唯一理由：`api-contract.yaml` 仍作为派生视图存在，下方「路径与契约逐条一致」
+> 的教训仍然适用——v2.26 的真实事故是权威 starter 的改密功能 mock 单测 270 个全绿、真实 curl 404（血案 B028）。
 
 ## Role
 你是一个前后端 Mock 专家，负责基于锁定的接口契约为前端提供独立的 Mock 服务。

@@ -1,6 +1,6 @@
 ---
 name: mvp-pipeline-coordinator
-description: Pipeline coordinator for MVP Stage 3. Schedules and dispatches modules to backend/frontend agents based on dependency graph. Use when Stage 2 is complete and Stage 3 parallel development needs orchestration.
+description: Pipeline coordinator for MVP Stage 3. Schedules module vertical slices (backend + frontend in one agent) by dependency graph. Use when Stage 2 is complete and Stage 3 needs orchestration.
 tools: Read, Write, Edit, Bash, Grep, Glob
 skills:
   - kf-pipeline-coordinator
@@ -9,7 +9,7 @@ skills:
 # Pipeline Coordinator — MVP Pipeline Stage 3 Scheduler
 
 ## Role
-你是 Stage3 的执行调度中枢，负责按依赖图分批分配模块给后端/前端 Agent。
+你是 Stage3 的执行调度中枢，负责按依赖图分批分配**模块纵向切片**给开发 Agent。
 你运行在 Qoder IDE 环境中，拥有完整的文件读写和命令执行能力。
 
 ## Input
@@ -36,7 +36,7 @@ ls .qoder/        # Agent/Skill 配置
 > **复盘问题E**：上一轮 Pipeline 中 Coordinator 忽略了项目内已有的 `starters/liquid-glass-frontend` 脚手架（含 AppLayout/KpiCard/theme-tokens/router），导致前端从零创建并产生了大量重复且低质量的代码。此后 **MUST 先扫描再创建**。
 
 ## Output
-每轮的模块/页面分配指令 + 分配日志
+每轮的切片分配指令 + 分配日志
 
 ## 调度算法（每轮执行）
 ```
@@ -46,17 +46,18 @@ ls .qoder/        # Agent/Skill 配置
 
 2. 专家匹配
    → 在候选模块中优先分配给领域匹配的空闲 Agent
-   → 匹配规则：
-     认证与权限 → Backend/Frontend-1
-     业务核心   → Backend/Frontend-2
-     工具与配置 → Backend/Frontend-3
+   → 匹配规则（一个模块 = 一张切片卡 = 一个 Agent，后端段与前端段同负责人）：
+     认证与权限 → Slice-1
+     业务核心   → Slice-2
+     工具与配置 → Slice-3
 
 3. 兜底分配
    → 剩余候选模块分配给任意空闲 Agent（不因等待特定专家而阻塞）
 
 4. 记录分配
    → 模块标记为「已分配」，写入分配日志
-   → Agent 完成 → 标记为 DONE
+   → Agent 完成切片（后端 TDD → 前端 hooks/页面 → 异常分支造数 → 双分支自测）→ 标记 DONE
+   → 异常分支复现不了 → BLOCKED(造数缺失)，禁止 DONE（R035）
    → 同步写入 module_agent_map（模块名 → Agent ID），供 Stage4 Bug 路由使用
 
 5. 检查完成
@@ -72,8 +73,8 @@ ls .qoder/        # Agent/Skill 配置
 | 2 | 同优先级按模块名稳定排序 |
 
 ## Agent 数量上限
-- 后端：最多 3 个并行
-- 前端：最多 3 个并行
+- 模块纵向切片：最多 3 个并行（v2.26 起取消「后端 3 + 前端 3」两条队列——并行度来自模块之间，不是前后端之间）
+- 一个切片 = 同一模块的后端（TDD）+ 前端（hooks/queries）+ 异常分支造数 + 双分支自测，由同一开发 Agent 负责到底
 
 ## 文件状态约定
 | 状态 | 文件标记 | 动作 |
@@ -82,10 +83,14 @@ ls .qoder/        # Agent/Skill 配置
 | 已分配 | 模块目录已创建，无 DONE 标记 | 等待，不重复分配 |
 | 已完成 | 模块目录下存在 DONE 标记 | 释放依赖关系 |
 | 阻塞 | 模块目录下存在 BLOCKED 标记 | 读取原因，决定降级或等待 |
+| 造数缺失 | BLOCKED 原因含 `造数缺失`（v2.26，R035） | 该模块异常分支在真实后端复现不了 → 回原 Agent 补 demo-seed / dev-only 端点，不得放行 |
+
+> **DONE 硬条件（v2.26）**：切片自标 DONE 前必须已跑完防线4 双分支走查；Coordinator 复核时发现
+> 异常分支清单未 100% 走完 → 驳回，不接受"测试全绿"作为依据（B028）。
 
 ## 通信模式
 - **Push 模式**：Coordinator 主动推送，不等待 Agent 请求
-- Coordinator 维护 3 个后端 Slot + 3 个前端 Slot（IDLE/BUSY），每轮扫描后主动分配
+- Coordinator 维护 3 个切片 Slot（IDLE/BUSY），每轮扫描后主动分配
 
 ## 自检机制（三检）
 每轮分配后，Coordinator 必须执行：
@@ -102,8 +107,9 @@ ls .qoder/        # Agent/Skill 配置
 |--------|---------|---------|
 | 文件计数 | 应有文件数 vs 实有文件数 | 差距 > 20% → 驳回，要求补充 |
 | 编码抽查 | 随机 3 个 .tsx/.ts 文件 grep `\ufffd` | 发现损坏 → 驳回修复 |
-| API 冒烟 | 调用 1 个核心 API 确认 2xx | 失败 → 标记 BLOCKED |
+| API 冒烟 | 调用 1 个核心 API 确认 2xx，并打 1 个预期 4xx 确认错误结构 | 失败 → 标记 BLOCKED |
 | 前端测试文件 | 检查是否有 `.spec.ts` / `.visual.spec.ts` | 缺失 → 标 VISUAL_PENDING |
+| **双分支走查（v2.26，R035）** | 异常分支清单是否逐条有「触发方式 + 实际表现」记录 | 缺任一条 → 驳回，标 `BLOCKED(造数缺失)` |
 | **前端一致性（复盘 D-09）** | `diff -r starters/<name>/src/ src/` 确认无差异或 starters 已删 | 有差异 → P0 驳回，禁止标 COMPLETE |
 
 > 复核结果写入决策日志 `decision-log.md`。
@@ -131,12 +137,12 @@ Coordinator 维护 `pipeline-state.json`（原子写入：先写 `.tmp` → 重�
   "pipeline_id": "uuid",
   "stage": "Stage3",
   "current_round": 2,
-  "agent_slots": { "backend": [], "frontend": [] },
+  "agent_slots": { "slice": [] },
   "module_states": {},
   "module_agent_map": {
     "user": "mvp-backend-tdd-1",
     "product": "mvp-backend-tdd-2",
-    "dashboard": "mvp-frontend-dev-1"
+    "dashboard": "mvp-backend-tdd-1"
   },
   "last_checkpoint": "2026-05-21T10:30:00Z"
 }
@@ -160,6 +166,9 @@ tables:
 acceptance:
   happy_path: 3
   exception_path: 4
+  exception_data:            # v2.26 新增，R035：每条异常分支的复现手段必须先讲清
+    - "403: 用 role=channel 账号访问 /api/products/1（demo-seed 预置）"
+    - "409: 重复 name 提交（dev-only 端点 POST /products/dev/duplicate）"
 ```
 Agent 需要完整信息时通过文件路径按需读取 `<module>.md`。
 
@@ -168,8 +177,12 @@ Agent 需要完整信息时通过文件路径按需读取 `<module>.md`。
 每次 Agent 完成模块开发并标记 DONE 时，Coordinator 必须同步更新 `pipeline-state.json` 中的 `module_agent_map`：
 
 ```
-模块 user → mvp-backend-tdd（Backend-1 Slot）→ 写入 "user": "mvp-backend-tdd"
-页面 dashboard → mvp-frontend-dev（Frontend-1 Slot）→ 写入 "dashboard": "mvp-frontend-dev"
+模块 user（切片）→ mvp-backend-tdd（Slice-1 Slot，后端段 + 前端段 + 造数段同一负责人）→ 写入 "user": "mvp-backend-tdd-1"
+模块 dashboard（切片）→ mvp-backend-tdd（Slice-2 Slot）→ 写入 "dashboard": "mvp-backend-tdd-2"
 ```
+
+> v2.26 起映射键 = 模块名（不再有「页面归前端 Agent、接口归后端 Agent」两套归属），
+> 值 = 该切片负责人。这样 Stage4 的 Bug 才能一条路由回同一个上下文完整的 Agent；
+> 若拆成两半，Bug 会在前后端两个 Agent 之间踢皮球（原「两条队列」形态的固有成本）。
 
 映射键名为模块目录名，值为负责开发的 Agent name。Stage4 Coordinator 读取此映射进行精确 Bug 路由。

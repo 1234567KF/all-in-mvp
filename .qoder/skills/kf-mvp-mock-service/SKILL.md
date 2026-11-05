@@ -1,10 +1,12 @@
 ---
 name: kf-mvp-mock-service
 description: >-
-  Load when user asks to create mock API, setup mock server, or generate mock
-  data for frontend development. Triggers: mock, 模拟服务, 接口模拟, mock server,
-  模拟数据, mock数据, 生成mock. NOT for: production API stubs, contract testing,
-  or backend service mocking.
+  已废弃（v2.26 起流水线不再做前后端分离，不建 Mock 层）。仅当用户明确要求
+  "给一个独立 Mock 服务/假接口"（例如给外部演示、无后端环境的联调）时才加载。
+  正常的 MVP 流水线场景 NOT for: Stage2 规划、前端并行开发前置——这些改由
+  packages/shared 的 Zod 契约（唯一真相源）+ apps/api/init.sql + demo-seed 幂等播种
+  + dev-only 造数端点（POST .../dev/push、.../dev/reset）承担。
+  触发词（仅限显式请求）: 独立 mock server, 假接口演示, mock 桩服务。
 metadata:
   pattern: generator
   domain: mvp-stage2

@@ -712,8 +712,8 @@ async function determineHandlingStrategy(
         reason: '契约不一致，触发同步流程',
         steps: [
           '暂停当前模块开发',
-          '更新 api-contract.yaml',
-          '同步 Mock 服务',
+          '更新 packages/shared 的 Zod schema（契约真源）',
+          '同步后端实现，再回改派生视图 api-contract.yaml',
           '通知相关 Agent',
           '重新开始模块开发'
         ]
@@ -857,7 +857,7 @@ const EXCEPTION_HANDLING_CONFIG = {
     autoSync: {
       enabled: true,
       contractSync: true,
-      mockSync: true
+      seedSync: true   // v2.26：原 mockSync 已废弃，异常分支缺数据靠补 demo-seed / dev-only 造数端点
     },
     autoReassign: {
       enabled: true,

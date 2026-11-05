@@ -172,8 +172,8 @@ confirmed_by_user: false   # 用户确认后改为 true
 | Stage | 派发的子 Agent（`.qoder/agents/`） | 产出 |
 |-------|-----------------------------------|------|
 | Stage1 需求 | `mvp-pm-agent` | PRD.md |
-| Stage2 规划 | `mvp-architect` → `mvp-domain-expert` → `mvp-grill-review`；并行段 `mvp-mock-service` + `mvp-single-module-test`/`mvp-scenario-test` → `mvp-test-review` | spec/schema/contract + task/modules + mocks + 测试用例 |
-| Stage3 开发 | `mvp-pipeline-coordinator` + `mvp-backend-tdd` + `mvp-frontend-dev` + `mvp-code-reviewer` | 各模块 DONE 标记 |
+| Stage2 规划 | `mvp-architect` → `mvp-domain-expert` → `mvp-grill-review`；并行段 `mvp-single-module-test`/`mvp-scenario-test` → `mvp-test-review` | spec + shared 契约 + init.sql + demo-seed 清单 + task/modules + 测试用例 |
+| Stage3 开发 | `mvp-pipeline-coordinator` + 每模块一个纵向切片 Agent（`mvp-backend-tdd` 承接，套用 frontend-dev/react-components 技能）+ `mvp-code-reviewer` | 各模块切片 DONE 标记 |
 | Stage3.5 E2E | 主 Agent 直接调用 `kf-mvp-test-e2e` 技能（E2E-Adapt） | E2E_READY |
 | Stage4 集成 | `mvp-stage4-coordinator` + `mvp-debug-fixer` + `mvp-verifier` | 交付归档 |
 | Stage5 复盘 | `mvp-retrospective-agent` | retrospective.md |
@@ -588,7 +588,7 @@ Agent 向用户提问时，遵循以下格式：
 | CP-2 | Stage2 ①完成后 | 架构理解一致性 | 用户同意 spec/schema/api-contract |
 | CP-3 | Stage2 ②完成后 | 模块划分一致性 | 用户同意模块拆分合理 |
 | CP-4 | ↺循环通过后 | 交叉校验结果 | 审查问题已全部修正 |
-| CP-5 | Stage2 ③完成后 | Mock/测试覆盖 | Mock数据和测试场景完整 |
+| CP-5 | Stage2 ③完成后 | 契约/测试覆盖 | shared 契约与 init.sql 字段一致、测试场景完整（v2.26 起不再验 Mock） |
 | CP-6 | 每个后端模块 DONE | 模块实现一致性 | 用户同意模块实现符合预期 |
 | CP-7 | 每个前端页面完成 | 页面实现一致性 | 用户同意页面交互符合预期 |
 | CP-8 | Stage4 集成完成 | 整体交付一致性 | 用户同意交付满足验收标准 |
@@ -606,10 +606,9 @@ decisions/
   ├── stage2-arch-decisions.md
   ├── stage2-biz-decisions.md
   ├── stage2-grill-decisions.md
-  ├── stage2-mock-decisions.md
+  ├── stage2-contract-decisions.md
   ├── stage2-test-decisions.md
-  ├── stage3-backend-<module>-decisions.md
-  ├── stage3-frontend-<page>-decisions.md
+  ├── stage3-slice-<module>-decisions.md
   ├── stage4-integration-decisions.md
   └── stage5-retro-decisions.md
 ```
@@ -1273,7 +1272,14 @@ PRD 评审通过后锁定为 `PRD.md`。锁定的 PRD 是后续所有阶段的�
 
 ---
 
-## Stage 2: 规划阶段 — 子 Agent 编排（architect → domain → grill → mock/test）
+## Stage 2: 规划阶段 — 子 Agent 编排（architect → domain → grill → 测试设计）
+
+> **v2.26 起不做前后端分离**：Stage 2 不再产出独立 Mock 层。契约的唯一真相源是
+> `packages/shared` 的 Zod schema（同仓类型贯通，前端与后端 import 同一份），
+> 数据库结构唯一真相源是 `apps/api/init.sql`，可交互的异常分支数据由 `demo-seed` +
+> dev-only 造数端点承担（见 Stage 4 的双分支门禁）。
+> `api-contract.yaml` 降级为**派生视图**：内容必须能从 Zod schema 对应，
+> R002/R014 仍读它；一旦漂移，以 `packages/shared` 为准并回改视图。
 
 **前置条件**：`PRD.md` 已存在并锁定。
 **执行方式**：派发子 Agent 编排（内部串行+并行混合）
@@ -1282,11 +1288,11 @@ PRD 评审通过后锁定为 `PRD.md`。锁定的 PRD 是后续所有阶段的�
 ### 触发方式
 
 ```javascript
-// 串行段：架构 → 业务 → 交叉审查；锁定后并行段：mock + 测试设计 → 测试审查
-Agent({ subagent_type: 'mvp-architect',      description: '架构设计', prompt: '输入 PRD.md，产出 spec.md + schema.sql + api-contract.yaml 初版。' })
-Agent({ subagent_type: 'mvp-domain-expert',  description: '模块拆分', prompt: '输入 PRD + 架构初版，产出 task.md + modules/*.md。' })
-Agent({ subagent_type: 'mvp-grill-review',   description: '交叉审查', prompt: '双向校验 PRD↔spec↔modules，连续2轮零发现或6轮上限后升级为锁定版。' })
-// 锁定后并行派发 mvp-mock-service / mvp-single-module-test / mvp-scenario-test → mvp-test-review
+// 串行段：架构 → 业务 → 交叉审查；锁定后并行段：测试设计 → 测试审查
+Agent({ subagent_type: 'mvp-architect',      description: '架构设计', prompt: '输入 PRD.md，产出 spec.md + packages/shared 的 Zod 契约 + apps/api/init.sql + api-contract.yaml（派生视图）+ demo-seed 异常分支数据清单。' })
+Agent({ subagent_type: 'mvp-domain-expert',  description: '模块拆分', prompt: '输入 PRD + 架构初版，产出 task.md + modules/*.md（每模块一张纵向切片卡：后端+前端+异常分支验收）。' })
+Agent({ subagent_type: 'mvp-grill-review',   description: '交叉审查', prompt: '双向校验 PRD↔spec↔modules↔shared schema，连续2轮零发现或6轮上限后升级为锁定版。' })
+// 锁定后并行派发 mvp-single-module-test / mvp-scenario-test → mvp-test-review
 ```
 
 ### 脚本内部流程
@@ -1296,48 +1302,60 @@ Agent({ subagent_type: 'mvp-grill-review',   description: '交叉审查', prompt
 阶段① Architect (pro)
   → 输入: PRD.md
   → MQAP: 理解确认清单 → CEP 卡片 → 产出
-  → 产出: spec.md + schema.sql + api-contract.yaml【初版】
+  → 产出: spec.md + packages/shared Zod 契约【唯一真相源】+ init.sql【唯一 DDL】
+          + api-contract.yaml【派生视图】+ demo-seed 数据清单（含每条异常分支的触发数据）
 
 阶段② Domain Expert (flash)
   → 输入: PRD.md + 阶段①产出【初版】
   → MQAP: 理解确认清单 → CEP 卡片 → 产出
   → 产出: task.md + modules/<module>.md【初版】
+          每个模块卡必须含：纵向切片范围（后端路由+service / 前端页面+query hook）、
+          正常分支验收标准、异常分支验收标准（400/401/403/404/409/5xx 逐条列出）
 
 阶段↺ Grill Review (pro) — 循环算法
   → 输入: 阶段① + 阶段②产出
-  → 双向校验（需求覆盖 / 模块边界 / 术语一致性 / 验收标准）
+  → 双向校验（需求覆盖 / 模块边界 / 术语一致性 / 验收标准 / shared 契约与 init.sql 字段一致）
   → 循环: 发现不一致 → 修正(flash) → 重新审查
   → 终止: 连续2轮零发现 或 6轮硬上限
   → 通过 → 所有产出物升级为【锁定版】
 
 // barrier: 串行段全部通过后才进入并行段
 
-阶段③a Mock Service (flash) ────┐
-阶段③b-1 Unit Tests (flash, ≤2) ─┤ 并行
+阶段③b-1 Unit Tests (flash, ≤2) ─┐ 并行
 阶段③b-2 E2E Tests (pro, 串行) ─┤  // MUST use pro model, >=70 cases requires deep reasoning
-阶段③c Test Review (flash) ────┘ 等③a+③b全完成
+阶段③c Test Review (flash) ────┘ 等③b全完成
   → 4项检查: 文件存在性 / API路由有效性 / 场景覆盖 / fixture一致性
   → 通过标准: 无 ERROR
 ```
+
+> **为什么没有 Mock 阶段**：Mock 是"前后端两条队列并行"这一调度形态的产物，不是技术必需。
+> 前端不再等 mock 才能开工，因为后端路由与前端 hook 在同一切片内由同一 Agent 完成；
+> 并行度改由**模块之间**提供，而不是由**前后端之间**提供。
+> 原型确认（客户/驾驶者先看可点的东西）这一收益不丢：它改由 `DEMO_MODE` +
+> 幂等 `demo-seed` + dev-only `POST .../dev/push`、`.../dev/reset` 端点提供，
+> 跑的是真实后端与真实数据库，因此异常分支也是真的。
 
 ### 审查维度速查
 
 | 审查项 | 检查方式 | 谁审谁 |
 |--------|---------|--------|
 | 需求覆盖完整性 | PRD 中的功能需求是否在 spec.md 中都有对应接口/表？ | 审查 ① |
-| 模块边界合理性 | module docs 的接口/表分配是否与 schema + api-contract 一致？ | 审查 ② |
+| 模块边界合理性 | module docs 的接口/表分配是否与 shared 契约 + init.sql 一致？ | 审查 ② |
 | 术语一致性 | PRD / spec / module docs 中同一概念是否使用同一术语？ | 审查双方 |
 | 验收标准对齐 | module docs 的验收标准是否完整覆盖 PRD 的验收标准？ | 审查 ② |
+| **契约单源** | `api-contract.yaml` 的每个字段/枚举是否都能在 `packages/shared` 找到出处？ | 审查 ①↔② |
+| **异常分支可造数** | 每条异常验收标准是否都有 demo-seed 数据或 dev 造数端点可触发？ | 审查 ① |
 
 ### Stage 2 门禁
 
 **全部通过后才能进入 Stage 3：**
 - [ ] `spec.md`【锁定版】已产出
-- [ ] `schema.sql`【锁定版】已产出
-- [ ] `api-contract.yaml`【锁定版】已产出
+- [ ] `packages/shared` 的 Zod 契约【锁定版】已产出（唯一真相源）
+- [ ] `init.sql`【锁定版】已产出（唯一 DDL；`schema.sql` 为其历史别名）
+- [ ] `api-contract.yaml`【派生视图】与 shared 契约逐字段一致
 - [ ] `task.md`【锁定版】已产出
-- [ ] 所有 `<module>.md`【锁定版】已产出
-- [ ] `mocks/` 已搭建并可运行
+- [ ] 所有 `<module>.md`【锁定版】已产出，且每模块含正常/异常双分支验收标准
+- [ ] `demo-seed 数据清单`已产出（异常分支逐条有触发数据）
 - [ ] `integration-tests/modules/` 已产出
 - [ ] `integration-tests/scenarios/` 已产出
 - [ ] ③c 测试用例静态审查通过（无 ERROR）
@@ -1345,7 +1363,7 @@ Agent({ subagent_type: 'mvp-grill-review',   description: '交叉审查', prompt
 
 ### 主 Agent 动作
 
-1. 派发 `mvp-architect → mvp-domain-expert → mvp-grill-review`（串行），锁定后并行派发 `mvp-mock-service` + 测试设计 → `mvp-test-review`
+1. 派发 `mvp-architect → mvp-domain-expert → mvp-grill-review`（串行），锁定后并行派发测试设计 → `mvp-test-review`
 2. 主 Agent 依据依赖图处理串行/并行编排
 3. 等待子 Agent 完成
 4. 审查产出卡片，逐项核对门禁清单
@@ -1365,17 +1383,19 @@ Agent({ subagent_type: 'mvp-grill-review',   description: '交叉审查', prompt
 | # | 文件/目录 | 验证工具 | 说明 |
 |---|----------|---------|------|
 | 1 | `spec.md` | Glob("spec.md") | 架构设计 |
-| 2 | `schema.sql` | Glob("schema.sql") | 数据库 DDL |
-| 3 | `api-contract.yaml` | Glob("api-contract.yaml") | API 契约 |
-| 4 | `task.md` | Glob("task.md") | 模块任务清单 |
-| 5 | `modules/` 目录 | Glob("modules/*.md") | 模块文档 |
-| 6 | `integration-tests/scenarios/` | Glob("integration-tests/scenarios/*.spec.ts") | **Stage 2 ③b-2 E2E 用例** |
-| **7** | **E2E Quality Gate 脚本 PASS** | **Bash: `powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/e2e-quality-gate.ps1 --all`** | **v2.12 质量门禁探针** |
+| 2 | `packages/shared/src/*.ts` | Grep("z\\.object") | **契约唯一真相源** |
+| 3 | `init.sql`（或 `schema.sql`） | Glob("*init.sql") | 数据库 DDL |
+| 4 | `api-contract.yaml` | Glob("api-contract.yaml") | 派生视图（不得与 #2 冲突） |
+| 5 | `task.md` | Glob("task.md") | 模块任务清单 |
+| 6 | `modules/` 目录 | Glob("modules/*.md") | 模块文档（含双分支验收标准） |
+| 7 | `integration-tests/scenarios/` | Glob("integration-tests/scenarios/*.spec.ts") | **Stage 2 ③b-2 E2E 用例** |
+| **8** | **E2E Quality Gate 脚本 PASS** | **Bash: `powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/e2e-quality-gate.ps1 --all`** | **v2.12 质量门禁探针** |
 
 ```
-执行检查（Agent 用 Glob + Bash 工具）：
+执行检查（Agent 用 Glob + Grep + Bash 工具）：
   Glob("spec.md")                              → 必须返回结果
-  Glob("schema.sql")                            → 必须返回结果
+  Grep("z\.object", "packages/shared/src")     → 必须返回结果！契约缺失禁止开工
+  Glob("*init.sql")                            → 必须返回结果
   Glob("api-contract.yaml")                     → 必须返回结果
   Glob("task.md")                               → 必须返回结果
   Glob("modules/*.md")                          → 必须返回结果
@@ -1383,9 +1403,12 @@ Agent({ subagent_type: 'mvp-grill-review',   description: '交叉审查', prompt
   Bash: e2e-quality-gate.ps1 --all              → 🔴 必须 PASS（退出码 0）！
 ```
 
-**🔴 重点检查：如果第 6 项（E2E scenarios）缺失 → Stage 2 ③b-2 被跳过。绝对禁止直接进入 Stage 3。必须先回退执行 Stage 2 ③b-2。**
+**🔴 重点检查：如果第 7 项（E2E scenarios）缺失 → Stage 2 ③b-2 被跳过。绝对禁止直接进入 Stage 3。必须先回退执行 Stage 2 ③b-2。**
 
-**🔴 重点检查：如果第 7 项（Quality Gate）返回 FAIL → E2E 用例质量不达标。常见失败原因：(1) 纯 API 模式无浏览器交互 → 回退补充浏览器用例；(2) 权限交叉矩阵缺失 → 补充 403 测试；(3) 禁止断言模式 → 修复模糊/无内容断言。**
+**🔴 重点检查：如果第 8 项（Quality Gate）返回 FAIL → E2E 用例质量不达标。常见失败原因：(1) 纯 API 模式无浏览器交互 → 回退补充浏览器用例；(2) 权限交叉矩阵缺失 → 补充 403 测试；(3) 禁止断言模式 → 修复模糊/无内容断言。**
+
+**🔴 v2.26 新增：不存在 `mocks/` 这一档产出。任何 Agent 若在 Stage 2 之后自行搭 Mock，视为回归旧分离形态的违规，按 R002 的"契约单源"要求以 `packages/shared` 为准纠正。**
+
 
 ---
 
@@ -1468,7 +1491,11 @@ Bug 修复进入
 
 ---
 
-## Stage 3: 执行阶段 — 子 Agent 并行开发（coordinator + backend + frontend + review）
+## Stage 3: 执行阶段 — 子 Agent 并行开发（coordinator + 纵向切片 + review）
+
+> **v2.26 起并行单位是"模块纵向切片"，不是"后端队列 + 前端队列"。**
+> 一个模块的路由/service/schema 落地与页面/hook/样式由同一 Agent 实例一次做完，
+> 全程打真实后端，不经过 Mock。并行度来自模块之间（依赖图分批），而不是前后端之间。
 
 **前置条件**：Stage 2 门禁全部通过。
 **执行方式**：派发子 Agent 编排（大规模并行 fan-out）
@@ -1477,12 +1504,14 @@ Bug 修复进入
 ### 触发方式
 
 ```javascript
-// Coordinator 先行输出分配方案，再按依赖图 fan-out
-Agent({ subagent_type: 'mvp-pipeline-coordinator', description: '模块调度', prompt: '读 task.md 依赖图，输出模块分配轮次表 + 反模式雷达风险标注。' })
-Agent({ subagent_type: 'mvp-backend-tdd',          description: '后端模块', prompt: '按 <module>.md 验收标准 + api-contract，TDD 实现该模块（红→绿→重构）。' })
-Agent({ subagent_type: 'mvp-frontend-dev',         description: '前端页面', prompt: '基于 Mock 实现页面/组件；涉及 CSS 标 VISUAL_PENDING。' })
-Agent({ subagent_type: 'mvp-code-reviewer',        description: '代码审查', prompt: '独立审查模块实现，验证契约与异常覆盖。' })
+// Coordinator 先行输出切片分配方案，再按依赖图 fan-out
+Agent({ subagent_type: 'mvp-pipeline-coordinator', description: '切片调度', prompt: '读 task.md 依赖图，输出每模块一张纵向切片卡（后端+前端同一负责人）+ 轮次表 + 反模式雷达风险标注。' })
+Agent({ subagent_type: 'mvp-backend-tdd',          description: '模块切片', prompt: '按 <module>.md 双分支验收标准 + packages/shared 契约，TDD 实现该模块的完整纵向切片：后端路由/service → 前端 query hook/页面 → 异常分支可交互数据（demo-seed 或 dev 造数端点）。前端段套用 kf-mvp-frontend-dev 与 kf-mvp-react-components 技能。' })
+Agent({ subagent_type: 'mvp-code-reviewer',        description: '代码审查', prompt: '独立审查模块切片，验证契约单源、双分支覆盖、CSS 副作用。' })
 ```
+
+> `mvp-frontend-dev` 保留给**已有真实后端之后的补做/返工**（例如视觉返工、单独页面修复）。
+> Stage 3 主循环不再把它当"前端并行队列"派发。
 
 ### 脚本内部流程
 
@@ -1490,21 +1519,25 @@ Agent({ subagent_type: 'mvp-code-reviewer',        description: '代码审查', 
 // 第0步: Coordinator 先行
 Coordinator (flash)
   → 读取 task.md 依赖图
-  → 输出: 模块分配方案（轮次表 + 依赖关系）
+  → 输出: 切片分配方案（每模块 = 一个 Agent 实例，后端段 + 前端段 + 造数段串行完成）
 
 // 主循环: 按依赖图分批 fan-out
 while 存在未完成模块:
   1. 扫描状态 → 候选集 = 依赖已满足 ∩ 未分配
-  2. 并行分配候选集:
-     parallel(后端模块 → agent(BACKEND_DEV_PROMPT, flash))
-  3. 每模块完成后:
+  2. 并行分配候选集（模块之间并行，模块内部切片串行）:
+     parallel(模块切片 → agent(SLICE_DEV_PROMPT, flash))
+       切片内部顺序：① 后端（TDD 红→绿→重构，契约从 packages/shared import）
+                    ② 前端（hooks/queries 打真实 API，禁止 import services 直调 — R032）
+                    ③ 异常分支数据（demo-seed 幂等补齐 / dev-only 造数端点）
+                    ④ 自测：正常分支 + 异常分支各至少一条真实请求
+  3. 每切片完成后:
      if 需要审查 → agent(CODE_REVIEW_PROMPT, pro)
   4. 标记 DONE → 释放下游 → 下一轮
-
-// 前端并行开发（基于 Mock）
-parallel(页面模块 → agent(FRONTEND_DEV_PROMPT, flash))
-  前端 Agent 不可自标 DONE（涉及 CSS → VISUAL_PENDING）
 ```
+
+**切片 DONE 的硬条件（新增）**：该模块 `<module>.md` 里列出的每条异常分支，
+都能用真实后端复现一次并给出复现步骤。做不到 → 标 `BLOCKED` 并说明缺哪条造数能力，
+禁止用 Mock 或"逻辑上应该没问题"充数。
 
 ### 文件状态标记（Agent 间通信协议）
 
@@ -1532,6 +1565,8 @@ checks:
   visual_regression: PASS
   visual_layout_integrity: PASS
   visual_human_review: NOT_REQUIRED
+  dual_branch_walkthrough: PASS   # v2.26（R035）：正常分支 + 异常分支清单在真实后端逐条走完
+  exception_branches_walked: 4/4  # 分数不齐 → 不许 DONE，改标 BLOCKED(造数缺失)
 issues: []
 e2e_scenarios:  # v2.10: E2E scenario files covering this module
   - workflows-internal.spec.ts
@@ -1681,7 +1716,8 @@ for i in {1..3}; do npx vitest run; done
 → 再次运行 check-e2e-coverage.js --ci 确认 ≥70 用例通过
 
 # 步骤 4: 首次运行验证
-→ 启动后端服务 + Mock 数据
+→ 启动真实后端 + 播种（DEMO_MODE 打开时由 init.sql + demo-seed 幂等补齐；
+  异常分支数据用 dev-only 造数端点现场造，不启 Mock）
 → 运行全部 E2E（L5 headless）
 → 记录失败到 e2e-first-run-issues.md
 → 区分 E2E Bug vs 后端 Bug
@@ -1763,17 +1799,23 @@ Agent({ subagent_type: 'mvp-verifier',           description: 'MSVP 冒烟', pro
 ### 脚本内部流程
 
 ```
-阶段4.1 后端合并 (flash)
-  → 合并各模块路由到统一入口（app.ts/main.ts）
-  → 验证全局 Schema 一致性
-  → 运行全量单元测试
+阶段4.1 集成合并 (flash)
+  → 合并各模块路由到统一入口（app.ts/main.ts）；切片已完成 后端+前端，本步只收口路由与中间件
+  → 验证全局 Schema 一致性（init.sql ↔ drizzle schema ↔ packages/shared 契约 三方对齐）
+  → 运行全量单元测试（shared + web + api + eslint-rules）
   → 输出合并报告
 
-阶段4.2 前后端联调 (flash)
-  → 前端切换 Mock → 真实后端 API
-  → 按模块逐个联调
+阶段4.2 全链路联调 + 双分支可交互门禁 (flash)  ← v2.26 重写，取代"前端切 Mock → 真实后端"
+  → 起真实后端 + 真实 SQLite（DEMO_MODE 决定是否播种演示数据），浏览器打开真实页面
+  → 按模块逐个走查：**正常分支清单 + 异常分支清单**逐条打勾
+      正常分支：CRUD 生命周期、列表排序/分页/筛选联动、跨页面数据一致性
+      异常分支：400 校验失败（逐字段）、401 未认证/令牌过期、403 越权、404 不存在、
+                409 冲突/唯一约束、空数据态、超长/特殊字符、后端 5xx 与网络中断的前端表现
+  → 每条异常分支必须有**可复现的触发方式**：demo-seed 预置数据，或 dev-only 造数端点
+    （非 development/test/DEMO_MODE 一律 404，禁止把造数端点带进生产）
   → 记录接口不匹配到 integration-issues.md
-  → 问题分类: 契约问题 / 实现问题 / 理解偏差 / Mock偏差
+  → 问题分类: 契约问题（shared 与实现漂移）/ 实现问题 / 理解偏差 / 造数缺失
+  → 🔴 双分支清单未 100% 走完 → 禁止进入 4.3；一条都不可复现的异常分支 = BLOCKED(造数)
 
 阶段4.3 集成测试 (flash)
   → 运行 integration-tests/modules/ + scenarios/
@@ -1786,7 +1828,7 @@ Agent({ subagent_type: 'mvp-verifier',           description: 'MSVP 冒烟', pro
   → 按 `Bug路由矩阵` 分派到对应专业Agent:
       | 后端 Bug   → agent(BACKEND_DEV, flash)    ← 用回后端开发Agent
       | 前端 Bug   → agent(FRONTEND_DEV, flash)   ← 用回前端开发Agent
-      | 契约漂移   → agent(ARCHITECT, pro)         ← 架构师修正契约+同步双方
+      | 契约漂移   → agent(ARCHITECT, pro)         ← 架构师修正 packages/shared 契约，并回改派生视图与实现
       | 视觉 Bug   → agent(FRONTEND_DEV, flash)    ← 前端Agent修，完工标 VISUAL_PENDING
       | 集成 Bug   → agent(COORDINATOR, pro)       ← 协调器协调跨模块修复
       | 数据 Bug   → agent(BACKEND_DEV, flash)     ← 后端Agent修数据层
@@ -1810,7 +1852,7 @@ Agent({ subagent_type: 'mvp-verifier',           description: 'MSVP 冒烟', pro
 | **前端 Bug** | 页面渲染异常、交互无响应、路由404 | `FRONTEND_DEV` | flash | 仅该页面的前端代码 |
 | **契约漂移** | 字段名不一致、枚举值不匹配、响应格式差异 | `ARCHITECT` | **pro** | `api-contract.yaml` + 双端同步修正 |
 | **视觉 Bug** | 布局错乱、样式丢失、响应式失效 | `FRONTEND_DEV` | flash | 修复后标 `VISUAL_PENDING`，等人类确认 |
-| **集成 Bug** | 跨模块调用失败、数据流断裂、Mock-真实不一致 | `COORDINATOR` | **pro** | 协调多模块修改 |
+| **集成 Bug** | 跨模块调用失败、数据流断裂、`packages/shared` 契约与真实实现不一致 | `COORDINATOR` | **pro** | 协调多模块修改 |
 | **数据 Bug** | 约束违反、orphan 记录、事务失败 | `BACKEND_DEV` | flash | DB schema + Repository 层 |
 | **安全 Bug** | XSS/注入/越权/令牌泄露 | `BACKEND_DEV` + `CODE_REVIEW` | flash + **pro** | 后端修 + 独立安全审查 |
 | **E2E Bug** | E2E 用例失败但 API 单独调用正常 | `E2E_ADAPT`（kf-mvp-test-e2e） | **pro** | 仅修正 E2E 用例本身 |
@@ -1859,8 +1901,8 @@ Step 5: 升级条件
 |------|------|---------|---------|
 | 契约问题 | 接口响应与 api-contract.yaml 不一致 | 修正后端 | `BACKEND_DEV` |
 | 实现问题 | 接口符合契约但数据/逻辑错误 | 修正后端 | `BACKEND_DEV` |
-| 理解偏差 | 前端对接口理解与后端设计不一致 | 修正前端 + Mock | `FRONTEND_DEV` + `MOCK_SERVICE` |
-| Mock偏差 | Mock 与真实 API 不一致 | 修正 Mock | `MOCK_SERVICE` |
+| 理解偏差 | 前端对接口理解与后端实现不一致 | 修正该模块纵向切片 | 原切片开发 Agent（`BACKEND_DEV` 承接，套 frontend-dev 技能） |
+| 造数缺失（v2.26 取代「Mock偏差」） | 某条异常分支在真实后端无法复现 | 补 demo-seed 或 dev-only 造数端点 | 原切片开发 Agent（禁止用 Mock 顶替，判 A10） |
 | 契约漂移 | 前后端字段名/枚举值/响应格式不一致 | 同步修正双方 | `ARCHITECT` → 修正契约后分派双端 |
 
 ### Stage 4 门禁（终检）(MUST — v2.5 视觉强化 + v2.6 E2E强化 + v2.10 E2E前置)
@@ -1877,7 +1919,7 @@ Step 5: 升级条件
 - [ ] **安全测试通过**：防刷、注入、XSS、越权全部通过
 - [ ] **性能测试通过**：p99 < 500ms，错误率 < 1%
 - [ ] **数据一致性验证**：无外键违反、无orphan记录
-- [ ] **Mock-后端一致性**：7个维度全部匹配
+- [ ] **契约单源一致性（v2.26）**：`packages/shared` Zod ↔ `init.sql` ↔ 后端实现 ↔ 派生视图 `api-contract.yaml` 四方对齐，7个维度全部匹配（取代原「Mock-后端一致性」）
 - [ ] 无 P0/P1 Bug 遗留
 - [ ] **E2E_READY 标记验证（v2.10）**：`integration-tests/scenarios/E2E_READY` 存在且 `status: "READY"`（Stage 3.5 已保证 ≥70 用例）
 - [ ] **E2E 回归验证（v2.9）**：`node scripts/check-e2e-coverage.js --ci` 退出码 0（确认 Stage 3.5 产出未被破坏）
@@ -1885,8 +1927,8 @@ Step 5: 升级条件
   - L4 与 L5 结果一致，无 HIGH 级别差异
   - 类型1（无头独败）/ 类型2（有头独败）/ 类型3（双方失败）全部清零
 - [ ] **账号自修复验证**：ensureAccountReady 函数正常工作
-- [ ] **API 端点一致性扫描通过（v2.14）**：前端所有 api.xxx() 调用路径与后端所有注册路由完全匹配，无孤端点/缺失路由（扫描 services/*.ts + components/**/*.tsx 中 api.get/post/put/delete(url) 调用 → 与 api-contract.yaml + Mock routes + 真实后端 routes.ts 交叉比对）
-- [ ] **E2E Real 模式通过（v2.13）**：`E2E_MODE=real` 在真实后端（SQLite + bcrypt + JWT）上跑通核心链路，严禁只跑 Mock 后端交付
+- [ ] **API 端点一致性扫描通过（v2.26 真相源更正）**：前端所有 api.xxx() 调用路径与后端所有注册路由完全匹配，无孤端点/缺失路由（扫描 services/*.ts + components/**/*.tsx 中 api.get/post/put/delete(url) 调用 → 与后端 `routes.ts` 实际注册路径交叉比对；`api-contract.yaml` 只是派生视图，不参与判定）
+- [ ] **E2E Real 模式通过（v2.13）**：`E2E_MODE=real` 在真实后端（SQLite + bcrypt + JWT）上跑通核心链路。**本流水线已无 Mock 后端可跑**——凡是"绿了但没打真实后端"的测试，一律视为未验证
 - [ ] **冷启动验收清单通过（v2.13）**：删库重建→种子账号数量正确→快捷登录按钮逐角色真实登录通过（见 MSVP 协议 Step 1/Step 3）
 - [ ] **全流程深度测试**：每个角色核心业务闭环通过
 
@@ -1903,7 +1945,7 @@ Step 5: 升级条件
 - [ ] 前端组件测试
 
 ## 一致性审计
-- [ ] Mock与后端响应格式一致
+- [ ] 前端渲染字段与 `packages/shared` 契约一致（v2.26 起无独立 Mock 层可比对）
 - [ ] 有头与无头测试结果一致
 - [ ] 视觉快照与基线一致
 - [ ] 数据库schema与Drizzle定义一致
@@ -1944,9 +1986,12 @@ Step 5: 升级条件
 | A6 | Console 红色 Error | DevTools Console 中出现 `error` 级别日志 | 未捕获的异常、网络请求失败 |
 | A7 | 页面布局错乱 | 按钮重叠、文字溢出、组件未对齐 | CSS 未加载、样式冲突 |
 | A8 | 环境变量/配置缺失 | 应用启动但功能异常 | `.env` 文件缺失或值错误 |
-| A9 | 快捷登录凭证与种子不匹配（v2.13） | 登录页快捷按钮逐角色点击登录 | Mock 与真实 DB 种子数据不同步，真实后端缺少快捷按钮对应账号 |
+| A9 | 快捷登录凭证与种子不匹配（v2.13） | 登录页快捷按钮逐角色点击登录 | 登录页写死的凭证与 `init.sql` / `demo-seed` 实际播种的账号不同步，真实后端缺少对应账号 |
+| A10 | 异常分支不可复现（v2.26 新增） | 按模块异常清单逐条在真实后端触发 | 缺造数能力（无 seed 数据、无 dev-only 端点）→ 该分支从未被真实验证过，等于没做 |
 
-> **门禁**：A1-A9 必须全部为零。任何 A 类 Bug → 不通过 → 修复 → 重新 MSVP → 清零才放行。
+> **门禁**：A1-A10 必须全部为零。任何 A 类 Bug → 不通过 → 修复 → 重新 MSVP → 清零才放行。
+> A10 是 v2.26 去 Mock 之后必须补上的判据：以前异常分支靠 Mock 返回假 4xx 来"演示"，
+> 现在必须在真实后端复现，否则它根本没被验证过。
 
 #### MSVP验证流程
 
@@ -1957,7 +2002,7 @@ Step 1: 冷启动
   ├── npm install / pnpm install（从零安装依赖）
   ├── npm run db:push（初始化数据库）
   ├── npm run db:seed（种子数据）
-  ├── 确认种子日志输出的账号数量与 seeds/ 定义一致（v2.13）
+  ├── 确认种子日志输出的账号数量与种子真源定义一致（v2.27：真源按 R010 定位，不要求根 seeds/ 目录）
   └── npm run dev（启动开发服务器，确认端口与 .env 一致无漂移）
 
 Step 2: 打开浏览器
@@ -1972,6 +2017,17 @@ Step 3: 执行冒烟路径
   ├── 遍历所有菜单项（逐一检查是否可访问、是否 404）
   ├── 执行核心用户旅程
   └── 每个关键步骤 → 截图
+
+Step 3.5: 双分支可交互走查（v2.26 新增，R035 的执行形态）
+  ├── 取该模块 <module>.md 的【正常分支清单】+【异常分支清单】，逐条打勾
+  ├── 正常分支：CRUD 生命周期 / 列表排序·分页·筛选联动 / 跨页面数据一致
+  ├── 异常分支：400 逐字段校验、401 未认证与令牌过期、403 越权、404 不存在、
+  │             409 唯一约束冲突、空数据态、超长与特殊字符、5xx/断网时的前端表现
+  ├── 每条异常分支都要在真实后端真实触发一次：
+  │     demo-seed 预置数据 → 直接操作；或 dev-only 造数端点（POST .../dev/push、.../dev/reset）现场造
+  │     触发前先确认环境闸门：非 development/test/DEMO_MODE 造数端点必须 404（否则是把造数口带进生产）
+  ├── 每条记录：触发方式 / 实际状态码 / 页面呈现（截图）/ 是否符合验收标准
+  └── 有任一条无法复现 → 记 A10，BLOCKED(造数缺失)，禁止改用 Mock 顶替
 
 Step 4: A 类阻塞 Bug 检查
   ├── Console 是否有 error → P0
@@ -2371,7 +2427,7 @@ const E2E_COVERAGE_CHECKER = {
         ├── 改善实现：需求不变但改进技术方案/重构/性能优化
         └── 需求调整：文案变更、字段重命名、业务规则微调
               ↓
-        必须执行：PRD修订 → Stage2架构重审流水线 → ↺审查 → Mock同步 → 测试更新 → Stage3开发流水线 → Stage4集成流水线
+        必须执行：PRD修订 → Stage2架构重审流水线 → ↺审查 → 契约单源更新（packages/shared Zod + init.sql + demo-seed 造数） → 测试更新 → Stage3开发流水线 → Stage4集成流水线
 ```
 
 > **判定红线**：如果变更需要修改 PRD 文档中的**任何一个字**（除错别字修正外），即归为非Bug变更，触发完整流水线。
@@ -2381,7 +2437,7 @@ const E2E_COVERAGE_CHECKER = {
 | 迭代场景 | Stage1 | Stage2 | Stage3 | Stage4 |
 |---------|--------|--------|--------|--------|
 | 新增独立模块 | 更新PRD | 仅新模块走流水线 | 仅新模块 | 集成新模块 |
-| 非Bug变更 | 更新PRD | 重走流水线（受影响模块+接口+Mock+测试） | 重新开发变更模块 | 重新集成 |
+| 非Bug变更 | 更新PRD | 重走流水线（受影响模块+接口契约+异常分支造数+测试） | 重新开发变更模块 | 重新集成 |
 | 纯Bug修复 | 跳过 | 跳过 | 跳过 | 仅Stage4 流水线 |
 
 ---
@@ -2393,11 +2449,11 @@ const E2E_COVERAGE_CHECKER = {
 | Stage1 | 串行 | 1 个子任务（PM） |
 | Stage2 ①→② | 串行 | 架构先 → 业务后 |
 | Stage2 ↺ | 串行循环 | grill 审查 → 修正 → 再审（连续2轮零发现或6轮硬上限） |
-| Stage2 ③a/③b-1/③b-2 | 并行 | Mock + 两类测试 同时 fan-out |
+| Stage2 ③b-1/③b-2 | 并行 | 两类测试同时 fan-out（v2.26 起 ③a Mock 阶段已取消） |
 | Stage2 ③b-1 内部 | 最多 2 | 按模块平分 |
-| Stage2 ③c | 串行 | ③a/③b全部完成后方可启动 |
+| Stage2 ③c | 串行 | ③b 全部完成后方可启动 |
 | Stage3 后端 | Dynamic | 主 Agent 按依赖图 fan-out，无硬上限 |
-| Stage3 前端 | Dynamic | 基于 Mock，与后端并行 fan-out |
+| Stage3 前端 | 并入切片 | v2.26：不再独立并行队列，页面/hook 由同一切片 Agent 打完真实后端 |
 | Stage4 | 串行 | 合并 → 联调 → 测试 → 修复 |
 | Stage5 | 串行 | 1 个复盘子任务 |
 
@@ -2410,7 +2466,7 @@ const E2E_COVERAGE_CHECKER = {
 - **Stage 不可跳过（全量/增量）**：门禁是硬约束。不要在 Stage2 还没锁定时就开始 Stage3 的开发，Schema 变更会导致所有模块返工。
 - **Schema 锁定后严禁修改**：如果必须变更，先通知所有依赖该表的 Agent，走变更评审后再修改。
 - **模块边界不可交叉**：Backend Agent 只写自己模块的 routes/service/schema。跨模块调用通过 API，不直接访问其他模块的数据库或 Service。
-- **Mock 与真实 API 必须一致**：两者基于同一 `api-contract.yaml` 生成。联调发现问题时更新契约文件，然后同步修改 Mock 和真实实现。
+- **契约只有一个真相源（v2.26）**：`packages/shared` 的 Zod schema。`api-contract.yaml` 是派生视图，联调发现接口不匹配时先改 shared 契约与实现，再回改派生视图；不允许出现「改 Mock 让它对上前端」这种操作——那正是 changePassword 那类 404 缺陷的温床。
 - **TDD 是强制流程**：先写测试（RED）→ 再写实现（GREEN）→ 最后重构（REFACTOR）。不允许先写实现再补测试。
 - **文件驱动通信**：Agent 之间不直接发消息。Coordinator 通过扫描文件系统中的 DONE/BLOCKED 标记了解进度。产出物文件即状态信号。
 - **并行度自动伸缩**：主 Agent 按 `task.md` 依赖图动态 fan-out 子 Agent，无硬上限。无依赖的模块可全部并行。
@@ -2455,12 +2511,12 @@ const E2E_COVERAGE_CHECKER = {
 | R006 | v2.12 | 权限交叉矩阵角色×端点必测 | BLOCKER | 3.5,4 | — |
 | R007 | v2.12 | 状态双向断言 target↑+source↓ | HIGH | 3.5,4 | — |
 | R008 | v2.12 | 断言质量门禁，禁宽松匹配 | HIGH | 3.5,4 | — |
-| R009 | v2.13 | E2E 双模验收 Mock+Real | BLOCKER | 4 | — |
-| R010 | v2.13 | 种子数据单一真源 seeds/ | BLOCKER | 2,4 | `check-seed-single-source.ps1` |
-| R011 | v2.13 | 端口配置化 .env 读取 | BLOCKER | 2 | `check-port-config.ps1` |
-| R012 | v2.13 | API 路径唯一真源 contract | BLOCKER | 3,4 | `check-api-path-source.ps1` |
+| R009 | v2.26 | E2E 真实后端双分支验收（原双模已废） | BLOCKER | 4 | — |
+| R010 | v2.27 | 种子数据单一真源（按定义形状定位，不限目录） | BLOCKER | 2,4 | `check-seed-single-source.ps1` |
+| R011 | v2.27 | 端口配置化：任意端口字面量都扫，env 声明值才是例外 | BLOCKER | 2 | `check-port-config.ps1` |
+| R012 | v2.26 | API 路径真源 = 后端注册路由（`api-contract.yaml` 降为派生视图） | BLOCKER | 3,4 | `check-api-path-source.ps1` |
 | R013 | v2.14 | UI 数据加载 @headed 下拉必测 | BLOCKER | 3.5,4 | — |
-| R014 | v2.14 | API 端点交叉校验 contract+routes | BLOCKER | 4 | `check-api-endpoints.ps1` |
+| R014 | v2.26 | API 端点交叉校验：前端调用 ↔ 后端实际注册路由 | BLOCKER | 4 | `check-api-endpoints.ps1` |
 | R015 | v2.14 | 禁止静默吞错误 .catch(()=>{}) | BLOCKER | 3,4 | `check-silent-catch.ps1` |
 | R016 | v2.14 | CI 门禁端点一致性扫描 | BLOCKER | 4 | `check-api-endpoints.ps1` |
 | R017 | v2.16 | 集成点全链路检查 数据层→判断层→渲染层 | BLOCKER | 4 | — |
@@ -2475,6 +2531,17 @@ const E2E_COVERAGE_CHECKER = {
 | R026 | v2.20 | 禁硬编码 hex/rgba 与 Tailwind 原始色类 | BLOCKER | 3,4,fix | `check-liquid-glass-style.ps1` |
 | R027 | v2.20 | Liquid Glass 圆角 12px / backdrop-blur 12px | HIGH | 3,4,fix | — |
 | R028 | v2.20 | 设计 token 镜像防漂移 | BLOCKER | 3,4 | `check-token-sync.ps1` |
+| R029 | v2.25 | 技能/Agent frontmatter 严格 YAML 可解析 | BLOCKER | 3,4,fix | `check-skill-frontmatter.ps1` |
+| R030 | v2.25 | 禁 `.toISOString().slice()` 截日期（时区前移一天） | BLOCKER | 3,4,fix | starter `no-toisostring-slice` |
+| R031 | v2.25 | 禁裸读 `window.innerWidth`（用 `useIsMobile()`/断点类） | HIGH | 3,4,fix | starter `no-raw-viewport-check` |
+| R032 | v2.26 | UI 层禁值导入 services（走 Query hooks） | HIGH | 3,4,fix | starter `no-service-import-in-ui` |
+| R033 | v2.26 | 写审计的导出 service 函数首参必须为 OpCtx | BLOCKER | 3,4,fix | starter `no-audit-fn-without-opctx` |
+| R034 | v2.26 | 禁裸调 `writeLog`，handler 默认禁手写 `hasPermission` | BLOCKER | 3,4,fix | starter `no-restricted-syntax` |
+| R035 | v2.26 | 前置可交互双分支门禁（正常 + 异常分支清单） | BLOCKER | 3,4,fix | — |
+| R036 | v2.27 | route 层禁直连数据库（下沉到 service） | BLOCKER | 3,4,fix | starter `route-db-guard.test.js` |
+| R037 | v2.27 | 业务模块禁直连 `ali-oss`（走 `shared/oss.ts` 双模） | HIGH | 3,4,fix | starter `api-oss-import-guard.test.js` |
+| R038 | v2.27 | 前端权限只消费 wire 下发的 `user.permissions` | BLOCKER | 3,4,fix | starter `web-permission-import-guard.test.js` |
+| R039 | v2.27 | 单文件 450 行棘轮（只许减不许增） | HIGH | 3,4,fix | starter `arch:check` |
 
 > `—` = 需语义分析，暂不可脚本化。Agent 自行遵守，违规血案见 PLAYBOOK.md。
 > **Agent 使用方式**：不再需要记住每条规则全文。开发/联调前运行对应 Stage 聚合门禁脚本 → PASS 才继续。

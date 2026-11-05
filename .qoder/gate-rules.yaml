@@ -27,7 +27,7 @@ rules:
     name: 响应格式标准化
     severity: BLOCKER
     stage: [stage4]
-    check_script: scripts/check-response-format.ps1
+    check_script: null  # v2.26 更正：该脚本从未存在。由 kf-mvp-backend-tdd 的响应格式自检 + mvp-code-reviewer 承担；e2e-quality-gate.ps1 的「CRUD 生命周期」指标只覆盖列表类
     applies_to: [backend-tdd, stage4-coordinator]
     description: |
       所有列表类端点 MUST 返回 { data: { list: [...], total: N } }。
@@ -49,7 +49,7 @@ rules:
     name: E2E 必须穿透代理层
     severity: BLOCKER
     stage: [stage4]
-    check_script: scripts/check-e2e-proxy.ps1
+    check_script: null  # v2.26 更正：该脚本从未存在。由 templates/e2e/playwright.config.ts 的 baseURL 约定 + code-review 承担
     applies_to: [kf-mvp-test-e2e]
     description: |
       E2E 测试 MUST 通过前端开发服务器的代理层访问后端，严禁直连后端端口。
@@ -81,7 +81,7 @@ rules:
     name: 权限交叉矩阵必测
     severity: BLOCKER
     stage: [stage3.5, stage4]
-    check_script: scripts/check-e2e-permission-matrix.ps1
+    check_script: scripts/e2e-quality-gate.ps1  # v2.26 更正：改指向实际存在的聚合门禁（指标 2「权限矩阵」）
     applies_to: [kf-mvp-test-e2e]
     description: |
       多角色项目必须生成角色×端点组矩阵，每个交叉格 = 1 条必写用例（含预期 403 格）。
@@ -108,29 +108,44 @@ rules:
 
   # ---- v2.13 规则 ----
   - id: R009
-    version: v2.13
-    name: E2E 双模验收
+    version: v2.26
+    name: E2E 真实后端双分支验收
     severity: BLOCKER
     stage: [stage4]
-    check_script: scripts/check-e2e-dual-mode.ps1
+    check_script: null  # v2.26 更正：check-e2e-dual-mode.ps1 从未存在；双模已随去 Mock 失效，改为 R035 的双分支清单
     applies_to: [stage4-coordinator, kf-mvp-test-e2e, verifier]
     description: |
-      Stage4 验收前 E2E MUST 跑两轮：Mock 模式全量 + Real 模式核心链路。
-      两轮全部通过才能标记 Stage4 完成。
+      v2.26 起没有 Mock 层，"Mock 全量 + Real 核心链路"两轮制随之作废。
+      替代要求：所有 E2E MUST 在真实后端 + 真实 SQLite 上运行（含异常分支造数），
+      核心链路 MUST 覆盖 400/401/403/404/409 至少各一条；
+      任何"只跑 Mock 后端就交付"的判定按 BLOCKER 处理。
+      具体清单与可交互复现要求见 R035。
 
   - id: R010
-    version: v2.13
+    version: v2.27
     name: 种子数据单一真源
     severity: BLOCKER
     stage: [stage2, stage4]
     check_script: scripts/check-seed-single-source.ps1
-    applies_to: [architect, mock-service, verifier]
+    applies_to: [architect, backend-tdd, verifier]
     description: |
-      测试账号/基础数据 MUST 存放在独立 seeds/ 目录。
-      Mock 与真实 DB MUST import 同一份定义，严禁各自维护两份账号列表。
+      v2.27 校准：不要求目录形状，只要求「定义点唯一」。根 seeds/ 只是候选之一 ——
+      monorepo starter 的种子在 apps/api/scripts/seed-dev.ts，按形状拦必误报（同 B026 病根）。
+      硬要求：
+        1) 至少有一处种子源（路径含 seed/seeds/fixtures 且定义账号记录）—— 没有种子就没有
+           可复现的异常分支造数，R035 双分支走查无法执行；
+        2) 非种子文件不得自带账号记录：ident+cred 字面量共现，或 insert(users) 附近带字面量 values；
+        3) 多个种子源之间必须存在 import 引用关系，否则是并行两套定义；
+        4) init.sql / bootstrap*.sql 这类派生启动脚本必须有生成器（手写 SQL 与种子漂移 = B028 机制）。
+      v2.26 前第 2 条写作「Mock 与真实 DB 各一份」；Mock 层已随去前后端分离消失，旧措辞使该子检查恒不命中。
+      实测标定（starter 0005fa1）：命中 apps/api/src/db.ts 结构自举里 inline 插入 admin ——
+      与 seed-dev.ts 的 admin 行构成两套定义（框架侧只报不修）。
+      已声明盲区：账号由 DB 查询或变量拼接得到时识别不到；文件名含 test/spec 的 fixture 放行；
+      scripts/ 下代码生成器（含 writeFileSync）里的凭证按「产物模板」放行（实测 gen-module.ts）；
+      账号标识符字面量限定 ASCII 形态，中文标签/非 ASCII 用户名识别不到。
 
   - id: R011
-    version: v2.13
+    version: v2.27
     name: 端口配置化
     severity: BLOCKER
     stage: [stage2]
@@ -138,6 +153,15 @@ rules:
     applies_to: [architect]
     description: |
       标准端口 API=3333、WEB=5555。所有配置文件 MUST 从 .env 读取，禁止硬编码。
+      v2.27 两处校准（都是「门禁第一次对上权威 starter 就误报」）：
+        1) .env 被 gitignore、提交 .env.example 模板是常规做法 → 二者有一即认可；
+        2) 例外清单由 env 文件里**声明过的端口值**构成（如 starter 的 PORT=3000 固定值），
+           不再把所有字面量一律判违规。
+      检测面从「6 个写死的端口号」改为「任意端口字面量」（URL 的 ://host:PORT 与 port: PORT 两种形态）。
+      旧版的病：端口清单写死在检查器里，而 B009 那类漂移（5173→5177）恰好发生在清单之外 ——
+      反例 fixture 曾返回 PASS，即静默漏检（B025/B027 同类）。
+      已声明盲区：只扫配置文件清单内的文件名；同号不同义（proxy 指 5173 且 WEB_PORT=5173）会被放行；
+      行内含 API_PORT/WEB_PORT 等 env 变量名时整行放行，故「硬编码 + 注释提到 env」会漏。
 
   - id: R012
     version: v2.13
@@ -147,8 +171,9 @@ rules:
     check_script: scripts/check-api-path-source.ps1
     applies_to: [frontend-dev, mock-service]
     description: |
-      api-contract.yaml 是前端 service 层、真实后端路由、Mock 服务器的唯一路径真源。
-      前端 services/*.ts 请求路径 MUST 从 contract 提取，严禁按 Mock 约定编写。
+      v2.26 契约真源层级：后端注册路由（代码） = packages/shared 的 Zod 契约 > api-contract.yaml（派生视图）。
+      前端 services/*.ts 与 hooks/queries/* 的请求路径 MUST 与后端实际注册路由一致，
+      严禁按 Mock 约定或按派生视图"看起来像"来写；派生视图与代码漂移时以代码为准并回改视图。
 
   # ---- v2.14 规则 ----
   - id: R013
@@ -156,7 +181,7 @@ rules:
     name: UI 数据加载路径必测
     severity: BLOCKER
     stage: [stage3.5, stage4]
-    check_script: scripts/check-e2e-headed-ui.ps1
+    check_script: null  # v2.26 更正：该脚本从未存在。由 e2e-quality-gate.ps1 指标 1「浏览器交互比」部分覆盖，弹窗下拉选项需 @headed 人工/Agent 复核
     applies_to: [kf-mvp-test-e2e]
     description: |
       E2E @headed 测试 MUST 包含至少 1 条"打开创建/编辑弹窗 + 验证下拉/选择器出现选项"用例。
@@ -170,7 +195,12 @@ rules:
     applies_to: [stage4-coordinator]
     description: |
       Stage 4.2 联调前 MUST 提取前端所有 api.get/post/put/delete(url) 调用路径，
-      与 contract + Mock routes + 真实后端 routes 三方交叉比对。
+      与「后端实际注册路由」交叉比对（v2.26：从扫描 .route()/.get() 注册推导，含 :param 与尾斜杠折叠），
+      派生视图 api-contract.yaml 作为补充命中源。
+      判违规的条件是"两边都没有" —— 只看契约会把契约漂移误判成 Agent 自创端点（实测 6 条假阳性）。
+      已声明盲区：模板串路径（含 ${}）与 :param 字面量跳过；三层以上嵌套挂载、app.use() 别名挂载识别不到；
+      baseURL 前缀（如 axios baseURL=/api 与前端又写一层 /api）造成的重复前缀只在
+      剥掉一层后仍无匹配时才报出；未发现任何后端路由文件时输出 degraded=true + WARN，覆盖面降级不静默。
 
   - id: R015
     version: v2.14
@@ -453,13 +483,115 @@ rules:
       因此 logger.writeLog(...) 成员调用、`import { writeLog as log }` 别名转承、
       以及 const w = writeLog 后的间接调用都不在拦截范围；权限语义正确性由 mvp-code-reviewer 审查。
 
+  - id: R035
+    version: v2.26
+    name: 前置可交互双分支门禁（正常分支 + 异常分支清单）
+    severity: BLOCKER
+    stage: [stage3, stage4, fix]
+    check_script: null  # 由 mvp-verifier 的 MSVP 协议 + 真实浏览器执行清单承担，不适合静态扫描
+    applies_to: [verifier, stage4-coordinator, pipeline-coordinator, backend-tdd, frontend-dev]
+    description: |
+      v2.26 去前后端分离后的替代验收机制：不再有"原型在 Mock 上确认"这一档，
+      改为在真实后端 + 真实数据库上做**前置可交互**双分支走查。
+      硬要求：
+        1) 每模块 <module>.md 必须同时有【正常分支清单】与【异常分支清单】，异常至少覆盖
+           400 逐字段校验 / 401 未认证与令牌过期 / 403 越权 / 404 不存在 / 409 唯一约束冲突 /
+           空数据态 / 超长与特殊字符 / 后端 5xx 或断网时的前端表现；
+        2) 每条异常分支必须有**可复现触发方式**：demo-seed 预置数据，或 dev-only 造数端点
+           （starter 形态：POST /notifications/dev/push、POST /notifications/dev/reset，
+           非 development/test/DEMO_MODE 一律 404 —— 造数端点禁止进生产）；
+        3) 走查在真实浏览器里做，不是看代码或看测试绿；
+        4) 清单未 100% 走完 → 禁止进入 Stage 4.3；某条不可复现 → BLOCKED(造数缺失)，
+           禁止用 Mock 或"逻辑上应该没问题"充数。
+      已声明盲区：清单本身的完备性靠 mvp-domain-expert 与 mvp-grill-review，不是靠静态检查；
+      "点了但没看出问题"的假通过靠 MSVP 的 A 类 Bug 判据兜底，仍可能漏；
+      造数端点是否真的 404 取决于部署环境配置正确，本规则不自动验 env 值。
+      立规依据（血案级实证）：权威 starter 的 changePassword 打到不存在的路由，
+      真实 curl 404，而 270 个前端单测全绿 —— mock 掉的 axios 把错误字面量断成"正确路径"。
+      Mock 层永远抓不到这类问题，因为 mock 是按前端期望写的。
+
+  - id: R036
+    version: v2.27
+    name: route 层禁止直连数据库
+    severity: BLOCKER
+    stage: [stage3, stage4, fix]
+    check_script: null  # 由 starter ESLint 承担：eslint.config.js 的 route 块（no-restricted-imports + no-restricted-syntax），断言见 eslint-rules/route-db-guard.test.js
+    applies_to: [backend-tdd, code-reviewer]
+    description: |
+      v2.27 从权威 starter 同步的门禁：查询/写入与业务规则必须下沉到同模块 *.service.ts，
+      *.route.ts 保持薄 handler（只解析请求、调 service、mapServiceError、返回 ok/fail）。
+      拦截面：静态 import / re-export / import type / 动态 import() / require() 五种形态，
+      命中 **/db*、drizzle-orm、drizzle-orm/sqlite-core、bun:sqlite。
+      只读 route（如 modules/log）同样受约束——service 负责 SQL，不接 OpCtx。
+      已声明盲区：只约束 route 层文件，service 里直连 DB 是设计允许的；
+      通过 `import * as db from "../../db.js"` 的 namespace 导入能拦住（走 no-restricted-imports 的路径匹配），
+      但把 getDrizzle 结果存进模块级变量再在别处使用不在检查范围；
+      "路由里塞业务逻辑"本身不由本规则判定，靠 mvp-code-reviewer。
+
+  - id: R037
+    version: v2.27
+    name: 业务模块禁止直连对象存储 SDK
+    severity: HIGH
+    stage: [stage3, stage4, fix]
+    check_script: null  # 由 starter ESLint 承担：eslint.config.js api modules 块（no-restricted-imports + no-restricted-syntax），断言见 eslint-rules/api-oss-import-guard.test.js
+    applies_to: [backend-tdd, code-reviewer]
+    description: |
+      上传/下载统一走 apps/api/src/shared/oss.ts 双模封装：
+      OSS_ACCESS_KEY_ID / OSS_ACCESS_KEY_SECRET / OSS_BUCKET 三者同时配置才启用 OSS 模式，
+      否则自动降级本地 mock 存储（mock 的本地回退路由由业务方传入 MockOssRoutes）。
+      业务模块直连 ali-oss 会让"无凭证环境跑不通"变成集成期才爆炸的缺陷，
+      也绕过 UPLOAD_MAX_SIZE_MB 的统一上限。
+      模块测试文件放行（允许 mock SDK）；shared/oss.ts 是唯一合法入口。
+      已声明盲区：只拦 import 形态，运行期通过依赖注入拿到的 client 不检查；
+      审计与权限由调用方 service 自行决定，本规则不判"该不该审计"；
+      SQLite 运维（shared/sqlite-ops.ts：stats / VACUUM INTO / 热备）没有对应 import 门禁，零表依赖但也靠评审兜底。
+
+  - id: R038
+    version: v2.27
+    name: 前端权限只消费 wire 下发的 user.permissions
+    severity: BLOCKER
+    stage: [stage3, stage4, fix]
+    check_script: null  # 由 starter ESLint 承担：eslint.config.js web 块（no-restricted-imports，importNames），断言见 eslint-rules/web-permission-import-guard.test.js
+    applies_to: [frontend-dev, code-reviewer, verifier]
+    description: |
+      apps/web/src/** 禁止 import ROLE_PERMISSIONS / ALL_PERMISSIONS / permissionsForRole 自行推导角色。
+      唯一数据源：登录成功时写入 auth store 的 user.permissions: string[]
+      （GET /users/me 同样返回但不回写 store；refresh 只旋转 token、不刷新角色）。
+      消费方式：usePermission().can/canAny 或 <PermissionGate perm={PERMISSIONS.X}>；
+      menu-config.ts 的 MenuItem.permission 由侧边栏与 ⌘K 自动过滤，不填默认全员可见。
+      与 R035 双分支直接相关：前端自行推导 = 权限矩阵的第二真相源，
+      "看起来没权限但后端其实放行"（或反之）在 Mock/单测里永远发现不了。
+      已声明盲区：namespace import（import * as shared 后取 shared.ROLE_PERMISSIONS）不受 importNames 约束，靠评审兜底；
+      只拦值导入形态，re-export 已覆盖但 `const {ROLE_PERMISSIONS} = await import("shared")` 走不到；
+      **导航隐藏 ≠ 鉴权**——页面/接口的真实权限仍由后端 requirePermission 把关，本规则不验后端配得对不对。
+
+  - id: R039
+    version: v2.27
+    name: 单文件 450 行棘轮（只许减不许增）
+    severity: HIGH
+    stage: [stage3, stage4, fix]
+    check_script: null  # 由 starter arch:check 承担：scripts/arch-check.ts 的 MAX_LINES + LONG_FILE_RATCHET
+    applies_to: [backend-tdd, frontend-dev, code-reviewer]
+    description: |
+      作用域：apps/web/src/pages 下 .tsx + apps/api/src/modules/**/*.ts；口径同 wc -l，硬上限 450 行。
+      存量超长文件进 LONG_FILE_RATCHET 白名单，行数必须等于基线：
+        overlong-ratchet-exceeded（回涨）/ -stale（已达标未移除条目）/ -unlowered（低于基线未下调）/ -missing（条目指向不存在的文件）。
+      软线 400 行触发拆分，拆分对象是自包含大块（弹窗/表单体 → pages/<module>/components/，
+      表单与业务逻辑 → pages/<module>/hooks/），不为凑行数硬拆小块。
+      与流水线关系：纵向切片让单模块前后端代码由同一 Agent 产出，超长文件是"切片粒度太大"的信号，
+      应回到 Coordinator 重新拆模块边界，而不是继续堆。
+      已声明盲区：白名单按模板 demo 页路径写死，scaffold 生成项目靠 pruneMissingLongFileRatchet() 剪枝，
+      helper 依赖 `const LONG_FILE_RATCHET` 字面量与单行条目格式，改这两个形态需同步改 helper；
+      行数不衡量圈复杂度与职责混杂，一个 450 行的上帝文件照样能过；
+      Windows 下路径必须先 toPosix 再比白名单键，否则条目全部误判为 -missing。
+
 # ============================================================
 # Stage 门禁映射（供聚合脚本使用）
 # ============================================================
 gates:
   stage3:
     description: "Stage 3 入口门禁 — 开发前必须通过的规则"
-    rules: [R002, R004, R012, R015, R018, R019, R021, R022, R023, R024, R025, R026, R027, R028, R029, R030, R031, R032, R033, R034]
+    rules: [R002, R004, R012, R015, R018, R019, R021, R022, R023, R024, R025, R026, R027, R028, R029, R030, R031, R032, R033, R034, R035, R036, R037, R038, R039]
     aggregate_script: scripts/check-stage3-gate.ps1
 
   stage3.5:
@@ -469,10 +601,10 @@ gates:
 
   stage4:
     description: "Stage 4 入口门禁 — 集成验收前必须通过的规则"
-    rules: [R001, R003, R005, R006, R007, R008, R009, R010, R012, R013, R014, R015, R016, R017, R018, R019, R021, R022, R023, R024, R025, R026, R027, R028, R029, R030, R031, R032, R033, R034]
+    rules: [R001, R003, R005, R006, R007, R008, R009, R010, R012, R013, R014, R015, R016, R017, R018, R019, R021, R022, R023, R024, R025, R026, R027, R028, R029, R030, R031, R032, R033, R034, R035, R036, R037, R038, R039]
     aggregate_script: scripts/check-stage4-gate.ps1
 
   fix:
     description: "修复模式门禁 — 任何 Bug 修复必须通过的最小审查（v2.17）"
-    rules: [R020, R021, R022, R023, R024, R025, R026, R027, R029, R030, R031, R032, R033, R034]
+    rules: [R020, R021, R022, R023, R024, R025, R026, R027, R029, R030, R031, R032, R033, R034, R035, R036, R037, R038, R039]
     aggregate_script: null  # 修复模式不能脚本化；由 quality-gate.md（行为真源）+ settings.json hooks.PostToolUse → scripts/quality-gate-hook.ps1（路径命中即派发审查/冒烟）联合驱动

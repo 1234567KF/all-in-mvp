@@ -28,7 +28,7 @@ skills:
 ```
 1. 接收归属不明的 Bug → 阅读 Bug 报告
 2. 复现 Bug → 运行相关测试确认 Bug 存在
-3. 定位根因 → 确定 Bug 属于哪个模块（后端/前端/Mock）
+3. 定位根因 → 确定 Bug 属于哪个纵向切片（后端/前端/契约，v2.26 起不再有 Mock 这一类）
 4. 标记根因分类 → CAUSE:PRD_*/DESIGN_*/IMPL_*
 5. 查询 module_agent_map → 找到该模块的原开发 Agent
 6. 生成 Bug 路由报告 → 将完整诊断信息发给原开发 Agent

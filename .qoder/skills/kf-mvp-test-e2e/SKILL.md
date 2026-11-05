@@ -1339,34 +1339,42 @@ await expect(page.locator('[data-testid="recent-list"]')).toBeVisible(); // 其�
 
 ---
 
-# 双模式运行（v2.13 强制 — Mock + Real）
+# 运行模式（v2.26 更正：只有 Real 一种）
 
 > **背景血案**：E2E 92/92 全绿，但全部跑在内存 Mock 服务器上；人工启动真实 SQLite 后端后，快捷登录立即报密码错误。测试环境与验收环境不是同一套后端，是测试全绿但一跑就挂的万恶之源。
+> **v2.26 结论**：既然"Mock 模式全绿"从来不能作为验收依据，就没有保留它的理由——
+> Stage3 切片已经打真实后端，E2E 也不再配 mock-launcher。原「双模式」段落里的 Mock 侧全部作废。
 
-## 两种模式定义
+## 唯一模式定义
 
 | 模式 | 后端 | 用途 | 命令 |
 |------|------|------|------|
-| **Mock 模式** | 内存 Mock 服务器 | 开发阶段快速反馈、CI 预检 | `bunx playwright test` |
-| **Real 模式** | 真实后端（SQLite + bcrypt + JWT） | Stage4 人工验收前的最终验证（强制门禁） | `E2E_MODE=real bunx playwright test --config tests/e2e/playwright.real.config.ts` |
+| **Real** | 真实后端（SQLite + bcrypt + JWT） | 开发期反馈 + Stage4 验收门禁（同一套后端） | `bunx playwright test --config tests/e2e/playwright.real.config.ts` |
+
+> 想要"快"，靠的是模块内单测与 `demo-seed` 幂等重放，不是换一套假后端。
+> 若某个用例确实需要拦截网络（例如制造 5xx、超时、断网），用 `page.route()` 在**真实链路之上**注入故障，
+> 而不是整体切到 Mock 服务器——前者测的是"真实后端出错时 UI 的表现"，后者测的是"前端自己"。
 
 ## Real 模式实现要点
 
-1. **独立配置文件**：新增 `tests/e2e/playwright.real.config.ts`，webServer 启动真实后端（如 `bun run dev`）而非 mock-launcher
-2. **global-setup 改造**：Real 模式下调用 seed API 或 `db:seed` 脚本初始化数据，**严禁直写 Mock 内存**
-3. **用例可精简**：Real 模式不追求全量，最低覆盖：每角色登录成功（使用与登录页快捷按钮同款凭证）、禁用账号登录被拒、核心 CRUD 主链路（如：管理员审核+销售跟进+渠道报备）
-4. **种子一致性前提**：Real 模式依赖「种子数据单一真源」铁律（seeds/ 目录被 Mock 和真实 DB 同时引用），否则两模式凭证不同必然失败
-5. **端口从 .env 读取**：两套配置的 baseURL/webServer 端口均从 `.env` 读取，禁止硬编码
+1. **独立配置文件**：`tests/e2e/playwright.real.config.ts`，webServer 启动真实后端（如 `bun run dev`）；不存在 mock-launcher
+2. **global-setup**：调用 seed API 或 `db:seed` 脚本初始化数据，**严禁直写内存假数据**
+3. **覆盖下限**：每角色登录成功（使用与登录页快捷按钮同款凭证）、禁用账号登录被拒、forceChangePwd 弹改密、核心 CRUD 主链路
+4. **种子唯一真源**：账号与基础数据只有一份权威定义（starter 形态是 `apps/api/db/demo-seed.ts` + `init.sql`），E2E、后端测试、MSVP 走查全部引用它
+5. **端口从 .env 读取**：baseURL/webServer 端口均从 `.env` 读取，禁止硬编码
+6. **异常分支覆盖（v2.26 新增，R035）**：每个模块至少 1 条 4xx 场景用例（越权 403 / 冲突 409 / 校验 400），
+   数据由 `demo-seed` 或 dev-only 造数端点现场造；复现不了 → 记 A10，不得标通过
 
-## API 路径唯一真源约束（v2.13）
+## API 路径唯一真源约束（v2.26 更正）
 
-- 前端 service 层（services/*.ts）请求路径 MUST 从 `api-contract.yaml` 提取，**严禁按 Mock 服务器路径约定编写**
-- Mock 服务器路由 MUST 与 api-contract.yaml 逐条一致（路径、方法、参数位置）
-- Real 模式 E2E 天然能暴露路径不一致：Mock 全绿但 Real 模式全部 404 → 立即检查 services/ 是否按 Mock 约定写死路径
+- 前端 service 层（`services/*.ts`）请求路径 MUST 能在**后端实际注册路由**里找到；`api-contract.yaml` 只是派生视图，对不上时改的是 shared schema + 后端实现
+- 校验靠 R014 脚本，不靠"两个模式对比"：`powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/check-api-endpoints.ps1`
+- 历史教训仍然成立：路径按假想约定写死 → 换真实后端就全 404；只是现在这一步提前到切片内暴露，不用等 Stage4
 
 ## 门禁规则
 
-Mock 模式全量通过 + Real 模式核心链路通过 → Stage4 可以标记完成；任一模式失败 → 门禁不通过，修复后两模式均重跑。
+Real 模式核心链路 + 异常分支用例通过 → Stage4 才可标记完成；失败 → 修复后重跑。
+（v2.26 起取消「Mock 模式全量通过」这一项——它给不了任何真实后端的信息。）
 
 ---
 
