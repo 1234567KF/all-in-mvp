@@ -2542,6 +2542,7 @@ const E2E_COVERAGE_CHECKER = {
 | R037 | v2.27 | 业务模块禁直连 `ali-oss`（走 `shared/oss.ts` 双模） | HIGH | 3,4,fix | starter `api-oss-import-guard.test.js` |
 | R038 | v2.27 | 前端权限只消费 wire 下发的 `user.permissions` | BLOCKER | 3,4,fix | starter `web-permission-import-guard.test.js` |
 | R039 | v2.27 | 单文件 450 行棘轮（只许减不许增） | HIGH | 3,4,fix | starter `arch:check` |
+| R040 | v2.28 | 内部引用脱敏（内网坐标不得入库） | BLOCKER | 4 | `check-private-refs.ps1` |
 
 > `—` = 需语义分析，暂不可脚本化。Agent 自行遵守，违规血案见 PLAYBOOK.md。
 > **Agent 使用方式**：不再需要记住每条规则全文。开发/联调前运行对应 Stage 聚合门禁脚本 → PASS 才继续。

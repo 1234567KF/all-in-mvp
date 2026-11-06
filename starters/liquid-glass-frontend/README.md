@@ -2,7 +2,8 @@
 
 <!-- region:template-only -->
 
-[![Test Preview](https://img.shields.io/badge/🌐_测试环境预览-192.168.110.214%3A11070-22c55e?style=for-the-badge)](http://192.168.110.214:11070)
+<!-- 测试环境预览地址由 CI/CD 变量 TEST_HOST 决定；仓库内只留占位，请勿写入真实内网地址 -->
+[![Test Preview](https://img.shields.io/badge/🌐_测试环境预览-test--host.example.com-22c55e?style=for-the-badge)](http://test-host.example.com)
 
 <!-- endregion:template-only -->
 
@@ -26,22 +27,27 @@
 
 ### 1. 安装 / 更新 AI 技能
 
-通过 `npx giget` 免克隆整个仓库，直接将脚手架技能安装到对应 AI Agent 的全局目录（后续升级重新执行同一命令即可覆盖）：
+通过 `npx giget` 免克隆整个仓库，直接将脚手架技能安装到对应 AI Agent 的全局目录（后续升级重新执行同一命令即可覆盖）。
+
+> **`gitlab.example.com` 是占位远端**（RFC 2606 保留示例域，由 IANA 持有、不可被第三方注册；该子域不解析，照抄命令必然连不上——这正是"还没替换"的提示）。
+> 真实主机与项目路径随部署环境而异，不写进仓库——执行前请把命令里的
+> `git@gitlab.example.com:starters/liquid-glass-starter` 替换成你自己的 GitLab 地址；
+> 没有自建 GitLab 时改用 `gh:<你的组织>/<仓库>` 形式即可。
 
 #### macOS / Linux / Git Bash / WSL
 
 ```bash
 # Qoder
-npx giget git:git@192.168.110.2:starters/liquid-glass-starter/skills/wecode-project-scaffolder ~/.qoder/skills/wecode-project-scaffolder --force
+npx giget git:git@gitlab.example.com:starters/liquid-glass-starter/skills/wecode-project-scaffolder ~/.qoder/skills/wecode-project-scaffolder --force
 
 # Qoder CN
-npx giget git:git@192.168.110.2:starters/liquid-glass-starter/skills/wecode-project-scaffolder ~/.qoder-cn/skills/wecode-project-scaffolder --force
+npx giget git:git@gitlab.example.com:starters/liquid-glass-starter/skills/wecode-project-scaffolder ~/.qoder-cn/skills/wecode-project-scaffolder --force
 
 # Claude Code
-npx giget git:git@192.168.110.2:starters/liquid-glass-starter/skills/wecode-project-scaffolder ~/.claude/skills/wecode-project-scaffolder --force
+npx giget git:git@gitlab.example.com:starters/liquid-glass-starter/skills/wecode-project-scaffolder ~/.claude/skills/wecode-project-scaffolder --force
 
 # Gemini / Antigravity
-npx giget git:git@192.168.110.2:starters/liquid-glass-starter/skills/wecode-project-scaffolder ~/.gemini/config/plugins/wecode-plugin/skills/wecode-project-scaffolder --force
+npx giget git:git@gitlab.example.com:starters/liquid-glass-starter/skills/wecode-project-scaffolder ~/.gemini/config/plugins/wecode-plugin/skills/wecode-project-scaffolder --force
 ```
 
 <details>
@@ -51,32 +57,32 @@ npx giget git:git@192.168.110.2:starters/liquid-glass-starter/skills/wecode-proj
 
 ```powershell
 # Qoder
-npx giget git:git@192.168.110.2:starters/liquid-glass-starter/skills/wecode-project-scaffolder "$HOME\.qoder\skills\wecode-project-scaffolder" --force
+npx giget git:git@gitlab.example.com:starters/liquid-glass-starter/skills/wecode-project-scaffolder "$HOME\.qoder\skills\wecode-project-scaffolder" --force
 
 # Qoder CN
-npx giget git:git@192.168.110.2:starters/liquid-glass-starter/skills/wecode-project-scaffolder "$HOME\.qoder-cn\skills\wecode-project-scaffolder" --force
+npx giget git:git@gitlab.example.com:starters/liquid-glass-starter/skills/wecode-project-scaffolder "$HOME\.qoder-cn\skills\wecode-project-scaffolder" --force
 
 # Claude Code
-npx giget git:git@192.168.110.2:starters/liquid-glass-starter/skills/wecode-project-scaffolder "$HOME\.claude\skills\wecode-project-scaffolder" --force
+npx giget git:git@gitlab.example.com:starters/liquid-glass-starter/skills/wecode-project-scaffolder "$HOME\.claude\skills\wecode-project-scaffolder" --force
 
 # Gemini / Antigravity
-npx giget git:git@192.168.110.2:starters/liquid-glass-starter/skills/wecode-project-scaffolder "$HOME\.gemini\config\plugins\wecode-plugin\skills\wecode-project-scaffolder" --force
+npx giget git:git@gitlab.example.com:starters/liquid-glass-starter/skills/wecode-project-scaffolder "$HOME\.gemini\config\plugins\wecode-plugin\skills\wecode-project-scaffolder" --force
 ```
 
 #### Windows (CMD - 命令提示符)
 
 ```cmd
 REM Qoder
-npx giget git:git@192.168.110.2:starters/liquid-glass-starter/skills/wecode-project-scaffolder "%USERPROFILE%\.qoder\skills\wecode-project-scaffolder" --force
+npx giget git:git@gitlab.example.com:starters/liquid-glass-starter/skills/wecode-project-scaffolder "%USERPROFILE%\.qoder\skills\wecode-project-scaffolder" --force
 
 REM Qoder CN
-npx giget git:git@192.168.110.2:starters/liquid-glass-starter/skills/wecode-project-scaffolder "%USERPROFILE%\.qoder-cn\skills\wecode-project-scaffolder" --force
+npx giget git:git@gitlab.example.com:starters/liquid-glass-starter/skills/wecode-project-scaffolder "%USERPROFILE%\.qoder-cn\skills\wecode-project-scaffolder" --force
 
 REM Claude Code
-npx giget git:git@192.168.110.2:starters/liquid-glass-starter/skills/wecode-project-scaffolder "%USERPROFILE%\.claude\skills\wecode-project-scaffolder" --force
+npx giget git:git@gitlab.example.com:starters/liquid-glass-starter/skills/wecode-project-scaffolder "%USERPROFILE%\.claude\skills\wecode-project-scaffolder" --force
 
 REM Gemini / Antigravity
-npx giget git:git@192.168.110.2:starters/liquid-glass-starter/skills/wecode-project-scaffolder "%USERPROFILE%\.gemini\config\plugins\wecode-plugin\skills\wecode-project-scaffolder" --force
+npx giget git:git@gitlab.example.com:starters/liquid-glass-starter/skills/wecode-project-scaffolder "%USERPROFILE%\.gemini\config\plugins\wecode-plugin\skills\wecode-project-scaffolder" --force
 ```
 
 </details>

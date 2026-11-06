@@ -231,7 +231,7 @@ CODE REVIEW: dispatch subagent "mvp-code-reviewer" (skill kf-mvp-code-review) fo
 
 ## 9. 第三轮执行（v2.25）— 借鉴权威仓库 T1 + 门面技能注册失效（血案 B024）
 
-> 输入：内网 GitLab `192.168.110.2/starters/liquid-glass-starter`（只读克隆到临时目录，HEAD `167e561`）。
+> 输入：内网 GitLab `<已脱敏>/starters/liquid-glass-starter`（只读克隆到临时目录，HEAD `167e561`）。
 > 与我们的 `starters/liquid-glass-frontend` 同源：后者是它 2026-07-16 的快照 —— 179 个同名文件，97 个只在他们那边，41 个同名文件已分叉。
 > 本轮按你的要求只做 T1（通用、且不依赖 T2 能力的那一档），T2/T3 只登记不动手。
 
@@ -288,7 +288,7 @@ CODE REVIEW: dispatch subagent "mvp-code-reviewer" (skill kf-mvp-code-review) fo
 
 ## 10. 第四轮执行（v2.26）— 全量同步权威 starter + 门禁被真实代码反向校准 + 锁定"去前后端分离"
 
-> 输入：内网 GitLab `192.168.110.2/starters/liquid-glass-starter`，HEAD `167d77c`（上一轮基线是 `167e561`）。
+> 输入：内网 GitLab `<已脱敏>/starters/liquid-glass-starter`，HEAD `167d77c`（上一轮基线是 `167e561`）。
 > 你的指令：「不必前后端了。但要达到前置可交互检查正常分支和异常分支；从权威 starter 拉最新版本，我现在优势的地方保留。」
 > 本轮只做"拉最新 + 保留优势"，方向改造（#19）另起增量，不与同步混在一个提交里。
 
@@ -355,7 +355,7 @@ CODE REVIEW: dispatch subagent "mvp-code-reviewer" (skill kf-mvp-code-review) fo
 
 ### 10.9 待你决策（已在推送前停住，未动手）
 
-1. **内部引用清洗**：`192.168.110.2` git URL、测试机 `192.168.110.214:11070`、`wecode-cloud` registry、`~/.claude`/`.gemini` 路径。证据：这些在**本轮同步之前就已存在**（同步前 starter README 10 处、`.gitlab-ci.yml` 9 处），但本轮把它们放大了（新增 `ci-tools/`、`compose.self.yml`、`deploy.sh` 等）。GitHub 是公开仓，推送前需要你定清洗边界还是只推框架层。
+1. **内部引用清洗**：内网 GitLab 主机 git URL、内网测试机 `IP:11070`、`wecode-cloud` registry、`~/.claude`/`.gemini` 路径。证据：这些在**本轮同步之前就已存在**（同步前 starter README 10 处、`.gitlab-ci.yml` 9 处），但本轮把它们放大了（新增 `ci-tools/`、`compose.self.yml`、`deploy.sh` 等）。GitHub 是公开仓，推送前需要你定清洗边界还是只推框架层。
 2. `skills/wecode-project-scaffolder/` 是否重新引入（见 10.3）。
 3. 同步带入的 `change-password` 缺陷怎么处理（见 10.11）。
 4. 方向改造 #19：见下。
@@ -488,8 +488,8 @@ R014 孤端点 `/api/auth/change-password`（§11.4/B028）、R010 `apps/api/src
 
 1. `changePassword` 缺陷：报上游 / 本地补后端路由（属新增业务，不是改一行）/ 只靠 R014+R035 拦。当前选择是**只在门禁层拦，不改业务**。
    → 作者随后改选「本地修」，落地见 §13。
-2. 推送前的脱敏边界：`192.168.110.2` git URL、`192.168.110.214:11070`、`wecode-cloud` registry、`~/.claude`/`~/.gemini` 路径——本轮同步把它们带进了更多文件；`skills/wecode-project-scaffolder` 是否继续排除在发布树外。
-   → 决策为「192.168.110.2 涉及到的都要脱敏」，见 §14（进行中）。
+2. 推送前的脱敏边界：内网 GitLab IP git URL、内网测试机 IP:11070、`wecode-cloud` registry、`~/.claude`/`~/.gemini` 路径——本轮同步把它们带进了更多文件；`skills/wecode-project-scaffolder` 是否继续排除在发布树外。
+   → 决策为「内网 GitLab IP 涉及到的都要脱敏」，见 §14（进行中）。
 3. `gen:module` 是否正式纳入 Stage 3 切片分派（目前是"可用"而非"默认"）。
 4. task #9：一次真实 Playwright E2E 运行仍未做。
 
@@ -565,7 +565,68 @@ double-quoted-string 包袱把"解析不到的双引号标识符"降级成字符
 
 ---
 
+## 14. 第八轮执行（v2.28）— 推送前脱敏 + 新增 R040 防回归门禁（血案 B032）
+
+作者对 §12.3 第 2 条的裁决是「内网 GitLab 那台机器涉及的坐标都要脱敏」+「都只推到 github 上」。
+公开仓库里的自建内网坐标同时是两件事：**指向不可达主机的死链**和**基础设施暴露面**，
+所以这一轮不是"改文案"，是把判据固化成门禁。
+
+### 14.1 脱敏边界：删了什么、留了什么（留的都是刻意的）
+
+| 处置 | 内容 | 理由 |
+|---|---|---|
+| 删除/替换 | 内网 GitLab 的 git URL（`README.md` 12 处 `npx giget` / `git clone` 示例）、内网测试机 IP × 端口、内网主机别名、内网设计源链接 | 公开仓不可达且暴露拓扑 → RFC 2606 占位域（`gitlab.example.com` / `test-host.example.com`） |
+| 改为注入 | `.gitlab-ci.yml` 的 `TEST_HOST/TEST_PORT/TEST_USER/TEST_PATH` 变量值、`scripts/reset-test-db.sh` 的 `SSH_*` 常量 | 部署坐标属于环境配置，仓里只留**变量名与缺失即报错**的约束，不留真值（`${TEST_HOST:?}` 而不是内网默认值——留默认值等于没脱敏） |
+| 保留 | `registry.cn-beijing.aliyuncs.com/wecode-cloud` 命名空间、`FLOW_WEBHOOK_URL` 的 `.../REPLACE_ME` 形态、模板自身端口 11070、`wecode` 项目/用户名命名、本地未入库的记忆与备份文件 | 公共云地址不是内网坐标；`REPLACE_ME` 已是脱敏形态；11070 是 compose 模板自绑端口，换成别的反而与文档不一致 |
+| 保留叙事 | `MIGRATION-PLAN-qoder.md` 里 4 处「内网 `<已脱敏>` / 内网测试机 IP」措辞 | 记录本身要能追溯"当初同步了什么"，但不含可用坐标 |
+
+### 14.2 R040 的门禁形态（写法直接继承 B025/B027/B028/B029 的教训）
+
+- **判据按形态，不按已知违规串**：内网段的点分 / 横线 / 下划线 / URL 百分号编码四种书写形态都命中，
+  把 `.` 换成 `-` 不是逃逸通道。通用 RFC1918（文档示例、测试夹具）判 WARN 单独计数，不阻断，但绝不并入 PASS。
+- **覆盖面不写死在检查器里**：文件清单取 `git ls-files`（尊重 .gitignore，天然排除 node_modules/dist），
+  非 git 目录退回递归扫描；`-c core.quotepath=false` 是必须的——否则非 ASCII 路径被转义成
+  `"\346\226\207"` 形态，`Join-Path` 打不开就被静默跳过，**漏检比误报更糟**。
+- **SKIPPED ≠ PASS**：一个文件都没扫到时 exit 2，聚合脚本按非 0 计入 FAIL（B022）。
+- **放行要带理由**：`R040-allow` 同行无理由仍判 FAIL；例外清单不写进脚本。
+- **例外与盲区写全**：未登记的新内网主机名、二进制内嵌字符串、多变量拼接、进制改写（八/十六进制、无点单整数）、
+  未入库文件——全部逐条写进脚本注释与 `gate-rules.yaml`「已声明盲区」。
+
+### 14.3 审查抓到的自命中（本轮唯一 BLOCKER，血案 B032）
+
+评审者要求"脚本 `git add` 之后再跑一次"，才暴露门禁注释里写着完整内网 CIDR：
+untracked 状态下 `git ls-files` 扫不到自己，所以两轮 PASS 都是真的、也都没用——**入库那一刻起门禁永久红**。
+处置：注释改成不成形写法（不用 `R040-allow` 自我豁免，登记处自带放行样本会削弱示范意义），
+并把「检查器的注释/文档/夹具都在自己的扫描范围内」写进 R040 盲区 ⑥。
+顺带修掉 FAIL 行双计入 WARN 的统计噪声（夹具断言从 WARN 2 变 1 就是这次修复的回归信号）。
+
+### 14.4 实测验证（全部真实执行）
+
+- 负面夹具 7 个 + 空目录：点分/横线/百分号编码/内网主机名/无理由放行 共 **5 处 FAIL**（rc=1），
+  占位域样本与带理由放行样本不误报（显式放行 1 处），空目录 **SKIPPED rc=2**。
+- 全仓：新脚本入库后 `-TargetDir .` **PASS，扫描 559 个文件**（比入库前多 1 个，正是脚本自己）；
+  独立 grep 复核 `192.168.110` / 主机别名 / 非 `REPLACE_ME` 的 webhook 令牌 = 0 命中。
+- stage4 聚合门禁对 starter：**10 PASS / 0 FAIL / 10 TOTAL**（R040 是新增的第 10 条）。
+- `verify-all-in-mvp.ps1`：**22 PASS / 0 WARN / 0 FAIL**（门禁脚本计数 12 个 `check-*.ps1`）；R029 frontmatter 47 文件 PASS。
+- `sync-qoder-homes.ps1`：两个 home 的 skills/agents/scripts 与仓库**逐字节一致**。
+- 交叉审查：`mvp-code-reviewer` 首轮 **1 BLOCKER（自命中）+ 3 P2**（README 脚本计数陈旧、进制改写未列盲区、WARN 双计），
+  本轮全部修完并复跑验证；脱敏彻底性、无过度脱敏、CI 变量注入可用性、越界检查四项均判"未发现"。
+
+### 14.5 本轮明确不做的
+
+1. 不改 `shadcn/DESIGN.md` 里"Vue 3 + shadcn/vue"的旧栈声明——本轮只换掉其中的内网链接，
+   技术栈口径属 §13.5 同类的既有问题（B021 家族），不在脱敏授权内。
+2. 不把 `check-private-refs.ps1` 挂进 `hooks.PostToolUse`：全仓扫描实测 5.7s，每次编辑 CI/文档就跑一次不可接受；
+   改为 `rules/quality-gate.md` 强制行为第 8 条（改动者自跑）+ stage4 聚合门禁兜底。
+3. 不给 `skills/wecode-project-scaffolder` 之类"发布树排除"另建机制——§12.3 第 2 条的后半问句仍未决，当前它随仓入库且内容已无内网坐标。
+4. **不做 git 历史重写**：脱敏只保证工作树与新提交干净。旧的内网坐标仍存在于历史提交对象里，
+   而推送会把历史一并带上——真要抹除需要 `git filter-repo` 级别操作（重写全部提交、强推、通知所有克隆），
+   不在本轮授权范围内，且属于不可逆动作。若 GitHub 侧可见性有风险，需作者单独决策。
+
+---
+
 ## 附录 A — 关键证据
+
 - `file .qoder/skills/all-in-mvp/SKILL.md` → "UTF-8 (with BOM), CRLF"；`kf-mvp-api-contract/SKILL.md`（正常）→ 无 BOM。
 - `ls .claude` → 不存在；`grep ".claude/workflows" .qoder/skills` → 仅 `all-in-mvp/SKILL.md`。
 - Qoder 官方文档：settings 支持 `model/tools/security/mcpServers`（+`env/rules/hooks`），**无 `qualityGates`、无 Claude Code workflows**；Skill 靠 `description` 匹配自动触发，位于 `.qoder/skills/`。

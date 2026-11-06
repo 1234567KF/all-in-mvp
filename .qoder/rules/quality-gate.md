@@ -1,6 +1,6 @@
 # 质量门禁规则
 
-> **关联体系**：[gate-rules.yaml](../gate-rules.yaml) — R020/R021 | [PLAYBOOK.md](../PLAYBOOK.md) — B019/B020
+> **关联体系**：[gate-rules.yaml](../gate-rules.yaml) — R020/R021/R040 | [PLAYBOOK.md](../PLAYBOOK.md) — B019/B020
 > **触发配置**：[settings.json](../settings.json) — `hooks.PostToolUse` → [.qoder/scripts/quality-gate-hook.ps1](../scripts/quality-gate-hook.ps1)（路径命中即向 Agent 注入门禁指令）
 > **背景**：修复模式不走 Stage 流程 → 门禁全部失效。此文件补充非 Stage 流程下的强制行为约束。
 
@@ -13,6 +13,7 @@
 5. 列表类修改 → 验证排序/分页/筛选联动（对应 R020 门禁 2）
 6. 共享组件修改 → 验证其 CSS 变体不破坏 Checkbox/Radio/Switch（对应 R021）
 7. 修改 `SKILL.md` / `.qoder/agents/*.md` 的 frontmatter 后，必须让 `check-skill-frontmatter.ps1` 退出码为 0（对应 R029；hooks Gate 0 已自动执行，禁止绕过）。含 `": "` 的字段用块标量 `>-` 或整体加引号——解析失败的技能会在 App 列表里静默消失，而 Agent 侧仍能调到它（血案 B024）
+8. 修改 CI/部署配置、脚本或文档中的主机地址、账号、路径、令牌地址后，必须让 `check-private-refs.ps1` 退出码为 0（对应 R040）。全仓扫描约 5s，故不挂 hooks，由改动者自行执行；写进公开仓库的内网坐标既是死链又是基础设施暴露面。例外需同行写 `R040-allow: <理由>`，无理由的放行标记仍判 FAIL
 
 ## 禁止行为
 

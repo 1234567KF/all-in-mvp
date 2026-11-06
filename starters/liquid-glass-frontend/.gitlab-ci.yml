@@ -30,12 +30,13 @@ variables:
   FLOW_WEBHOOK_URL: "http://flow-openapi.aliyun.com/pipeline/webhook/REPLACE_ME"
   IMAG_REG: "registry.cn-beijing.aliyuncs.com/wecode-cloud"
   IMAGE_TAG: "$IMAG_REG/liquid-glass-starter:$CI_COMMIT_SHA"
-  # 内网测试机（SSH 部署）——此处为默认保底值；
-  # 新项目如需换机器，在 GitLab 项目 Settings > CI/CD > Variables 配置同名变量即可覆盖，无需改本文件
-  TEST_HOST: "192.168.110.214"
-  TEST_PORT: "63022"
-  TEST_USER: "wecode"
-  TEST_PATH: "/home/wecode/liquid-glass-starter"
+  # 测试机（SSH 部署）——真实地址/账号不入库，以下均为占位值：
+  # 必须在 GitLab 项目 Settings > CI/CD > Variables 配齐同名变量后部署 job 才可用
+  # （本文件与 scripts/reset-test-db.sh 共用同一组变量名）
+  TEST_HOST: "test-host.example.com"
+  TEST_PORT: "22"
+  TEST_USER: "REPLACE_ME"
+  TEST_PATH: "/srv/liquid-glass-starter"
 
 # ── Stage .pre: 依赖缓存预热 ──
 # check job 的 node_modules 缓存为 pull-only，由本 job 负责创建/更新

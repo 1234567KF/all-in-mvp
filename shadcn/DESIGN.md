@@ -2,7 +2,8 @@
 
 > **适用范围**: 所有 all-in-mvp 流水线生成的前端项目
 > **UI 框架**: Vue 3 + Vite + Tailwind CSS v4 + shadcn/vue
-> **源设计**: [Liquid Glass Starter](http://192.168.110.2/starters/liquid-glass-starter)
+> **源设计**: Liquid Glass Starter（权威实现见本仓库 `starters/liquid-glass-frontend/`，
+> 上游内网 GitLab 地址不入库）
 > **默认主色**: Qoder 绿 `#22c55e` / `#4be277`
 > **源文件**: `.qoder/skills/references/liquid-glass/` (theme-tokens.css, design-utils.css, index.css)
 

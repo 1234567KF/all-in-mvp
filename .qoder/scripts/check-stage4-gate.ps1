@@ -51,6 +51,7 @@ Invoke-Check -ScriptName "check-e2e-browser-quota.ps1" -RuleId "R005"
 Invoke-Check -ScriptName "check-liquid-glass-style.ps1" -RuleId "R022-R026"
 Invoke-Check -ScriptName "check-token-sync.ps1" -RuleId "R028"
 Invoke-Check -ScriptName "check-skill-frontmatter.ps1" -RuleId "R029"
+Invoke-Check -ScriptName "check-private-refs.ps1" -RuleId "R040"
 # R001/R003/R006/R007/R008/R009/R013/R027 暂不可脚本化，或需项目特定配置
 # R030/R031 由 starter 的 ESLint project-rules 承担（bun run lint），不在 PS 门禁重复实现
 

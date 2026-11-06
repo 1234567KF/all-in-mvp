@@ -55,9 +55,9 @@ cp -r /tmp/all-in-mvp/.qoder ./          # 核心产物就是这一个目录
 │   └── references/         ← 按需加载的规则/手册（不进上下文）
 ├── agents/                 ← 子 Agent 18 个（mvp-*，流水线角色）
 ├── rules/                  ← 自动加载的行为规则（质量门禁 / 节能索引）
-├── scripts/                ← 门禁与自检脚本 16 个 .ps1（11 个 check-*，含 PostToolUse hook、bootstrap、verify、sync-qoder-homes）
-├── gate-rules.yaml         ← 规则单一真源（R001–R039）
-├── PLAYBOOK.md             ← 血案库（30 条，B002–B031）
+├── scripts/                ← 门禁与自检脚本 17 个 .ps1（12 个 check-*，含 PostToolUse hook、bootstrap、verify、sync-qoder-homes）
+├── gate-rules.yaml         ← 规则单一真源（R001–R040）
+├── PLAYBOOK.md             ← 血案库（31 条，B002–B032）
 └── settings.json           ← 项目配置（模型 + hooks 门禁）
 
 ultra-cost-effective/       ← 极致节能引擎 v2.0（可选，需 Node.js）
