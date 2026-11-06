@@ -14,6 +14,7 @@ $ErrorActionPreference = "Continue"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $failed = @()
 $passed = @()
+$skipped = @()
 $total = 0
 
 function Invoke-Check {
@@ -29,10 +30,22 @@ function Invoke-Check {
     # 必须用 -Command：用 -File 时 "2>&1" 不会被 shell 解释，而是作为位置参数绑到子脚本的 [switch]$Json
     # （PowerShell 报"无法将 System.String 转换为 SwitchParameter"），导致该规则静默漏检。
     $result = & powershell -NoProfile -ExecutionPolicy Bypass -Command "& '$scriptPath' -TargetDir '$TargetDir' -Json 2>&1 | Out-String"
-    if ($LASTEXITCODE -eq 0) {
-        $script:passed += $RuleId
+    $childRc = $LASTEXITCODE   # 必须立刻取：下面任何一次 cmdlet 调用都会刷新 $LASTEXITCODE
+    $joined = ($result -join "`n")
+    if ($childRc -ne 0) {
+        $script:failed += [PSCustomObject]@{ Rule = $RuleId; Script = $ScriptName; Output = $joined }
+        return
+    }
+    # rc=0 不等于"检查过了"：被检查脚本在无 spec / 无契约 / 无前端源码等情形下报 SKIP 并 exit 0。
+    # 把它记进 PASS 就是 B022/B027 那个"虚假的绿"——尤其 R005，模板仓本来就没有 E2E 资产。
+    if ($joined -match '"status"\s*:\s*"SKIP') {
+        # 各脚本的 SKIP 载荷不一样：有的带 message，有的只带 checked=0，都翻译成可读原因
+        $reason = if ($joined -match '"message"\s*:\s*"([^"]*)"') { $Matches[1] }
+                  elseif ($joined -match '"checked"\s*:\s*0\b') { "待检查文件数为 0，检查未执行" }
+                  else { "被检查脚本自报 SKIP" }
+        $script:skipped += [PSCustomObject]@{ Rule = $RuleId; Script = $ScriptName; Reason = $reason }
     } else {
-        $script:failed += [PSCustomObject]@{ Rule = $RuleId; Script = $ScriptName; Output = ($result -join "`n") }
+        $script:passed += $RuleId
     }
 }
 
@@ -57,7 +70,7 @@ Invoke-Check -ScriptName "check-private-refs.ps1" -RuleId "R040"
 
 Write-Host ""
 Write-Host "------------------------------------------------------------" -ForegroundColor Cyan
-Write-Host " Stage 4 Gate 结果: $($passed.Count) PASS / $($failed.Count) FAIL / $total TOTAL" -ForegroundColor Cyan
+Write-Host " Stage 4 Gate 结果: $($passed.Count) PASS / $($failed.Count) FAIL / $($skipped.Count) SKIP / $total TOTAL" -ForegroundColor Cyan
 Write-Host "------------------------------------------------------------" -ForegroundColor Cyan
 
 if ($failed.Count -gt 0) {
@@ -72,6 +85,14 @@ if ($failed.Count -gt 0) {
     Write-Host ""
     Write-Host "修复后重新运行: powershell -NoProfile -ExecutionPolicy Bypass -File .qoder/scripts/check-stage4-gate.ps1" -ForegroundColor Yellow
     exit 1
+} elseif ($skipped.Count -gt 0) {
+    Write-Host ""
+    Write-Host "[PASS*] Stage 4 无 FAIL，但下列规则**没有真正检查过**（跳过 ≠ 已验证，B022/B027）：" -ForegroundColor Magenta
+    foreach ($s in $skipped) {
+        Write-Host "  [$($s.Rule)] $($s.Script) — $($s.Reason)" -ForegroundColor DarkGray
+    }
+    Write-Host "  交付结论里必须原样带上这些跳过项，不能写成『门禁全绿』。" -ForegroundColor DarkGray
+    exit 0
 } else {
     Write-Host ""
     Write-Host "[PASS] Stage 4 门禁全部通过 — 可以交付" -ForegroundColor Green

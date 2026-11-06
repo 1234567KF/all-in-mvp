@@ -124,6 +124,28 @@
 - **落地**：`check-private-refs.ps1`（注释改为不成形写法 + 盲区清单补"进制改写"+ FAIL 行不再计入 WARN）、
   `gate-rules.yaml` R040「已声明盲区」⑥、`rules/quality-gate.md` 强制行为第 8 条（全仓扫约 5s，不挂 hooks，改动者自跑）。
 
+### B033 — B027 的教训在聚合门禁自己身上复发：4 条"从未执行"的检查被算进 10 PASS
+- **规则**：R005 / R012 / R028 / R029 的执行载体（`check-stage3-gate.ps1` / `check-stage4-gate.ps1`）、B022/B027 同族
+- **现象**：真跑 Playwright 那轮去核对"starter 到底有没有 E2E 资产"时才发现：同一条
+  `check-stage4-gate.ps1 -TargetDir starters/…` 上一轮报 **10 PASS / 0 FAIL**，
+  而子脚本单独跑 `-Json` 时其中有 4 条自报 `{"status":"SKIP"}` / `{"status":"SKIPPED"}`
+  （R012 找不到 `api-contract.yaml`、R005 没有任何 E2E spec、R028/R029 待检查文件数为 0）。
+  它们在聚合结论里和真通过的 6 条一样是绿的，最后一行还写"门禁全部通过 — 可以交付"。
+- **根因**：`Invoke-Check` 只按退出码二分（`rc==0 → passed += rule`），而这批脚本的 SKIP 分支
+  **故意 exit 0**（跳过不阻断）。B027 的教训 ② 早就写了"SKIP 绝不能和 PASS 同样渲染成绿色"，
+  但那条只落到子脚本的自述里，没有任何可执行判据要求**聚合层**也这么分类——
+  声明写在血案库，实现留在原地。顺带第二个坑：`$LASTEXITCODE` 在 `if` 之后才被读，
+  中间任何 cmdlet 都会刷新它（B022 同款）。
+- **教训**：① 血案里的"应该怎样"如果没有对应的可执行判据，就等于没修——把教训写进文档 ≠ 改进行为；
+  ② 聚合层必须至少三分类（PASS / FAIL / SKIP），SKIP 单独计数并打印原因，
+    结论措辞降级为"无 FAIL，但 N 项没有真正检查过"；跳过是否阻断交付是**策略**，
+    把跳过冒充通过是**谎报**，前者可调后者不可调；
+  ③ 报告数字要能自证：本轮"10 PASS"被自己下面的表格推翻，更正记录写在 `MIGRATION-PLAN` §15.4，
+    原文不删（留着才能看出这类虚报长什么样）；
+  ④ 每个子脚本自己也要有 SKIP 的显式载荷（`message` 或 `checked:0`），否则聚合层无从解释原因。
+- **落地**：`check-stage3-gate.ps1` / `check-stage4-gate.ps1` 的 `Invoke-Check` 三分类 + `$childRc` 立即取；
+  实测框架仓根 `5 PASS / 2 FAIL / 3 SKIP`（2 FAIL 是 §11.5 的三棵树混扫边界，非本轮引入）。
+
 ---
 
 ## v2.26 血案（同步外部真实代码时，暴露的是我们的门禁）

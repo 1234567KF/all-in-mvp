@@ -606,7 +606,10 @@ untracked 状态下 `git ls-files` 扫不到自己，所以两轮 PASS 都是真
   占位域样本与带理由放行样本不误报（显式放行 1 处），空目录 **SKIPPED rc=2**。
 - 全仓：新脚本入库后 `-TargetDir .` **PASS，扫描 559 个文件**（比入库前多 1 个，正是脚本自己）；
   独立 grep 复核 `192.168.110` / 主机别名 / 非 `REPLACE_ME` 的 webhook 令牌 = 0 命中。
-- stage4 聚合门禁对 starter：**10 PASS / 0 FAIL / 10 TOTAL**（R040 是新增的第 10 条）。
+- stage4 聚合门禁对 starter：本轮结束时报的是 **10 PASS / 0 FAIL / 10 TOTAL**（R040 是新增的第 10 条）。
+  **这个数字后来被更正**：§15.4 发现聚合脚本把"检查根本没执行"的 SKIP 与 PASS 混记，
+  同一条命令的真实分布是 **6 PASS / 0 FAIL / 4 SKIP**（R012 无 api-contract.yaml、R005 无 E2E spec、
+  R028/R029 待检查文件数为 0）。R040 本身是真跑过的（559 文件 + 7 个负面夹具 + 空目录 SKIPPED）。
 - `verify-all-in-mvp.ps1`：**22 PASS / 0 WARN / 0 FAIL**（门禁脚本计数 12 个 `check-*.ps1`）；R029 frontmatter 47 文件 PASS。
 - `sync-qoder-homes.ps1`：两个 home 的 skills/agents/scripts 与仓库**逐字节一致**。
 - 交叉审查：`mvp-code-reviewer` 首轮 **1 BLOCKER（自命中）+ 3 P2**（README 脚本计数陈旧、进制改写未列盲区、WARN 双计），
@@ -622,6 +625,79 @@ untracked 状态下 `git ls-files` 扫不到自己，所以两轮 PASS 都是真
 4. **不做 git 历史重写**：脱敏只保证工作树与新提交干净。旧的内网坐标仍存在于历史提交对象里，
    而推送会把历史一并带上——真要抹除需要 `git filter-repo` 级别操作（重写全部提交、强推、通知所有克隆），
    不在本轮授权范围内，且属于不可逆动作。若 GitHub 侧可见性有风险，需作者单独决策。
+
+---
+
+## 15. 补齐一件拖了三轮的事：真实浏览器 E2E 跑通（task #9 / #22 收尾）
+
+`Playwright E2E 仍未真实跑过` 从 Phase 0 起就一直挂在待办上。本轮真跑，判据只有一个：**拿到真实退出码**。
+
+### 15.1 环境上的两个坑（不写下来下次还会踩）
+
+1. **`@playwright/test` 版本必须对上本机已缓存的 chromium revision**：本机只有 `ms-playwright/chromium-1248`
+   （上一轮下载过），而 1.65 要 1254、1.63 要 1243。`bunx playwright install --dry-run chromium` 可以直接读出
+   各版本期望的 revision，据此把运行器钉到 **1.64（↔ 1248）**，不必再赌 CDN。
+2. **缓存里只有完整 chromium，没有 `chrome-headless-shell`** → 默认 headless 启动必然
+   `Executable doesn't exist at ...chromium_headless_shell-xxxx`。配置里 `use.channel: 'chromium'`
+   让 headless 走完整 Chrome for Testing 二进制（新无头模式），加上 `--no-sandbox`
+   （这台机器直接跑 chrome.exe 会报 `Sandbox cannot access executable … 拒绝访问`）。
+
+顺带：`bun --filter web dev` / `bun run build:shared` 在这个 Bash 会话里报 `bun: unknown error`（而 `bun test`、
+`bunx vitest`、`bunx vite` 都正常）——绕过方式是从 `apps/web` 直接 `bunx vite`。未深挖，属 bun 在该
+shell/工作区组合下的调用问题，不影响本轮结论（shared 的 `dist` 上一轮已构建，API 直接消费）。
+
+### 15.2 跑的是什么（不新增仓内资产，harness 放在仓外 `D:/e2e-smoke-playwright/`）
+
+对 starter 的真实 dev 链路：**浏览器 → Vite 5173（`/api` 代理重写）→ Hono 3000 → SQLite**，
+`DATA_DIR` 指到仓外空库，因此同一次运行顺带验证了「空库启动只播 `admin` 一个账号」的 R010 语义。
+
+6 条用例 = 6 passed / 0 failed，**rc=0**：
+1. 登录页控件全可见 + 默认账号提示与实际口令一致
+2. 前端校验异常分支（空字段 / 短口令）不发请求
+3. 后端异常分支：错误口令 → 真实 401，文案落到 `role=alert`，仍停在 `/login`
+4. 正常分支：`admin/admin123` 进 `/dashboard`，侧边栏三项齐全，reload 后仍登录态，控制台零 error
+5. 鉴权异常分支：未登录直连 `/dashboard` 被送回 `/login`
+6. **改密全链路**（上一轮补的 `POST /auth/change-password` 此前只在 HTTP 冒烟验过）：
+   UI 改密 → toast → 跳登录 → 旧口令 401 → 新口令可登录 → 复原回 `admin123` 保证可重复跑
+
+### 15.3 不轻信"绿"：两条独立证据
+
+- **反向对照**：临时加一条故意写错的断言（"错误口令也能进仪表盘"）→ **1 failed / rc=1**，
+  证明确实是应用在决定红绿，而不是用例在自说自话（B022/B024/B027 纪律）。对照文件跑完即删。
+- **落库复核**（只读查 SQLite）：`users` 表仅 `admin` 且口令是 `$2b$10$` 60 位哈希；
+  `audit_logs` 聚合 = `login/success` 5 条、`login/failure` 3 条、`change_pwd/success` 2 条，
+  `userAgent` 全部是本次驱动 Chrome/156.0.8078.4、`ipAddress` 127.0.0.1，
+  改密两条 detail 均为「密码已更新，该账号全部会话（含当前）的续期凭证已作废」。
+
+### 15.4 真实数字（更正上一节写的 10 PASS / 0 FAIL）
+
+上一节写"stage4 对 starter 10 PASS / 0 FAIL"——**这个数字是错的**，不是数字漂移，是聚合脚本的语义缺陷：
+它只看子脚本退出码，而 7 个 `check-*.ps1` 里有 5 个在"没有可检查对象"时 `exit 0` 并自报
+`{"status":"SKIP"|"SKIPPED"}`（这正是 B027 教训 ② 要求过的"SKIP 不能渲染成绿"，
+但**聚合脚本自己没实现这条**）。加上 SKIP 分类后同一条命令的真实分布：
+
+| TargetDir | PASS | FAIL | SKIP | 备注 |
+|---|:--:|:--:|:--:|---|
+| `starters/liquid-glass-frontend`（stage4，10 条） | 6 | 0 | 4 | SKIP = R012（v2.26 后 starter 无 api-contract.yaml，契约真相源改为 shared Zod）、R005（starter 无 E2E spec）、R028/R029（该目录下待检查文件数为 0） |
+| `starters/liquid-glass-frontend`（stage3，5 条） | 2 | 0 | 3 | 同上三类 |
+| 框架仓根（stage4） | 5 | 2 | 3 | 2 FAIL 为 §11.5 已记录的"三棵树混扫"边界（R011 命中 `demo-frontend` / `templates/e2e` 的模板端口 + 根目录无 `.env.example`），非本轮引入 |
+
+两个聚合脚本（`check-stage3-gate.ps1` / `check-stage4-gate.ps1`）现在的行为：rc≠0 → FAIL；
+rc=0 且输出含 `"status":"SKIP*"` → 记入 SKIP 并打印原因（有 `message` 用 `message`，只有 `checked:0` 就写"待检查文件数为 0，检查未执行"），
+结论从 `[PASS] 全部通过` 降级为 `[PASS*] 无 FAIL，但下列规则没有真正检查过`（仍 exit 0，跳过不阻断交付，但不再冒充通过）。
+子脚本的退出码在调用后立即取存入 `$childRc`——原来在 `if ($LASTEXITCODE -eq 0)` 之后才用，会被后续 cmdlet 刷新（B022 同族）。
+
+**结论更正**：starter 至今没有任何 Playwright 资产，R005 对它永远是 SKIP；本轮这次真实 E2E
+是在仓外 harness（`D:/e2e-smoke-playwright/`）跑的，**没有**进入 starter，因此不能作为 R005 通过的证据。
+
+### 15.5 仍然没做的事
+
+- 没把 Playwright 依赖/配置写进 starter，也没把 harness 放进仓内：本轮目标是"真跑一次"，
+  不是给模板仓新增 E2E 资产（新增 devDependency 会改变 starter 的依赖面，属另一个决策）。
+  若要固化，需要一并决定 `@playwright/test` 版本与浏览器 revision 的约束方式（`playwright install` 走 CDN，本机不稳）。
+- R012 对权威 starter 判 SKIP 是 v2.26 去契约文件后的遗留校准缺口：真相源已改为 `packages/shared` 的 Zod，
+  门禁却仍在找 `api-contract.yaml`。改成读 shared schema 是一次真实的检测面改造，不在本轮授权内，**只报不修**。
+- `bun --filter *` 在本会话报 unknown error 的根因未查。
 
 ---
 
