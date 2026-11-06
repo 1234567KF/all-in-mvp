@@ -593,8 +593,9 @@ rules:
     check_script: scripts/check-private-refs.ps1
     applies_to: [stage4-coordinator, code-reviewer]
     description: |
-      本仓与从上游继承的文档/CI 配置不得出现自建内网坐标：内网网段内的主机地址（IPv4 及其
-      百分号编码、横线/下划线变体，具体登记表在 check-private-refs.ps1 的 INTERNAL_*_PATTERNS，
+      本仓与从上游继承的文档/CI 配置不得出现自建内网坐标：内网网段的主机地址（IPv4 及其
+      百分号编码、横线/下划线变体；点分形态连主机号都不写、只写到 /24 前缀也算命中，
+      因为"复核过这个段"这类叙述本身就是基础设施暴露面。具体登记表在 check-private-refs.ps1 的 INTERNAL_*_PATTERNS，
       本文件不复述字面量以免检查器自身成为违规样本）、内网 GitLab 主机别名，以及未替换的
       真实 webhook 令牌路径。
       替代形态：① RFC 2606 占位域（example.com / gitlab.example.com）；② CI/环境变量注入
