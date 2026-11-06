@@ -58,6 +58,52 @@
   且 2 条 FAIL 都是真实缺陷"（R014 孤端点 `/api/auth/change-password`、R010 `apps/api/src/db.ts` 结构自举里
   inline 插入 admin 与 seed-dev.ts 构成两套账号定义）。业务代码按作者先前的处置原则**只报不修**。
 
+### B030 — 存量库缺列时 SQLite 把列名读成字符串值，登录报「密码错误」骗过两轮排查
+- **规则**：R014 / R035（B028 的后续处置：作者批准「本地修」后补全密码功能）、B022/B029 同族（静默误读比报错更危险）
+- **现象**：给 `users` 加 `password` 列后，空库启动一切正常（270+ 前端测试、315 后端测试、真实 curl 全绿）。
+  但在**已有 `users` 表的存量 dev 库**上，`POST /auth/login` 返回 401「密码错误」，耗时 66ms——
+  一个完全符合预期的业务失败。真实原因与口令毫无关系：
+  `select "id", "email", "name", "role", "password", "created_at" from "users"` 里 `password` 列并不存在，
+  而 SQLite 的 double-quoted-string 历史包袱会把**解析不到的双引号标识符当成字符串字面量**，
+  于是驱动返回的行里多出一个 `"password"` 键、值是字符串 `password` → 真值 → 走 bcrypt 比对 → 必然失败 → 报"密码错误"。
+- **根因**：① 模板仓的结构真相源 `init.sql` **只在空库执行**，不会升级存量库；
+  ② Drizzle 按显式列名 SELECT，缺列在 SQLite 下不报错（换 PG/MySQL 会直接抛 `no such column` / `Unknown column`）；
+  ③ 「列不存在」被降级成「值等于列名的字符串」，任何真值判断都会把它当正常数据读过去——比返回 NULL 更危险；
+  ④ 排查方向被错误消息带走：报文说"密码"，人就往口令/哈希/种子上找，而不是往 schema 上找。
+- **教训**：① schema 改动必须在**空库和存量库两种状态**下各跑一次，只在空库验证过等于没验证；
+  ② 静默误读的信号特征是"错误看起来完全像业务失败"——出现这种自洽的错误时，先怀疑数据层形状而不是业务分支；
+  ③ 用 `pragma_table_info` 与 ORM 声明的列**在启动时比对**，缺列即抛带处置指令的错误，把不可见故障换成显式失败；
+  ④ 守卫的"响"有传播边界：本轮 API 消费方只拿到 `500 INTERNAL_ERROR`，可操作文案（缺哪些列、`db:reset` 指引）
+     落在服务端日志与控制台——因为 DB 是**惰性初始化**（首请求才 bootstrap），改成启动即失败属于新的行为设计，
+     超出「本地修」授权范围。此局限如实登记，不写成"已完全显式化"。
+- **落地**：`apps/api/src/db/bootstrap.ts` 新增 `assertCoreTableMatchesSchema()`，接入 `applyInitSql` 的
+  「users 已存在 → 跳过」分支；比对基准用 `drizzle-orm` 的 `getTableColumns(users)` 取 **DB 列名**（不是 JS 属性名）。
+  两个自坑实测踩过：`Object.values(users.columns)` 在 drizzle 0.45 是 undefined；
+  `db.query(sql, [param])` **不绑定参数**（`pragma_table_info(?)` 拿到空绑定返回 0 行 = "所有列都缺"的假阳性），必须 `db.query(sql).all(param)`。
+  `bootstrap.test.ts` 按 B027/B029 标准配正反 fixture：缺 `password` 必须抛 `/已缺失列：password/` + `/db:reset/`，
+  自定义额外列不得误报。stage4 门禁从"7 PASS / 2 FAIL"变为 **9 PASS / 0 FAIL**。
+
+### B031 — 把两处账号定义合成一处时，顺手改掉了「启动语义」；而守卫那个语义的开关放在没人测的调用点上
+- **规则**：R010（种子单源）、B027/B028 同族（声明与产物不是一回事）
+- **现象**：`src/db.ts` 原本是 `if (existing.length === 0)` 才插 admin（**空库才播种**），
+  `scripts/seed-dev.ts` 原本是 3 账号 `onConflictDoNothing` 直插（**按 email 幂等补齐**）。
+  合成单一真源时写成统一的"缺失即补"，于是运维删掉默认 admin 之后，一次容器重启会把
+  `admin` + `SEED_ADMIN_PASSWORD` 静默复活成可用后门；预发/演示环境（`NODE_ENV≠production`，env 守卫不触发）
+  首启也会多塞一个可登录账号。首轮交叉审查判为 A 阻断。
+- **第二轮**：修复用 `seedUsers(db, { onlyIfEmpty: true })`，语义对了，但**开关是调用方的字面量**，
+  而 `db.ts` 走的是惰性自举路径、没有任何测试经过它——把 `onlyIfEmpty` 删掉，`324 pass / 0 fail` 照样全绿。
+  复审抓出这条 P1：测试覆盖的是 `seedUsers` 的分支能力，不是"启动确实按这个分支跑"。
+- **教训**：① **消重消的是定义，不是条件**——两处定义合并时，必须分别保住各自入口的原语义，
+    用一个显式开关（`onlyIfEmpty` / `includeDevOnly`）表达差异，而不是折中成第三种行为；
+  ② 决定安全语义的那个参数**不要留在调用方字面量里**，收进被测试直接调用的具名入口
+    （`seedUsersOnStartup(db)`），否则"改了没人知道"；
+  ③ 判据同 B027/B029：给开关做**变异验证**——临时删掉函数体内的 `onlyIfEmpty`，必须有一条测试变红
+    （本轮实测 `1 fail`，恢复后 `324 pass`），跑不出红就说明测试只在证明函数会做事，没在证明调用方会这么做；
+  ④ 结构类测试的建表 DDL 别手写副本，直接执行真源 `init.sql`（`applyInitSql`），
+    schema 演进时不会静默失真，顺带验证漂移守卫对真实产物不误报。
+- **落地**：`db/seed-users.ts`（`onlyIfEmpty` + `seedUsersOnStartup`）、`src/db.ts`（改调具名入口）、
+  `db/seed-users.test.ts`（7 例，含"存量库缺 admin 不回填"反例）、`user.service.ts`（审计 `excludeColumns` 补 `password`）。
+
 ---
 
 ## v2.26 血案（同步外部真实代码时，暴露的是我们的门禁）

@@ -1,10 +1,11 @@
 /**
  * modules/auth 集成测试（route + service + 登录审计）
  *
- * 覆盖：POST /auth/login（DB 用户 / 不存在拒绝 / 校验失败）、
- * POST /auth/refresh（旋转 / 失效）响应形状与迁移前 routes/auth.ts 一致
+ * 覆盖：POST /auth/login（DB 用户 / 不存在拒绝 / 密码错误 / 校验失败）、
+ * POST /auth/refresh（旋转 / 失效）、POST /auth/change-password（改密 + 原密码错误 +
+ * 未认证 + refreshToken 吊销）响应形状与迁移前 routes/auth.ts 一致
  * （B3 起 login 的 user 向后兼容地新增 permissions），
- * 以及登录成功/失败审计断言（result / severity）。
+ * 以及登录成功/失败、改密成功/失败审计断言（result / severity）。
  *
  * 运行方式：bun test src/modules/auth/auth.route.test.ts
  */
@@ -17,11 +18,19 @@ import { getDrizzle } from "../../db.js"
 import { auditLogs, users } from "../../db/schema.js"
 import { JWT_SECRET } from "../../middleware/auth.js"
 import { postJson, setupTestDb } from "../../test-helpers.js"
+import { hashPasswordSync } from "../../utils/password.js"
 import authRoute from "./auth.route.js"
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
-const DB_USER = { email: "admin", name: "Admin", role: "admin" }
+const PASSWORD = "admin123"
+/** 与 DEV_SEED_PASSWORD 同值：登录口令的 dev 约定（见 db/seed-users.ts） */
+const DB_USER = {
+  email: "admin",
+  name: "Admin",
+  role: "admin",
+  password: hashPasswordSync(PASSWORD),
+}
 
 let app: Hono
 
@@ -41,13 +50,31 @@ function loginLogs() {
     .filter((l) => l.eventType === "login")
 }
 
+function changePwdLogs() {
+  return getDrizzle()
+    .select()
+    .from(auditLogs)
+    .all()
+    .filter((l) => l.eventType === "change_pwd")
+}
+
+/** 登录并返回 accessToken / refreshToken */
+async function doLogin(email: string, password: string) {
+  const { status, body } = await postJson(app, "/auth/login", {
+    email,
+    password,
+  })
+  const data = body.data as { accessToken: string; refreshToken: string }
+  return { status, data }
+}
+
 // ── POST /auth/login ──────────────────────────────────────────────────────────
 
 describe("POST /auth/login", () => {
   it("DB 用户登录 → 200，返回 token 对 + user，且写成功审计", async () => {
     const { status, body } = await postJson(app, "/auth/login", {
       email: DB_USER.email,
-      password: "admin123",
+      password: PASSWORD,
     })
     expect(status).toBe(200)
     expect(body.success).toBe(true)
@@ -86,17 +113,48 @@ describe("POST /auth/login", () => {
     expect(log!.target).toBe("Admin")
   })
 
+  it("密码错误 → 401「密码错误」，写失败审计（warning + failure）", async () => {
+    const { status, body } = await postJson(app, "/auth/login", {
+      email: DB_USER.email,
+      password: "wrong-password",
+    })
+    expect(status).toBe(401)
+    expect(body.code).toBe("LOGIN_FAILED")
+    expect(body.message).toBe("密码错误")
+
+    // 与「用户不存在」同为 401 LOGIN_FAILED，但 detail 必须可区分（爆破 vs 拼错账号）
+    const failure = loginLogs().find(
+      (l) => l.operatorAccount === DB_USER.email && l.result === "failure"
+    )
+    expect(failure).toBeDefined()
+    expect(failure!.severity).toBe("warning")
+    expect(failure!.detail).toBe("登录失败：密码错误")
+  })
+
+  it("password 为 NULL（SSO 类账号）→ 拒绝密码登录，不参与比对", async () => {
+    const sso = { email: "sso@example.com", name: "SSO 用户", role: "user" }
+    getDrizzle().insert(users).values(sso).run()
+
+    const { status, body } = await postJson(app, "/auth/login", {
+      email: sso.email,
+      password: PASSWORD,
+    })
+    expect(status).toBe(401)
+    expect(body.message).toBe("该账号未启用密码登录")
+  })
+
   it("DB role 为 NULL → permissions 与 JWT 角色同源（默认角色），不出现前后端分裂", async () => {
     const noRole = {
       email: "norole-login@example.com",
       name: "无角色",
       role: null,
+      password: hashPasswordSync(PASSWORD),
     }
     getDrizzle().insert(users).values(noRole).run()
 
     const { status, body } = await postJson(app, "/auth/login", {
       email: noRole.email,
-      password: "admin123",
+      password: PASSWORD,
     })
     expect(status).toBe(200)
 
@@ -162,7 +220,7 @@ describe("POST /auth/refresh", () => {
   it("有效 refreshToken → 200 新 token 对，旧 token 作废（旋转）", async () => {
     const login = await postJson(app, "/auth/login", {
       email: DB_USER.email,
-      password: "admin123",
+      password: PASSWORD,
     })
     const { refreshToken } = login.body.data as { refreshToken: string }
 
@@ -197,5 +255,120 @@ describe("POST /auth/refresh", () => {
     })
     expect(bogus.status).toBe(401)
     expect(bogus.body.code).toBe("TOKEN_EXPIRED")
+  })
+})
+
+// ── POST /auth/change-password ───────────────────────────────────────────────
+// 用独立账号：改密会改写 users.password，复用 admin 会让上面的登录用例依赖执行顺序
+
+const OLD_PWD = "old-pass-1"
+const NEW_PWD = "new-pass-2"
+const PWD_USER = {
+  email: "pwd-user@example.com",
+  name: "改密用户",
+  role: "user",
+  password: hashPasswordSync(OLD_PWD),
+}
+
+describe("POST /auth/change-password", () => {
+  beforeAll(() => {
+    getDrizzle().insert(users).values(PWD_USER).run()
+  })
+
+  it("未认证 → 401（本端点挂 authMiddleware，login/refresh 仍是匿名入口）", async () => {
+    const { status, body } = await postJson(app, "/auth/change-password", {
+      oldPassword: OLD_PWD,
+      newPassword: NEW_PWD,
+    })
+    expect(status).toBe(401)
+    expect(body.code).toBe("UNAUTHORIZED")
+  })
+
+  it("原密码错误 → 400 OLD_PASSWORD_INCORRECT，写失败审计且原密码仍可登录", async () => {
+    const { data } = await doLogin(PWD_USER.email, OLD_PWD)
+
+    const { status, body } = await postJson(
+      app,
+      "/auth/change-password",
+      { oldPassword: "bad-pass", newPassword: NEW_PWD },
+      data.accessToken
+    )
+    expect(status).toBe(400)
+    expect(body.code).toBe("OLD_PASSWORD_INCORRECT")
+
+    const failure = changePwdLogs().find(
+      (l) => l.operatorAccount === PWD_USER.email && l.result === "failure"
+    )
+    expect(failure).toBeDefined()
+    expect(failure!.severity).toBe("warning")
+    expect(failure!.detail).toBe("修改密码失败：原密码不正确")
+
+    // 未被修改：旧密码依然可用
+    expect((await doLogin(PWD_USER.email, OLD_PWD)).status).toBe(200)
+  })
+
+  it("新密码与原密码相同 → 400 字段级校验（shared ChangePasswordSchema.refine）", async () => {
+    const { data } = await doLogin(PWD_USER.email, OLD_PWD)
+
+    const { status, body } = await postJson(
+      app,
+      "/auth/change-password",
+      { oldPassword: OLD_PWD, newPassword: OLD_PWD },
+      data.accessToken
+    )
+    expect(status).toBe(400)
+    expect(body.code).toBe("VALIDATION_ERROR")
+    expect((body.errors as Record<string, string>).newPassword).toBe(
+      "新密码不能与原密码相同"
+    )
+  })
+
+  it("改密成功 → 200 + 新密码可登录 + 旧密码失效 + 旧 refreshToken 被吊销 + 成功审计", async () => {
+    const { data } = await doLogin(PWD_USER.email, OLD_PWD)
+    await new Promise((r) => setTimeout(r, 2)) // refreshToken 按毫秒生成，避免同毫秒碰撞
+
+    const { status } = await postJson(
+      app,
+      "/auth/change-password",
+      { oldPassword: OLD_PWD, newPassword: NEW_PWD },
+      data.accessToken
+    )
+    expect(status).toBe(200)
+
+    expect((await doLogin(PWD_USER.email, NEW_PWD)).status).toBe(200)
+    expect((await doLogin(PWD_USER.email, OLD_PWD)).status).toBe(401)
+
+    // 会话续期凭证随改密作废（accessToken 无状态，仍在 1h 有效期内）
+    const refresh = await postJson(app, "/auth/refresh", {
+      refreshToken: data.refreshToken,
+    })
+    expect(refresh.status).toBe(401)
+    expect(refresh.body.code).toBe("TOKEN_EXPIRED")
+
+    const success = changePwdLogs().find(
+      (l) => l.operatorAccount === PWD_USER.email && l.result === "success"
+    )
+    expect(success).toBeDefined()
+    expect(success!.module).toBe("user")
+    // change_pwd 的 severity 由 inferSeverity 推导为 warning
+    expect(success!.severity).toBe("warning")
+    expect(success!.target).toBe(PWD_USER.name)
+  })
+
+  it("库里已无此账号（token 未过期但账号被删）→ 401 UNAUTHORIZED", async () => {
+    const orphanToken = jwt.sign(
+      { sub: "deleted@example.com", username: "deleted", role: "user" },
+      JWT_SECRET,
+      { algorithm: "HS256", expiresIn: "1h" }
+    )
+
+    const { status, body } = await postJson(
+      app,
+      "/auth/change-password",
+      { oldPassword: OLD_PWD, newPassword: NEW_PWD },
+      orphanToken
+    )
+    expect(status).toBe(401)
+    expect(body.code).toBe("UNAUTHORIZED")
   })
 })

@@ -13,6 +13,14 @@ export const users = sqliteTable("users", {
   email: text("email").notNull().unique(),
   name: text("name"),
   role: text("role").default("user"),
+  /**
+   * bcrypt 哈希（见 src/utils/password.ts），**绝不出 wire**：
+   * Service 层的 getMe/updateMe 投影时剔除，禁止把整行 DB 直接返回。
+   * 可空是为了让 users 表能被企微 / 飞书 / SSO 等登录方式替换
+   * （契约边界见 packages/shared/src/user.ts）——NULL 表示「该账号不启用密码登录」，
+   * 登录时显式拒绝，而不是当成空串参与比对。
+   */
+  password: text("password"),
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
 })
 

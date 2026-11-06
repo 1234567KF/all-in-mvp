@@ -167,7 +167,8 @@ export default function LoginPage() {
         {/* Footer */}
         <div className="relative mt-6 border-t border-[var(--lg-border-subtle)] px-6 pt-6 pb-8 text-center sm:px-12">
           <p className="text-[11px] text-muted-foreground/60">
-            默认账号：admin / 密码：任意 6 位以上
+            默认账号：admin / 密码：admin123（本地开发默认口令，部署时由
+            SEED_ADMIN_PASSWORD 覆盖）
           </p>
           <p className="mt-2 text-[11px] text-outline">
             仅受信任的组织管理员可访问此平台

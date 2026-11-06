@@ -9,9 +9,11 @@
  * 机制约定（沉淀自实战项目）：
  *   ▸ 幂等播种：唯一键冲突 onConflictDoNothing，存量库可反复执行补齐新增数据
  *   ▸ 生产守卫：NODE_ENV=production 直接拒绝执行
- *   ▸ 种子密码：users 表暂无 password 列；引入认证后，管理员种子密码请用
- *     `process.env.SEED_ADMIN_PASSWORD || "<dev默认值>"` 模式（生产环境强制显式
- *     设置，缺失时拒绝启动），严禁把真实密码硬编码进仓库
+ *   ▸ 账号定义唯一真源：src/db/seed-users.ts（R010）——本脚本只调用 seedUsers()，
+ *     不再另写一份账号清单；`includeDevOnly: true` 才带上 demo / viewer 两个
+ *     仅本地使用的演示账号
+ *   ▸ 种子口令：`process.env.SEED_ADMIN_PASSWORD || DEV_SEED_PASSWORD`（生产环境
+ *     由 src/env.ts 的启动守卫强制显式设置，缺失即拒绝启动），仓库内不落任何真实密码
  *
  * 路径约定：DATA_DIR 环境变量优先，默认 apps/api/data；结构来源由
  * bootstrapDatabase 自动探测（init.sql 或 drizzle/），脚本从仓库根执行也正确。
@@ -28,7 +30,7 @@ import { drizzle } from "drizzle-orm/bun-sqlite"
 import { bootstrapDatabase } from "../src/db/bootstrap.js"
 import { seedDemoNotifications } from "../src/db/demo-seed.js"
 import * as schema from "../src/db/schema.js"
-import { users } from "../src/db/schema.js"
+import { DEV_SEED_PASSWORD, seedUsers } from "../src/db/seed-users.js"
 
 const apiRoot = join(dirname(fileURLToPath(import.meta.url)), "..")
 
@@ -53,31 +55,16 @@ export function openDevDb(): DevDb {
 }
 
 /**
- * 开发环境种子数据：demo 用户。
- * 幂等——按 email 唯一键 onConflictDoNothing，重复执行不会插入重复行。
+ * 开发环境种子数据：全部演示账号（含 devOnly）+ 演示消息。
+ * 账号清单与口令策略见 src/db/seed-users.ts（唯一定义，幂等）。
  */
 export function seedDevData(d: DevDb): void {
-  const now = new Date().toISOString()
-
-  d.insert(users)
-    .values([
-      // 与 src/db.ts 启动种子保持一致的管理员（先到先得，互不冲突）
-      { email: "admin", name: "Admin", role: "admin", createdAt: now },
-      {
-        email: "demo@example.com",
-        name: "Demo User",
-        role: "user",
-        createdAt: now,
-      },
-      {
-        email: "viewer@example.com",
-        name: "Demo Viewer",
-        role: "user",
-        createdAt: now,
-      },
-    ])
-    .onConflictDoNothing()
-    .run()
+  const inserted = seedUsers(d, { includeDevOnly: true })
+  console.log(
+    inserted > 0
+      ? `🌱 补齐 ${inserted} 个演示账号（口令见 SEED_ADMIN_PASSWORD / dev 默认值）`
+      : "🌱 演示账号已齐全，跳过"
+  )
 
   seedDemoNotifications(d)
 }
@@ -94,9 +81,15 @@ if (import.meta.main) {
 
   seedDevData(openDevDb())
 
+  const usingEnv = !!process.env.SEED_ADMIN_PASSWORD
   console.log("\n🎉 本地开发种子数据就绪")
   console.log("  管理员  admin")
   console.log("  用户    demo@example.com / viewer@example.com")
+  console.log(
+    usingEnv
+      ? "  口令    取自 SEED_ADMIN_PASSWORD"
+      : `  口令    本地默认 ${DEV_SEED_PASSWORD}（未设 SEED_ADMIN_PASSWORD）`
+  )
   console.log(
     "  消息    admin 的 7 条演示通知（4 未读 / 3 已读，登录后看顶栏）"
   )

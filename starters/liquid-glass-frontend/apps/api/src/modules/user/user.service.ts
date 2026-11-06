@@ -30,7 +30,9 @@ export const USER_AUDIT_CONFIG: TableAuditConfig = {
     name: "姓名",
     role: "角色",
   },
-  excludeColumns: ["createdAt"],
+  // password 必须显式排除：auditedUpdate 的 changes 直接落 audit_logs.changes，
+  // 任何把改密/重置接到审计路径的改动都不应把 bcrypt 哈希写进可通过 GET /logs 读出的字段
+  excludeColumns: ["createdAt", "password"],
   snapshotColumns: ["email", "name", "role"],
 }
 
@@ -49,12 +51,29 @@ export class UserNotFoundError extends ServiceError {
 type UserRow = typeof users.$inferSelect
 
 /**
- * GET/PUT /users/me 的 wire 形状：DB 行 + 由 role 解析出的扁平权限码
+ * wire 投影后的用户：DB 行去掉 password 哈希（users.password 永不出 wire，
+ * 拿到哈希等于离线爆破；见 db/schema.ts 的列注释）。
+ */
+export type WireUser = Omit<UserRow, "password">
+
+/**
+ * DB 行 → wire 用户（唯一允许的出口投影）
+ *
+ * 约定：新增敏感列时在这里剔除，而不是在 route 里各删各的——route 有多个出口，
+ * 漏一个就是静默泄漏。
+ */
+function toWireUser(row: UserRow): WireUser {
+  const { password: _password, ...safe } = row
+  return safe
+}
+
+/**
+ * GET/PUT /users/me 的 wire 形状：DB 行（剔除 password）+ 由 role 解析出的扁平权限码
  *
  * permissions 是前端权限消费的唯一入口（usePermission / PermissionGate /
  * 侧边栏与 ⌘K 菜单过滤），前端不感知 role → 权限的映射规则。
  */
-export type MeUser = UserRow & { permissions: string[] }
+export type MeUser = WireUser & { permissions: string[] }
 
 // UpdateMeInput 统一来自 shared（与 web 共用同一份契约）
 
@@ -68,7 +87,10 @@ export function getMe(email: string): MeUser {
     .where(eq(users.email, email))
     .get()
   if (!user) throw new UserNotFoundError()
-  return { ...user, permissions: permissionsForRole(user.role) }
+  return {
+    ...toWireUser(user),
+    permissions: permissionsForRole(user.role),
+  }
 }
 
 /**
@@ -105,5 +127,8 @@ export function updateMe(
     },
   })
 
-  return { ...updated, permissions: permissionsForRole(updated.role) }
+  return {
+    ...toWireUser(updated),
+    permissions: permissionsForRole(updated.role),
+  }
 }

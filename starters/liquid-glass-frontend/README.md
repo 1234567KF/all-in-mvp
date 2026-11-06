@@ -245,7 +245,7 @@ bun run dev
 
 启动后前端运行在 `http://localhost:5173`（已配置 `/api` 代理转发至后端 `http://localhost:3000`）。
 
-- **默认演示账号**：`admin`（或任意合法邮箱，Demo 模式下任意 6 位以上密码即可登录；`bun run db:reset` 会预置 `admin` / `demo` / `viewer` 三个账号与 7 条演示消息）。
+- **默认演示账号**：`admin`，口令 `admin123`（本地开发默认口令；设置了 `SEED_ADMIN_PASSWORD` 时以其为准，生产环境该变量必填、缺失即拒绝启动）。启动兜底只在**空库**播种这一个账号；`bun run db:seed-dev` 额外补齐 `demo@example.com` / `viewer@example.com`（与 admin 同口令），`bun run db:reset` 重建库后走同一套播种。演示通知（admin 收件箱 7 条，4 未读）由 `DEMO_MODE=true` 或 `db:seed-dev` 提供。
 - **全局快捷键**：
   - `D` 键：快速切换 Dark / Light 主题模式（输入框聚焦时自动忽略）。
   - `⌘K` / `Ctrl+K`：呼出全局 **Command Palette** 命令面板（与 [menu-config.ts](apps/web/src/lib/menu-config.ts) 导航索引实时联动）。

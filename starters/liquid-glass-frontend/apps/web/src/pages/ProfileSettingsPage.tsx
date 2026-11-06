@@ -287,7 +287,8 @@ export default function ProfileSettingsPage() {
               </Button>
             </div>
             <p className="text-xs text-[var(--lg-text-secondary)]">
-              修改密码后，所有设备将被强制登出，请使用新密码重新登录
+              修改成功后该账号所有会话（含当前）的续期凭证（refreshToken）即刻作废，需重新登录；
+              已签发的 accessToken 无状态，最长在 1 小时有效期内自然失效
             </p>
           </CardContent>
         </Card>

@@ -1,9 +1,16 @@
 /**
  * Auth service — 封装 /auth API 调用
- * 端点见 apps/api/src/modules/auth/auth.route.ts（POST /auth/login、/auth/refresh）
- * 类型契约统一来自 shared（LoginInput / User），禁止在此重复手写 interface
+ * 端点见 apps/api/src/modules/auth/auth.route.ts
+ * （POST /auth/login、/auth/refresh、/auth/change-password）
+ * 请求体类型契约统一来自 shared（LoginInput / ChangePasswordInput / User），
+ * 禁止在此重复手写请求侧 interface；LoginResponse 是响应形状，shared 暂未定义，
+ * 保持原样（如需收敛，应加到 shared 而不是留在这里）
+ *
+ * 路径约定：一律写「后端挂载路径」（不含 /api 前缀）。api client 的 BASE_URL
+ * 在开发期是 VITE_API_BASE_URL（后端根路径），在生产同域托管时是 /api；
+ * 手工再写一次 /api 会在两种环境下分别变成 /api/... 与 /api/api/...（404）。
  */
-import type { LoginInput, User } from "shared"
+import type { ChangePasswordInput, LoginInput, User } from "shared"
 
 import { api } from "@/lib/api"
 
@@ -22,11 +29,6 @@ export async function login(data: LoginInput): Promise<LoginResponse> {
   return res.data.data
 }
 
-export interface ChangePasswordInput {
-  oldPassword: string
-  newPassword: string
-}
-
 export async function changePassword(data: ChangePasswordInput): Promise<void> {
-  await api.post("/api/auth/change-password", data)
+  await api.post("/auth/change-password", data)
 }

@@ -52,6 +52,7 @@ CREATE TABLE `users` (
 	`email` text NOT NULL,
 	`name` text,
 	`role` text DEFAULT 'user',
+	`password` text,
 	`created_at` text
 );
 --> statement-breakpoint

@@ -70,6 +70,12 @@ export const env = {
   NODE_ENV: process.env.NODE_ENV || "development",
   JWT_SECRET: process.env.JWT_SECRET || "dev-secret-key",
   /**
+   * 种子账号口令（见 db/seed-users.ts）。留空时本地/演示环境回落
+   * DEV_SEED_PASSWORD；生产环境留空直接拒绝启动——否则启动兜底会用
+   * 仓库里公开写着的默认密码建出可登录的 admin 账号。
+   */
+  SEED_ADMIN_PASSWORD: process.env.SEED_ADMIN_PASSWORD || "",
+  /**
    * 演示模式：仅模板自部署 / 测试环境使用。
    * - 启动时幂等补齐 7 条演示通知；
    * - 开放 POST /notifications/dev/{push,reset}。
@@ -108,6 +114,11 @@ if (env.NODE_ENV === "production" && !process.env.FRONTEND_URL) {
 
 if (env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
   throw new Error("[ENV] JWT_SECRET is required in production")
+}
+
+// 生产环境必须显式给出种子口令（理由见 env.SEED_ADMIN_PASSWORD 注释）
+if (env.NODE_ENV === "production" && !env.SEED_ADMIN_PASSWORD) {
+  throw new Error("[ENV] SEED_ADMIN_PASSWORD is required in production")
 }
 
 // OSS 双模禁止「半启用」；endpoint 格式非法也提前暴露（详见上方纯函数注释）

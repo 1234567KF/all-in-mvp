@@ -38,12 +38,12 @@ describe("auth service", () => {
     expect(result).toEqual(responseData)
   })
 
-  it("changePassword 调用正确的 API 路径", async () => {
+  it("changePassword 调用正确的 API 路径（后端挂载路径，不含 /api 前缀）", async () => {
     mockedPost.mockResolvedValueOnce({ data: {} })
 
     const input = { oldPassword: "old", newPassword: "new" }
     await changePassword(input)
 
-    expect(mockedPost).toHaveBeenCalledWith("/api/auth/change-password", input)
+    expect(mockedPost).toHaveBeenCalledWith("/auth/change-password", input)
   })
 })

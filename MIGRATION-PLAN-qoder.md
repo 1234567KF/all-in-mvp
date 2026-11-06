@@ -487,9 +487,81 @@ R014 孤端点 `/api/auth/change-password`（§11.4/B028）、R010 `apps/api/src
 ### 12.3 仍需你决策（未擅自动手）
 
 1. `changePassword` 缺陷：报上游 / 本地补后端路由（属新增业务，不是改一行）/ 只靠 R014+R035 拦。当前选择是**只在门禁层拦，不改业务**。
+   → 作者随后改选「本地修」，落地见 §13。
 2. 推送前的脱敏边界：`192.168.110.2` git URL、`192.168.110.214:11070`、`wecode-cloud` registry、`~/.claude`/`~/.gemini` 路径——本轮同步把它们带进了更多文件；`skills/wecode-project-scaffolder` 是否继续排除在发布树外。
+   → 决策为「192.168.110.2 涉及到的都要脱敏」，见 §14（进行中）。
 3. `gen:module` 是否正式纳入 Stage 3 切片分派（目前是"可用"而非"默认"）。
 4. task #9：一次真实 Playwright E2E 运行仍未做。
+
+---
+
+## 13. 第七轮执行（v2.28）— 「本地修」落地：补全密码功能 + 种子单源 + 存量库漂移守卫（血案 B030、B031）
+
+作者对 §12.3 第 1 条改选「本地修」，并对口令方案定了 `process.env.SEED_ADMIN_PASSWORD || dev默认值`。
+本轮范围严格限定为两个已点名缺陷**及其必要后果**，不做任何业务内容改写。
+
+### 13.1 缺陷 A：`changePassword` 孤端点 → 按上游自己的延后计划补全
+
+`apps/web/src/services/auth.ts` 的两个错叠在一起（§11.4/B028）：路径多写 `/api` 前缀、后端根本没有该路由。
+上游 `auth.service.ts` 头注释里写着"引入认证后用 `SEED_ADMIN_PASSWORD || dev默认值` 模式"，本轮就是照这句话落地：
+
+| 层 | 落点 |
+| --- | --- |
+| 契约 | `packages/shared` 新增 `ChangePasswordSchema`（`min(1)` / `min(6)` / refine 新旧不同）+ `ChangePasswordInput`；前端删掉手写 interface，改从 shared 导入 |
+| 结构 | `users` 新增**可空** `password` 列（NULL = 该账号不启用密码登录，保留被企微/飞书/SSO 替换的契约边界），`init.sql` 由生成器重出并通过 `db:init:check` |
+| 种子 | 新建 `apps/api/src/db/seed-users.ts` 作账号定义唯一真源；`env.ts` 加 production 缺失即拒绝启动的守卫（与既有 `JWT_SECRET` 守卫对称，`.env.example` 与 `compose.self.yml` 早已备好该变量） |
+| 认证 | `login` 改 async 并严格 bcrypt 校验；无 `password` 值显式拒绝而非当空串比对 |
+| 端点 | `POST /auth/change-password`，route 级 `authMiddleware`（不用 `use("*")`，login/refresh 仍匿名可达）；opCtx 必须在鉴权**之后**现取，否则 `operatorAccount` 为空 |
+| 出 wire | `user.service.ts` 的 `toWireUser` 投影剔除哈希；审计 `excludeColumns` 同时排除 `password`，防 bcrypt 落进 `audit_logs.changes` 被 `GET /logs` 读出 |
+| 会话 | 改密后按 email 吊销该账号全部 refreshToken，成功/失败都写 `change_pwd` 审计（severity warning） |
+
+### 13.2 缺陷 B：`db.ts` 双套账号定义 → 单一真源，且**保住启动语义**
+
+`seedUsers(d, opts)` 用一个 `onlyIfEmpty` 开关把两种语义分开，而不是把它们折中：
+启动兜底 = 只在空库播种（`onlyIfEmpty: true`，与重构前 `existing.length === 0` 等价）；
+手动播种 = 按 email 幂等补齐（`includeDevOnly: true`，与重构前 `onConflictDoNothing` 直插 3 行等价）。
+
+这是交叉审查抓出来的 **A1 阻断项**：合并账号定义时顺手把"缺失即补"当成了等价重构，
+实际后果是运维删掉默认 admin 之后，一次容器重启会静默复活一个能用 `SEED_ADMIN_PASSWORD` 登录后门的管理员。
+教训同 B027 族：**"两处定义合成一处"不等于行为不变，被合并的那个条件判断才是语义本体**。
+反例已固化为测试（`seed-users.test.ts`：存量库缺 admin → 返回 0 且不复活）。
+
+复审追出该修复的 P1：**开关写在调用方字面量里 = 没有测试覆盖**。`seedUsers(db, { onlyIfEmpty: true })` 留在
+`db.ts`，而 `db.ts` 的惰性自举路径没有任何测试经过——把那个参数删掉不会有测试变红。
+处置：把语义收进 `seedUsersOnStartup(d)`（`db.ts` 只调它），并做变异验证——临时去掉函数体内的
+`onlyIfEmpty` 开关后 `1 fail`（"存量库缺 admin → 不回填"），恢复后 `324 pass / 0 fail`。
+同一轮把 `seed-users.test.ts` 手写的建表 DDL 换成直接执行真源 `init.sql`（`applyInitSql`），
+避免 schema 演进时测试结构静默失真；顺带这条路径也验证了漂移守卫对 `init.sql` 不误报。
+
+### 13.3 附带后果：存量库缺列的静默误读（血案 B030）
+
+加列后在**存量 dev 库**上登录返回 401「密码错误」，看着完全像业务失败。真实原因是 SQLite 的
+double-quoted-string 包袱把"解析不到的双引号标识符"降级成字符串字面量，缺列不报错、返回 `"password"` 真值。
+落点：`bootstrap.ts` 的 `assertCoreTableMatchesSchema()` 用 `getTableColumns()` 与 `pragma_table_info` 比对，
+缺列即抛含处置指令的错误。已声明局限：DB 惰性初始化，API 消费方拿到的是 `500 INTERNAL_ERROR`，
+可操作文案在服务端日志/控制台；改成启动即失败属新的行为设计，未获授权，不动。
+
+### 13.4 实测验证（全部真实执行）
+
+- 测试：api `bun test src/` **324 pass / 0 fail**（27 文件，含新增 `seed-users.test.ts` 7 例、`bootstrap.test.ts` 漂移正反 2 例、`auth.route.test.ts` 改密 6 例）· web vitest **347 pass** · shared **70 pass** · scripts 35 pass · eslint-rules 92 pass
+- 静态：tsc（shared / web / api / scripts）均 rc=0 · `arch:check` 通过（135 文件 / 28 行数文件）· `db:init:check` 一致
+- 门禁：stage4 对 starter **9 PASS / 0 FAIL**（上一轮为 7 PASS / 2 FAIL，两条 FAIL 正是本轮这两个缺陷）· R010 种子单源 PASS（种子源定位到新文件，派生脚本 1 个有生成器）· R014 端点一致性 PASS（7 个前端端点全部命中后端 34 条注册路由）· R029 frontmatter 47 文件 PASS · `verify-all-in-mvp.ps1` **22 PASS / 0 WARN / 0 FAIL**
+- 真实 HTTP 冒烟（空库起服）：登录 200 → 错口令 401「密码错误」→ `/users/me` 响应体无 `password` 键 → 改密四分支（未认证 401 / 原密码错 400 / 新旧相同 400 + `errors.newPassword` / 成功 200）→ 新口令登录 200、旧口令 401、旧 refreshToken 401 `TOKEN_EXPIRED` → `GET /logs` 里 `change_pwd` 的 success 与 failure 两条都在（severity 均 warning）
+- 漂移守卫实跑：保留旧结构库启动 → 日志 `已缺失列：password` + `db:reset` 指引，响应 `500`；换空库 → `Seeded 1 user account(s)`，登录恢复正常
+- `DATA_DIR=<tmp> bun scripts/seed-dev.ts`：首跑 3 账号均为 `$2b$10$…`；轮换 admin 口令后复跑 → 新口令仍可登录、种子口令失效（幂等且不覆盖，实测非推断）
+- 交叉审查（quality-gate 规则 1/2 的派发项）：首轮 `mvp-code-reviewer` = **PASS_WITH_FIXES**（A1 后门复活 + B3 审计侧哈希防线 + 文案口径，本轮已修；B1/B2/B4 与 5 条 C 项判定为超范围或事实前提不成立，见 §13.5）；复审 = **PASS**（P0 清零，唯一 P1 是启动兜底调用点无覆盖，已按上文处置并做变异验证）。审查者在无 bun 环境下独立复现不了运行类结论，已要求其标注为静态审；上述运行数字由本会话实测给出。
+
+### 13.5 本轮明确不做的（越界项，留给作者定）
+
+1. **第三处缺陷（新发现，未修）**：`bunx eslint eslint.config.js` 稳定报
+   `Definition for rule '并附理由。' was not found` —— 配置第 227 行的注释字面量
+   `//    eslint-disable-next-line 并附理由。` 被 ESLint 当指令解析。
+   该文件本轮未触碰（`git status` 干净），属上游既有；后果是根目录 `bun run lint`（目标 `.`）恒红。
+   一行改注释措辞即可修，但不在「两个指定缺陷」内，**只报不修**。
+2. 账号枚举面（登录失败文案区分「用户不存在 / 密码错误」）：改动前旧 starter 任意密码皆 200，本就可枚举，非本轮引入；改文案属业务内容。
+3. `demo-refresh-${Date.now()}` 同毫秒碰撞：上游 demo 设计，新增的吊销逻辑未扩大该面。
+4. 前端 `ProfileSettingsPage` 手写 `length < 6 || > 128` 与后端 `min(6)` 无 max 的规则双真相源问题（类型已收口 shared，规则未收口）。
+5. 存量 dev 库的结构漂移不做自动迁移：模板仓的结构来源是 `init.sql`，自动 `ALTER` 属新的行为设计。
 
 ---
 

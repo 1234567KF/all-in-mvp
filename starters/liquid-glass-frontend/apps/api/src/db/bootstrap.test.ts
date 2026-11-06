@@ -198,11 +198,48 @@ describe("applyInitSql", () => {
     const dir = createTempDir()
     const initPath = writeInitSql(dir)
     const sqlite = new Database(":memory:")
-    sqlite.exec("CREATE TABLE users (id integer PRIMARY KEY NOT NULL);")
+    // 列集合与 schema.ts 一致，否则会触发结构漂移报错（见下方用例）
+    sqlite.exec(
+      "CREATE TABLE users (id integer PRIMARY KEY AUTOINCREMENT NOT NULL," +
+        "email text NOT NULL, name text, role text DEFAULT 'user'," +
+        "password text, created_at text);"
+    )
 
     applyInitSql(sqlite, initPath)
 
     expect(tableNames(sqlite)).toEqual(["users"])
+    sqlite.close()
+  })
+
+  it("存量库核心表落后于 schema.ts（缺列）→ 显式报错，不静默错位读取", () => {
+    const dir = createTempDir()
+    const initPath = writeInitSql(dir)
+    const sqlite = new Database(":memory:")
+    // 加 password 列之前的老库：SQLite 会把解析不到的 "users"."password" 当成
+    // 字符串字面量返回，登录因此稳定报「密码错误」——必须在启动期拦住
+    sqlite.exec(
+      "CREATE TABLE users (id integer PRIMARY KEY AUTOINCREMENT NOT NULL," +
+        "email text NOT NULL, name text, role text DEFAULT 'user'," +
+        "created_at text);"
+    )
+
+    // 只报真正缺的那一列：若 pragma 绑定写错，这里会变成「所有列都缺」的假阳性
+    expect(() => applyInitSql(sqlite, initPath)).toThrow(/已缺失列：password/)
+    expect(() => applyInitSql(sqlite, initPath)).toThrow(/db:reset/)
+    sqlite.close()
+  })
+
+  it("核心表多出自定义列 → 放过（项目可能在 starter 基础上自行加列）", () => {
+    const dir = createTempDir()
+    const initPath = writeInitSql(dir)
+    const sqlite = new Database(":memory:")
+    sqlite.exec(
+      "CREATE TABLE users (id integer PRIMARY KEY AUTOINCREMENT NOT NULL," +
+        "email text NOT NULL, name text, role text DEFAULT 'user'," +
+        "password text, created_at text, extra_col text);"
+    )
+
+    expect(() => applyInitSql(sqlite, initPath)).not.toThrow()
     sqlite.close()
   })
 

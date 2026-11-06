@@ -4,7 +4,8 @@ import path from "path"
 
 import { bootstrapDatabase } from "./db/bootstrap.js"
 import { seedDemoNotifications } from "./db/demo-seed.js"
-import { createDrizzleDb, type DrizzleDB, users } from "./db/index.js"
+import { createDrizzleDb, type DrizzleDB } from "./db/index.js"
+import { seedUsersOnStartup } from "./db/seed-users.js"
 import { env } from "./env.js"
 
 // ─── 环境变量约定 ───────────────────────────────────────────────────
@@ -75,14 +76,13 @@ export function getDrizzle(): DrizzleDB {
         : `✅ SQLite migrations applied from drizzle/ (${source.path}).`
     )
 
-    // 种子数据：默认 admin 用户。失败与结构自举一样按启动失败处理，
-    // 避免出现“库已建好但账号缺失”的静默坏状态。
-    const existing = db.select().from(users).all()
-    if (existing.length === 0) {
-      db.insert(users)
-        .values({ email: "admin", name: "Admin", role: "admin" })
-        .run()
-      console.log("🌱 Seeded admin user into database.")
+    // 种子数据：演示账号（唯一定义见 db/seed-users.ts）。失败与结构自举一样按
+    // 启动失败处理，避免出现“库已建好但账号缺失”的静默坏状态。
+    // seedUsersOnStartup 保住自举的原有语义：只在空库播种。存量库不回填 admin，
+    // 否则删掉默认管理员后一次重启就会把它静默复活成可用口令的入口。
+    const seeded = seedUsersOnStartup(db)
+    if (seeded > 0) {
+      console.log(`🌱 Seeded ${seeded} user account(s) into database.`)
     }
 
     // DEMO_MODE：幂等补齐演示通知（仅模板自部署/测试环境；真实业务项目不开启）

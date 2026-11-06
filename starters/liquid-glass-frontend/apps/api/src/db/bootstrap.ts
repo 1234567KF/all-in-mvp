@@ -19,9 +19,11 @@ import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
 import type { Database } from "bun:sqlite"
+import { getTableColumns } from "drizzle-orm"
 import { migrate } from "drizzle-orm/bun-sqlite/migrator"
 
 import type { DrizzleDB } from "./index.js"
+import { users } from "./schema.js"
 
 const INIT_FILE = "init.sql"
 const DRIZZLE_DIR = "drizzle"
@@ -115,16 +117,62 @@ function listUserTables(sqlite: Database): string[] {
   return rows.map((row) => row.name)
 }
 
+/** 某张表在库里的实际列名 */
+function listTableColumns(sqlite: Database, table: string): string[] {
+  // 绑定值在 .all(...) 处传，而不是 .query(sql, params)——后者不会把参数带进查询，
+  // pragma_table_info(?) 拿到空绑定就返回 0 行，等于「所有列都缺」的假阳性
+  const rows = sqlite
+    .query("SELECT name FROM pragma_table_info(?)")
+    .all(table) as { name: string }[]
+  return rows.map((row) => row.name)
+}
+
+/**
+ * 核心表结构与 schema.ts 的列集合比对（模板模式专用）。
+ *
+ * 为什么必须查：SQLite 有个历史包袱——双引号包裹的标识符解析不到列名时会被当成
+ * **字符串字面量**。drizzle 的 select 会列出 `"users"."password"` 这样的显式列名，
+ * 所以「库里缺列」既不报错也不返回 undefined，而是返回列名字符串本身。
+ * 实测（users 少 password 列）：drizzle 给出 `password: "password"`，
+ * 于是登录走到 verifyPassword 并稳定返回「密码错误」——错误码没错、原因全错，
+ * 排查会一路指向密码逻辑而不是数据库结构（血案 B030）。
+ * 因此在「已有表 → 跳过 init.sql」这条分支上，把结构漂移提前到启动期显式失败。
+ *
+ * 只检查缺失列，多出的列放过：项目可能在 starter 基础上自行加过列。
+ */
+export function assertCoreTableMatchesSchema(sqlite: Database): void {
+  const actual = new Set(listTableColumns(sqlite, CORE_TABLE))
+  const expected = Object.values(getTableColumns(users)).map(
+    (column) => column.name
+  )
+  const missing = expected.filter((name) => !actual.has(name))
+
+  if (missing.length === 0) return
+
+  throw new Error(
+    [
+      `核心表 "${CORE_TABLE}" 的列结构落后于代码（schema.ts），已缺失列：${missing.join(", ")}。`,
+      "模板仓库的结构来源 init.sql 只在空库时执行，不会升级存量库；",
+      "继续运行会让查询按错位的列取值（SQLite 把解析不到的双引号标识符当字符串），得到看似合理实则错误的结果。",
+      "请备份数据后删除数据目录（Docker: /app/data；本地: apps/api/data）并重启，或执行 `bun run db:reset` 重建（会清空本地数据）。",
+    ].join("\n")
+  )
+}
+
 /**
  * 在空库上执行单份 init.sql（drizzle generate 产物用 --> statement-breakpoint 分隔）。
  *
- * - 已有 `users` 核心表 → 视为已初始化，直接跳过（模板部署级别无记忆，存量库保持现状）；
+ * - 已有 `users` 核心表 → 视为已初始化，跳过执行，但先比对列结构（漂移即报错，
+ *   见 assertCoreTableMatchesSchema；模板部署级别无记忆，存量库靠 db:reset 升级）；
  * - 有其它业务表但缺 `users` → 说明上次初始化没跑完 / 结构不完整，抛可操作错误；
  * - 全部语句包在单个事务里：任一语句失败整体回滚，不留下“半初始化”库。
  */
 export function applyInitSql(sqlite: Database, initSqlPath: string): void {
   const existingTables = listUserTables(sqlite)
-  if (existingTables.includes(CORE_TABLE)) return
+  if (existingTables.includes(CORE_TABLE)) {
+    assertCoreTableMatchesSchema(sqlite)
+    return
+  }
 
   if (existingTables.length > 0) {
     throw new Error(

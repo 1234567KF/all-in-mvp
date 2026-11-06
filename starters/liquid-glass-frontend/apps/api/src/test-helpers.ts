@@ -20,6 +20,7 @@ import path from "path"
 import { _setTestDb } from "./db.js"
 import { bootstrapDatabase } from "./db/bootstrap.js"
 import { createDrizzleDb, type DrizzleDB } from "./db/index.js"
+import { DEV_SEED_PASSWORD } from "./db/seed-users.js"
 
 /** apps/api 根目录：模板模式读 init.sql，生成项目模式读 drizzle/ */
 const apiRoot = path.resolve(import.meta.dir, "..")
@@ -107,4 +108,8 @@ export async function getAuthToken(
 
 // ─── 预置凭据 ────────────────────────────────────────────────────────────────
 
-export const ADMIN_CREDENTIALS = { email: "admin", password: "admin123" }
+/** 与种子真源同款口令（db/seed-users.ts），改一处即可，避免测试凭据漂移 */
+export const ADMIN_CREDENTIALS = {
+  email: "admin",
+  password: DEV_SEED_PASSWORD,
+}
