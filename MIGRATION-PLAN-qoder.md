@@ -577,7 +577,8 @@ double-quoted-string 包袱把"解析不到的双引号标识符"降级成字符
 |---|---|---|
 | 删除/替换 | 内网 GitLab 的 git URL（`README.md` 12 处 `npx giget` / `git clone` 示例）、内网测试机 IP × 端口、内网主机别名、内网设计源链接 | 公开仓不可达且暴露拓扑 → RFC 2606 占位域（`gitlab.example.com` / `test-host.example.com`） |
 | 改为注入 | `.gitlab-ci.yml` 的 `TEST_HOST/TEST_PORT/TEST_USER/TEST_PATH` 变量值、`scripts/reset-test-db.sh` 的 `SSH_*` 常量 | 部署坐标属于环境配置，仓里只留**变量名与缺失即报错**的约束，不留真值（`${TEST_HOST:?}` 而不是内网默认值——留默认值等于没脱敏） |
-| 保留 | `registry.cn-beijing.aliyuncs.com/wecode-cloud` 命名空间、`FLOW_WEBHOOK_URL` 的 `.../REPLACE_ME` 形态、模板自身端口 11070、`wecode` 项目/用户名命名、本地未入库的记忆与备份文件 | 公共云地址不是内网坐标；`REPLACE_ME` 已是脱敏形态；11070 是 compose 模板自绑端口，换成别的反而与文档不一致 |
+| 保留 | `registry.cn-beijing.aliyuncs.com/wecode-cloud` 命名空间（`.gitlab-ci.yml` 9 处 + `Dockerfile` 2 处）、`FLOW_WEBHOOK_URL` 的 `.../REPLACE_ME` 形态、模板自身端口 11070、`wecode` 项目/技能名（`wecode-project-scaffolder` 的安装示例与说明）、本地未入库的记忆与备份文件 | 公共云命名空间不是内网坐标，且这两个文件是**权威上游的**——改了就和上游永久分叉，超出"本地修两个指定缺陷"的授权。实测补充：匿名 `GET /v2/wecode-cloud/bun/manifests/1-alpine` 返回 **401**，所以它对外部使用者是**不可用的死引用**（组织私有 ACR），泄露的只是"这套 starter 出自谁"，不是可定位的主机/端口/账号 |
+| 保留（检测器自身） | `check-private-refs.ps1` 第 56 行登记的内网主机别名原文（此处刻意不复述——写出来就会被自己的门禁判红，本轮实测一次命中，即 B032 的活样本） | 判据必须包含被检字符串，删了就等于门禁失效。**刻意不做**拆分混淆（把别名拆成两段字符串再拼接）：那正是 R040 已声明盲区③描述的绕过手法，掩盖它等于给绕过者示范。该别名不含地址与端口，单独不构成暴露面 |
 | 保留叙事 | `MIGRATION-PLAN-qoder.md` 里 4 处「内网 `<已脱敏>` / 内网测试机 IP」措辞 | 记录本身要能追溯"当初同步了什么"，但不含可用坐标 |
 
 ### 14.2 R040 的门禁形态（写法直接继承 B025/B027/B028/B029 的教训）
@@ -624,7 +625,10 @@ untracked 状态下 `git ls-files` 扫不到自己，所以两轮 PASS 都是真
    技术栈口径属 §13.5 同类的既有问题（B021 家族），不在脱敏授权内。
 2. 不把 `check-private-refs.ps1` 挂进 `hooks.PostToolUse`：全仓扫描实测 5.7s，每次编辑 CI/文档就跑一次不可接受；
    改为 `rules/quality-gate.md` 强制行为第 8 条（改动者自跑）+ stage4 聚合门禁兜底。
-3. 不给 `skills/wecode-project-scaffolder` 之类"发布树排除"另建机制——§12.3 第 2 条的后半问句仍未决，当前它随仓入库且内容已无内网坐标。
+3. 不给 `skills/wecode-project-scaffolder` 之类"发布树排除"另建机制——§12.3 第 2 条的后半问句仍未决。
+   **本轮实测更正**：`git ls-files` 里 `scaffolder`/`wecode` 路径命中 **0 个文件**，即它从未随本仓入库
+   （`526d4da2` 主动删除后，两次同步都保持了排除）；仓内出现的 `wecode-project-scaffolder`
+   只是 starter README 里的**安装示例路径**，指向的是占位远端，不是我们的内容。既然不在树里，就不需要排除机制。
 4. **不做 git 历史重写**：脱敏只保证工作树与新提交干净。旧的内网坐标仍存在于历史提交对象里，
    而推送会把历史一并带上——真要抹除需要 `git filter-repo` 级别操作（重写全部提交、强推、通知所有克隆），
    不在本轮授权范围内，且属于不可逆动作。若 GitHub 侧可见性有风险，需作者单独决策。
